@@ -1,0 +1,9 @@
+data/
+results/models/
+logs/
+*.h5ad
+*.h5
+*.tar.gz
+.ipynb_checkpoints/
+__pycache__/
+.env

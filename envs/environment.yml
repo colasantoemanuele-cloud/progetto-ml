@@ -1,0 +1,35 @@
+name: pdac
+channels: [conda-forge, bioconda]
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - polars
+  - pyarrow
+  - h5py
+  - scanpy
+  - anndata
+  - leidenalg
+  - python-igraph
+  - scikit-misc
+  - scrublet
+  - scikit-learn
+  - imbalanced-learn
+  - lightgbm
+  - xgboost
+  - shap
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - snakemake-minimal
+  - ruff
+  - pre-commit
+  - nbstripout
+  - pip:
+      - infercnvpy
+      - decoupler
+      - scirpy          # <-- per il TCR, ci serve
+      - session-info
