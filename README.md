@@ -1,148 +1,114 @@
-# Analisi Multi-Modale di Apprendimento Automatico e Validazione Clonale TCR nel Carcinoma Duttale Pancreatico (PDAC)
+# Analisi Multi-Modale di Machine Learning e Validazione Clonale TCR nel Carcinoma Duttale Pancreatico (PDAC)
 
-## 1. Inquadramento Scientifico e Obiettivi dello Studio
-
-Questo repository implementa una pipeline riproducibile di Machine Learning e bioinformatica statistica applicata all'atlante trascrizionale e recettoriale a singola cellula del carcinoma duttale pancreatico umano (**PDAC**, *Pancreatic Ductal Adenocarcinoma*, NCBI GEO SuperSeries **GSE278694**; Chen et al., *Cancer Cell* 2025). Il dataset integra tre modalita' sperimentali complementari acquisite su una coorte di 14 pazienti:
-
-* **scRNA-seq (`GSE278688`)**: 199.184 profili trascrizionali a singola cellula (33.538 geni) campionati su tre compartimenti anatomici (`Tumor`, `Adjacent_normal`, `PBMC`);
-* **snRNA-seq (`GSE278689`)**: 64.938 profili a singolo nucleo acquisiti su tessuto pancreatico congelato;
-* **scTCR-seq (`GSE300435`)**: 30 librerie V(D)J 10x Genomics accoppiate alle medesime sospensioni cellulari scRNA-seq, con ricostruzione produttiva delle catene $\alpha$ e $\beta$ del recettore delle cellule T (CDR3 aminoacidico e nucleotidico).
-
-Lo studio affronta due questioni metodologiche e biologiche strettamente interconnesse:
-
-1. **Quantificazione della pseudoreplicazione e capacita' di generalizzazione inter-paziente**: nella classificazione supervisionata di stati cellulari e compartimenti tissutali da dati scRNA-seq, il campionamento di decine di migliaia di cellule da un numero limitato di individui induce una forte correlazione intra-soggetto. La pipeline misura sistematicamente il divario di prestazione tra schemi di validazione ingenui a livello di cellula (`StratifiedKFold`) e schemi gerarchici che vincolano l'indipendenza del soggetto di test (`StratifiedGroupKFold` e `Leave-One-Patient-Out`, LOPO), valutando famiglie di modelli lineari e non lineari, metodi di selezione delle feature e stabilita' delle spiegazioni XAI.
-2. **Validazione ortogonale delle etichette trascrizionali tramite tracciamento clonale TCR**: poiche' il riarrangiamento somatico V(D)J delle catene $\alpha/\beta$ precede l'espansione periferica ed e' invariante rispetto allo stato di attivazione, tutte le cellule appartenenti al medesimo clone T condividono per discendenza biologica la stessa identita' di lignaggio (`CD8T` vs `CD4T`). Utilizzando il recettore TCR come verita' di riferimento indipendente dal trascrittoma, la pipeline misura il tasso di discordanza delle annotazioni basate su clustering trascrizionale durante l'infiltrazione dal sangue periferico (`PBMC`) al microambiente tumorale (`Tumor`), discriminando tra plasticita' trascrizionale indotta da esaurimento funzionale e contaminazione tecnica da doppietti eterotipici o RNA ambientale.
+Studio computazionale e metodologico basato sulla **NCBI GEO SuperSeries `GSE278694`** (Chen et al., *Cancer Cell* 2025): **199.184 cellule**, **14 pazienti**, **30.543 geni**, **29 librerie scRNA-seq** (`GSE278688`) e **30 librerie scTCR-seq V(D)J** (`GSE300435`) distribuite su tre compartimenti anatomici (`Tumor`, `Adjacent_normal`, `PBMC`). La coorte a singolo nucleo **snRNA-seq (`GSE278689`)** e' stata esclusa dalle analisi comparative supervisionate in quanto acquisita su un insieme disgiunto di soggetti, evitando il confondimento strutturale tra modalita' tecnica di sequenziamento e variabilita' biologica inter-paziente.
 
 ---
 
-## 2. Impostazione Metodologica e Principi di Ingegneria Statistica
+## 1. I Tre Problemi di Studio e la Sintesi dei Risultati
 
-L'architettura del codice rispetta quattro principi rigorosi di progettazione sperimentale e computazionale:
+Il lavoro esamina criticamente tre task canonici di apprendimento automatico applicato alla trascrittomica a singola cellula del PDAC, dimostrando come le metriche predittive apparentemente elevate ottenute con protocolli standard derivino da tre distinti artefatti del disegno sperimentale, riconducibili a un unico **principio unificante**: **l'unita' statistica indipendente e' il paziente, non la singola cellula**.
 
-* **Isolamento dei cluster paziente e prevenzione del data leakage**: ogni trasformazione che stima parametri sulla distribuzione dei dati (selezione dei geni altamente variabili tramite indice di dispersione Fano in `HVGSelector`, pre-filtraggio di espressione minima, standardizzazione sparsa `StandardScaler(with_mean=False)`, riduzione dimensionale `TruncatedSVD` e selettori supervisionati `F-ANOVA`, `Mutual Information`, `L1-Lasso`) e' incapsulata in pipeline Scikit-learn (`src/scpipe.py`) e addestrata esclusivamente sul fold di training.
-* **Inferenza statistica corretta per la dipendenza tra osservazioni**:
-  * Nel confronto tra algoritmi di classificazione e metodi di feature selection sui fold di validazione incrociata, la significativita' delle differenze di Macro-F1 e Balanced Accuracy e' valutata mediante il **test $t$ appaiato corretto di Nadeau & Bengio (2003)**, che incorpora il fattore $(1/k + n_{\text{test}}/n_{\text{train}})$ per compensare la covarianza indotta dalla sovrapposizione dei training set, associato alla procedura step-down di **Holm-Bonferroni** per il controllo forte del *Family-Wise Error Rate* (FWER).
-  * Nell'analisi della discordanza clonale TCR, gli intervalli di confidenza al 95% sono stimati tramite **Cluster Bootstrap** (ricampionamento con reinserimento di interi pazienti, preservando la correlazione intra-paziente), mentre l'associazione tra espansione clonale ed errore di annotazione nel tumore e' valutata tramite **Block Permutation Test** (20.000 permutazioni ristrette ai confini di ciascun paziente).
-* **Eliminazione della circolarita' nell'arbitrato compartimentale (`10_loco.py`)**: la definizione dell'identita' di riferimento di un clone T non include mai il compartimento sottoposto a valutazione. Lo schema primario utilizza esclusivamente il sangue periferico (`PBMC`) come riferimento esterno e indipendente per arbitrare le cellule osservate in `Tumor` e `Adjacent_normal`.
-* **Efficienza di memoria su matrici sparse CSR**: l'intero flusso di pre-elaborazione e modellazione opera su matrici sparse `scipy.sparse.csr_matrix` a precisione singola (`float32`), evitando la densificazione dell'atlante da $199.184 \times 33.538$ e consentendo l'esecuzione completa su workstation con 16 GB di RAM.
+| Problema di Studio | Popolazione e Dimensione | Metrica in Pratica Corrente (Split Casuale / Naive) | Stima Corretta per la Struttura di Gruppo (LOPO / Entro Paziente) | Origine Metodologica dell'Artefatto |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Annotazione del tipo cellulare** (`task2_v1`, 9 classi) | 199.184 cellule, 14 pazienti, 30.543 geni | **Macro-F1 = 0,954** | **Reale ma tautologica** (Macro-F1 LOPO $\approx 0,938$) | **Circolarita' definitoria**: le etichette di riferimento derivano da clustering non supervisionato e marker sulla medesima matrice di espressione usata per addestrare i classificatori. |
+| **2. Classificazione del compartimento tissutale** (`task1a_paired`, Tumore vs Normale) | 67.662 cellule, 5 pazienti con tessuti appaiati (`Tumor` + `Adjacent_normal`) | **Macro-F1 = 0,875 ($\pm 0,002$)** | **Macro-F1 = 0,729 ($\pm 0,100$)** ($\Delta = -0,146$; incertezza reale **$50\times$ superiore**) | **Confondimento paziente $\leftrightarrow$ tessuto e fuga di informazione**: lo split casuale assegna cellule dello stesso individuo a train e test, memorizzando la firma paziente-specifica anziche' la biologia tumorale. |
+| **3. Malignita' delle cellule duttali** (`13_infercnv.py` / `14_cnv_loci.py`) | Cellule duttali neoplastiche vs epitelio non maligno (profilo CNV) | **AUC LOPO = 0,825** (classificatore su CNV globale) | **AUC $\approx 0,53$ entro paziente** (test su duttali di `Adjacent_normal`) | **Gradiente epiteliale ed effetto di campo di cancerizzazione**: le cellule duttali del tessuto adiacente istologicamente normale condividono gia' alterazioni molecolari e trascrizionali con il tumore primario dello stesso paziente. |
+
+### Validazione Ortogonale tramite Tracciamento Clonale TCR e Spiegabilita' (XAI)
+
+Per superare la circolarita' delle etichette trascrizionali senza ricorrere alla matrice di espressione genica, lo studio utilizza il **recettore delle cellule T (scTCR-seq V(D)J)** come verita' biologica esterna (poiche' il riarrangiamento somatico delle catene $\alpha/\beta$ precede l'espansione periferica ed e' invariante lungo il lignaggio cellulare):
+
+* **Discordanza compartimento-specifica (Schema Primario a Riferimento Ematico, `10_loco.py`)**: assumendo esclusivamente il sangue periferico (`PBMC`) come riferimento esterno privo di circolarita', le cellule T appartenenti allo stesso clone mostrano un tasso di errore dell'annotazione trascrizionale significativamente superiore nel compartimento tumorale (`Tumor`) rispetto al tessuto adiacente (`Adjacent_normal`).
+* **Decomposizione tra plasticita' fenotipica e doppietti tecnici (`08_disambiguate.py`, `09_arbitrate.py`, `10_loco.py`)**: l'arbitrato sui marcatori continui (`CD8A`/`CD8B` vs `CD4`, moduli NK e mieloidi) e il discriminante fisico delle conte totali UMI dimostrano che la discordanza `CD8T <-> CD4T` riflette l'attenuazione trascrizionale da esaurimento funzionale intratumorale (`PDCD1`, `HAVCR2`, `TOX`, `TIGIT`), mentre tra il **72% e il 79% delle cellule annotate come `NK` ma positive per un recettore TCR produttivo (`NK-TCR+`) costituisce un artefatto da doppietti fisici T-NK**.
+* **Espansione clonale e sensibilita' Leave-One-Patient-Out (`17_clonal_expansion.py`, `18_loyo_check.py`)**: la dimensione del clone T ($\text{PBMC} + \text{Tumor}$) correla positivamente sia con il tasso di errore binario nel tumore ($\rho = +0,177$, $p = 0,0009$ via *Block Permutation Test* intra-paziente) sia con l'eccesso continuo di discordanza ($\rho = +0,281$, $p < 0,0001$), risultando **robusta in 10/10 iterazioni Leave-One-Patient-Out**.
+* **Spiegabilita' per paziente (`20_xai_per_patient.py`)**: la similarita' di Jaccard sui `top-50` geni selezionati dalla Regressione Logistica L1 crolla da **0,459** (controllo senza struttura per paziente) a **0,300** nei fold LOPO, confermando che l'esclusione di un singolo paziente altera sistematicamente la frontiera decisionale appresa dal classificatore.
 
 ---
 
-## 3. Struttura del Repository e Architettura dei Moduli (`src/`)
+## 2. Architettura della Pipeline e Moduli Sorgente (`src/`)
 
-```text
-pdac-ml/
-├── envs/
-│   ├── environment.yml          # Specifica dichiarativa dell'ambiente Conda/Mamba
-│   └── conda-lock.yml           # Lockfile deterministico multipiattaforma delle dipendenze
-├── src/
-│   ├── scpipe.py                # Trasformatori Scikit-learn anti-leakage e test di Nadeau-Bengio
-│   ├── download_tcr.sh          # Script Bash idempotente per il download dei 30 file VDJ (GSE300435)
-│   ├── 00_fetch_metadata.py     # Acquisizione e verifica dei metadati GEO (GSE278694)
-│   ├── 01_probe_labels.py       # Audit strutturale delle etichette e della fattibilita' dei task
-│   ├── 01b_tcr_check.py         # Allineamento dei barcode cellulari tra scRNA-seq e scTCR-seq
-│   ├── 02_build_h5ad.py         # Costruzione streaming da .mtx.gz a .h5ad sparso (CSR)
-│   ├── 03_eda_qc.py             # Analisi esplorativa, controllo di qualita' e verifica di legge di potenza
-│   ├── 04_splits.py             # Generazione deterministica degli split (Stratified, Group, LOPO)
-│   ├── 05_baseline.py           # Quantificazione del divario di generalizzazione (split casuale vs paziente)
-│   ├── 06_clonotype_consistency.py # Consistenza delle annotazioni cellulari nei cloni TCR espansi
-│   ├── 07_robustness.py         # Analisi di sensibilita' su definizioni clonali, doppietti (Scrublet) e soglie
-│   ├── 08_disambiguate.py       # Analisi dei marker canonici e di esaurimento nelle cellule discordanti
-│   ├── 09_arbitrate.py          # Arbitrato multi-marker (CD8 vs CD4, T vs NK, T vs Mieloide)
-│   ├── 10_loco.py               # Arbitrato Leave-One-Compartment-Out e schema primario a riferimento PBMC
-│   ├── 11_model_zoo.py          # Confronto sistematico di 5 famiglie di classificatori in LOPO
-│   ├── 12_feature_selection.py  # Confronto di 5 selettori di feature (prestazione e stabilita' di Jaccard)
-│   ├── 13_infercnv.py           # Inferenza del profilo di Copy Number Variation (CNV) a finestra mobile
-│   ├── 14_cnv_loci.py           # Analisi di specificita' per locus cromosomico (chr7p, chr18q/SMAD4, chr6p/HLA)
-│   ├── 15_inventory.py          # Inventario programmatico completo delle colonne e dei metadati grezzi
-│   ├── 16_pseudobulk_patient.py # Aggregazione pseudobulk per paziente e test delle ipotesi a priori H1-H3
-│   ├── 17_clonal_expansion.py   # Associazione tra espansione clonale ed errore (Block Permutation e Cluster Boot)
-│   ├── 18_loyo_check.py         # Analisi di sensibilita' Leave-One-Patient-Out sull'espansione clonale
-│   ├── 19_ni_score.py           # Associazione con il punteggio clinico di invasione neurale (NI score, H4)
-│   ├── 20_xai_per_patient.py    # Stabilita' inter-paziente delle spiegazioni XAI (Regressione Logistica L1)
-│   ├── 21_fig_blood_scheme.py   # Generazione della figura di sintesi per lo schema primario (riferimento PBMC)
-│   └── estrai_conteggi.py       # Utilità di estrazione dei conteggi cellulari per la coorte appaiata
-└── results/
-    ├── figures/                 # Grafici ad alta risoluzione generati dalla pipeline (.png)
-    └── tables/                  # Tabelle numeriche, test di ipotesi e metriche di validazione (.csv)
-```
+La cartella [`src/`](src/) contiene i moduli Python della pipeline analitica e di modellazione, progettati per operare in formato sparso (`scipy.sparse.csr_matrix` `float32`) con trasformatori Scikit-learn esenti da data leakage:
 
-### Sintesi Funzionale dei Moduli
-
-| Modulo | Funzione Principale e Output Scientifico |
+| Modulo Sorgente | Funzione Tecnica e Metodologica nel Flusso di Studio |
 | :--- | :--- |
-| [`src/00_fetch_metadata.py`](src/00_fetch_metadata.py) | Scarica e indicizza i metadati delle serie GEO (`GSE278694`, `GSE278688`, `GSE278689`, `GSE300435`), producendo l'inventario dei campioni in `data/raw/metadata/`. |
-| [`src/01_probe_labels.py`](src/01_probe_labels.py) | Verifica la distribuzione paziente $\times$ tessuto $\times$ tipo cellulare senza caricare la matrice di conteggio, identificando i 5 pazienti dotati di campioni appaiati `Tumor` + `Adjacent_normal`. |
-| [`src/01b_tcr_check.py`](src/01b_tcr_check.py) | Ricostruisce la corrispondenza esatta tra i prefissi di campione scRNA-seq (`PAxx_Tissue`) e i 30 file `VDJ_filtered_contig_annotations.csv.gz` tramite intersezione dei barcode 10x. |
-| [`src/02_build_h5ad.py`](src/02_build_h5ad.py) | Converte in streaming i file `.mtx.gz` in formato `AnnData` compresso (`sc_raw.h5ad`), preservando i conteggi interi grezzi in formato `csr_matrix` (`int32`) e validando le somme marginali. |
-| [`src/03_eda_qc.py`](src/03_eda_qc.py) | Esegue l'analisi esplorativa della composizione cellulare, dei conteggi UMI e della frazione mitocondriale, verificando analiticamente (criterio di Clauset-Shalizi-Newman) il regime delle taglie clonali. |
-| [`src/04_splits.py`](src/04_splits.py) | Costruisce la tabella deterministica delle partizioni (`splits_sc.csv`), affiancando per le medesime cellule `StratifiedKFold`, `StratifiedGroupKFold` e `LeaveOneGroupOut` (LOPO). |
-| [`src/05_baseline.py`](src/05_baseline.py) | Misura la sovrastima sistematica di Macro-F1 e Balanced Accuracy indotta dallo split casuale per cellula rispetto allo split per paziente su due algoritmi di riferimento (Regressione Logistica L2 e HistGradientBoosting). |
-| [`src/06_clonotype_consistency.py`](src/06_clonotype_consistency.py) | Quantifica la discordanza delle etichette trascrizionali all'interno dei cloni T espansi ($\ge 2$ cellule con identica coppia CDR3 $\alpha+\beta$ nello stesso paziente), confrontando cloni intra-compartimento e trans-compartimento. |
-| [`src/07_robustness.py`](src/07_robustness.py) | Sottopone il risultato di discordanza clonale a quattro controlli di robustezza: tre definizioni di clonotipo (aa, nt, $\beta$-only), stima dei doppietti con Scrublet per campione, curva al variare della soglia di dimensione clonale e confronto a coppie a cardinalita' bilanciata $1\times 1$. |
-| [`src/08_disambiguate.py`](src/08_disambiguate.py) | Analizza il profilo continuo di espressione dei marker di lignaggio (`CD8A`, `CD8B`, `CD4`, `FOXP3`) e di esaurimento (`PDCD1`, `HAVCR2`, `TOX`, `TIGIT`, `CTLA4`) nelle cellule clonalmente discordanti. |
-| [`src/09_arbitrate.py`](src/09_arbitrate.py) | Risolve ciascun evento di discordanza confrontando i moduli continui di espressione delle famiglie cellulari coinvolte (`CD8T` vs `CD4T`, `T` vs `NK`, `T` vs `Myeloid`). |
-| [`src/10_loco.py`](src/10_loco.py) | Formalizza gli schemi di arbitrato esenti da circolarita': schema **Leave-One-Compartment-Out (LOCO)** e schema primario **BLOOD** (riferimento fissato esclusivamente su `PBMC`), con inferenza via Cluster Bootstrap. |
-| [`src/11_model_zoo.py`](src/11_model_zoo.py) | Confronta 5 architetture supervisionate (`Logistic L2`, `Logistic L1`, `LinearSVC`, `RandomForest`, `HistGradientBoosting`) in validazione LOPO tramite pipeline anti-leakage e test di Nadeau-Bengio. |
-| [`src/12_feature_selection.py`](src/12_feature_selection.py) | Valuta 5 strategie di selezione delle feature (`HVG`, `F-ANOVA`, `Mutual Information`, `L1-Lasso`, `Random`) al variare di $k \in \{50, 200, 500, 2000\}$, misurando sia il Macro-F1 di test sia la stabilita' di Jaccard tra fold. |
-| [`src/13_infercnv.py`](src/13_infercnv.py) | Stima il numero di copie genomiche (CNV) mediante media mobile di 100 geni ordinati lungo i cromosomi autosomici rispetto alle cellule endoteliali e fibroblastiche di riferimento. |
-| [`src/14_cnv_loci.py`](src/14_cnv_loci.py) | Decompone il segnale CNV sui loci cromosomici ricorrenti del PDAC (`chr7p` EGFR, `chr18q` SMAD4) e sul complesso MHC (`chr6p`), distinguendo aneuploidia somatica da programmi trascrizionali coordinati. |
-| [`src/15_inventory.py`](src/15_inventory.py) | Esegue la ricognizione sistematica di tutte le variabili presenti nei metadati scRNA-seq, snRNA-seq e nelle tabelle V(D)J per mappare il perimetro informativo del dataset. |
-| [`src/16_pseudobulk_patient.py`](src/16_pseudobulk_patient.py) | Aggrega i profili a livello di paziente ($n=10\text{-}14$) e sottopone a test di permutazione esatto tre ipotesi meccanicistiche pre-specificate (H1: esaurimento CD8T; H2: frazione mieloide; H3: frazione CAF) con correzione di Holm-Bonferroni. |
-| [`src/17_clonal_expansion.py`](src/17_clonal_expansion.py) | Testa l'associazione tra dimensione clonale T ($\text{PBMC} + \text{Tumor}$) e tasso di errore di annotazione nel tumore mediante Block Permutation Test intra-paziente e Cluster Bootstrap. |
-| [`src/18_loyo_check.py`](src/18_loyo_check.py) | Verifica la robustezza dell'associazione tra espansione clonale ed errore rimuovendo iterativamente un paziente alla volta (*Leave-One-Patient-Out* sui 10 pazienti). |
-| [`src/19_ni_score.py`](src/19_ni_score.py) | Valuta la correlazione tra il punteggio clinico di invasione neurale (`NI score` da `Table S1A`, `mmc2.xlsx`) e il tasso d'errore di annotazione (ipotesi H4), ricalcolando Holm-Bonferroni sulla famiglia congiunta H1-H4. |
-| [`src/20_xai_per_patient.py`](src/20_xai_per_patient.py) | Quantifica la stabilita' delle spiegazioni XAI (coefficienti di Regressione Logistica L1) attraverso i fold LOPO rispetto a un controllo di campionamento casuale di pari numerosita'. |
-| [`src/21_fig_blood_scheme.py`](src/21_fig_blood_scheme.py) | Genera la figura e la tabella riassuntiva del tasso di errore secondo lo schema primario a riferimento ematico (`PBMC`). |
+| [`src/00_fetch_metadata.py`](src/00_fetch_metadata.py) | Triage e download selettivo dei metadati XML/SOFT e dell'indice dei file supplementari dalla NCBI GEO SuperSeries `GSE278694`. |
+| [`src/01_probe_labels.py`](src/01_probe_labels.py) | Verifica preliminare delle etichette cellulari su disco e individuazione dei 5 pazienti dotati di tessuti solidi appaiati (`Tumor` + `Adjacent_normal`). |
+| [`src/01b_tcr_check.py`](src/01b_tcr_check.py) | Mappatura biunivoca e allineamento dei barcode nucleotidici 10x Genomics tra i campioni trascrizionali scRNA-seq e i 30 file di contig V(D)J (`GSE300435`). |
+| [`src/02_build_h5ad.py`](src/02_build_h5ad.py) | Conversione in streaming a blocchi (*chunk* da 20M di righe) da formato MatrixMarket compresso (`.mtx.gz`) a matrice sparsa `CSR float32` salvata in `AnnData` (`.h5ad`). |
+| [`src/03_eda_qc.py`](src/03_eda_qc.py) | Controllo di qualita' (QC) per singola libreria di sequenziamento, analisi della complessita' UMI/geni e verifica del supporto per paziente per ciascuna classe cellulare. |
+| [`src/04_splits.py`](src/04_splits.py) | Generazione deterministica delle partizioni di validazione (`StratifiedKFold` casuale per cellula usato come controllo negativo, `StratifiedGroupKFold` a 5 fold e `Leave-One-Patient-Out`). |
+| [`src/05_baseline.py`](src/05_baseline.py) | Quantificazione del divario di prestazione e di incertezza tra split casuale e split per paziente mediante classificatori `Dummy` e `LogisticRegression` con penalizzazione L2. |
+| [`src/06_clone_feasibility.py`](src/06_clonotype_consistency.py) / [`src/06_clonotype_consistency.py`](src/06_clonotype_consistency.py) | Valutazione della fattibilita' dell'ancoraggio clonale sangue-tumore, stima preliminare della contaminazione NK e misura della discordanza intra- e inter-compartimentale nei cloni TCR condivisi. |
+| [`src/07_robustness.py`](src/07_robustness.py) | Stimatore a coppie $1\times 1$ non distorto per la cardinalita' campionaria, *Cluster Bootstrap* sui pazienti, discriminante basato su UMI TCR ad alta confidenza e verifica dei marcatori `CD4`/`CD8`. |
+| [`src/08_disambiguate.py`](src/08_disambiguate.py) | Contrasto appaiato sui cloni tripli presenti simultaneamente in tutti e tre i compartimenti (`PBMC`, `Adjacent_normal`, `Tumor`), profilo dei marcatori su cloni concordanti e analisi doppietti con Scrublet. |
+| [`src/09_arbitrate.py`](src/09_arbitrate.py) | Arbitrato dell'identita' clonale basato sui moduli di espressione dei marcatori canonici e discriminante fisico dei doppietti (conteggi UMI totali e rapporto UMI TCR). |
+| [`src/10_loco.py`](src/10_loco.py) | Implementazione dello schema *Leave-One-Compartment-Out* (LOCO) e dello schema primario *Blood-only* (riferimento fissato al solo compartimento `PBMC`), con stima della frazione di doppietti nelle cellule `NK-TCR+` (72-79%). |
+| [`src/11_model_zoo.py`](src/11_model_zoo.py) | Benchmark sistematico di **13 classificatori** in validazione LOPO (modelli lineari L1/L2/ElasticNet/LinearSVC, alberi, Random Forest, ExtraTrees, LightGBM e modelli densi KNN, SVM-RBF, MLP, GaussianNB, QDA su proiezione `TruncatedSVD` a 50 componenti) con test $t$ corretto di Nadeau-Bengio e test di Wilcoxon. |
+| [`src/12_feature_selection.py`](src/12_feature_selection.py) | Benchmark di **6 criteri di selezione delle feature** (`Random`, `HVG`, `ANOVA`, `chi2`, `L1 logreg`, `Random Forest`) valutati su $k \in \{50, 200, 1000\}$, con misura della stabilita' strutturale inter-fold tramite indice di Jaccard. |
+| [`src/13_infercnv.py`](src/13_infercnv.py) | Inferenza del profilo di Copy Number Variation (CNV) a finestra mobile cromosomica assumendo come riferimento interno le **cellule immunitarie dello stesso paziente** (`CD8T`, `CD4T`, `NK`, `B`, `Myeloid`, `Plasma`), addestramento LOPO e test esterno sulle cellule duttali adiacenti normali. |
+| [`src/14_cnv_loci.py`](src/14_cnv_loci.py) | Decomposizione dello score CNV sui loci citogenetici ricorrenti del PDAC (`9p21`, `17p`, `18q`, `1p`, `6q`, `8q`, `12p`, `20q`) e dimostrazione quantitativa dell'effetto di campo di cancerizzazione. |
+| [`src/15_inventory.py`](src/15_inventory.py) | Inventario programmatico completo delle variabili disponibili nei metadati e nei file V(D)J per documentare a priori lo spazio delle variabili ed evitare selezioni esplorative post-hoc. |
+| [`src/16_pseudobulk_patient.py`](src/16_pseudobulk_patient.py) | Aggregazione pseudobulk per paziente ($n = 10\text{-}14$) e test di permutazione esatto sulle tre ipotesi biologiche a priori (`H1`: esaurimento CD8T, `H2`: frazione mieloide, `H3`: frazione CAF) con correzione sequenziale di Holm-Bonferroni. |
+| [`src/17_clonal_expansion.py`](src/17_clonal_expansion.py) | Test dell'associazione positiva tra dimensione di espansione clonale ed errore di annotazione nel tumore mediante *Block Permutation Test* intra-paziente e *Cluster Bootstrap*. |
+| [`src/18_loyo_check.py`](src/18_loyo_check.py) | Analisi di sensibilita' *Leave-One-Patient-Out* (LOYO) sull'associazione tra espansione clonale ed errore di annotazione (significativita' preservata in 10/10 iterazioni). |
+| [`src/19_ni_score.py`](src/19_ni_score.py) | Test dell'ipotesi clinica `H4` sul punteggio quantitativo di invasione neurale (`NI score`, da `Table S1A` / `mmc2.xlsx`) e ricalcolo congiunto di Holm-Bonferroni sulla famiglia completa `H1-H4`. |
+| [`src/20_xai_per_patient.py`](src/20_xai_per_patient.py) | Analisi XAI per paziente: quantificazione della similarita' delle spiegazioni (Jaccard sui `top-50` geni della Regressione Logistica L1) nei fold LOPO (`0,300`) rispetto al controllo casuale privo di struttura per paziente (`0,459`). |
+| [`src/21_fig_blood_scheme.py`](src/21_fig_blood_scheme.py) | Generazione della figura riassuntiva e della tabella di errore per lo schema primario di arbitrato a riferimento ematico (`PBMC`). |
+| [`src/scpipe.py`](src/scpipe.py) | Modulo infrastrutturale condiviso contenente i trasformatori Scikit-learn (`LogCPM`, `HVGSelector`, `IndexSelector`) e le funzioni statistiche per il confronto di modelli (`nadeau_bengio_ttest`, `jaccard`, `mean_pairwise_jaccard`). |
+| [`src/estrai_conteggi.py`](src/estrai_conteggi.py) / [`src/download_tcr.sh`](src/download_tcr.sh) | Utilità di supporto per il riepilogo dei conteggi cellulari nella coorte appaiata e script Bash idempotente con controllo di integrita' `gzip` per il download dei 30 file V(D)J. |
 
 ---
 
-## 4. Configurazione dell'Ambiente e Riproducibilita'
+## 3. Ambiente di Esecuzione e Riproducibilita'
 
-L'ambiente software completo e' specificato in [`envs/environment.yml`](envs/environment.yml) e bloccato alle versioni esatte in [`envs/conda-lock.yml`](envs/conda-lock.yml) (Python 3.11, `scanpy`, `anndata`, `scikit-learn`, `scipy`, `pandas`, `numpy`, `matplotlib`, `seaborn`, `pybiomart`, `openpyxl`).
+L'ambiente computazionale e' definito in modo dichiarativo in [`envs/environment.yml`](envs/environment.yml) e vincolato alle versioni esatte dei pacchetti binari in [`envs/conda-lock.yml`](envs/conda-lock.yml) (**Python 3.11**, `scanpy`, `anndata`, `scikit-learn`, `lightgbm`, `scipy`, `pandas`, `numpy`, `matplotlib`, `seaborn`, `pybiomart`, `openpyxl`).
 
 ```bash
-# Creazione dell'ambiente tramite Mamba / Conda
+# Creazione dell'ambiente riproducibile tramite Mamba o Conda
 mamba env create -f envs/environment.yml
 mamba activate pdac-ml
 ```
 
+Tutti gli algoritmi stocastici (split di cross-validation, sottocampionamento stratificato, inizializzazione dei classificatori, *Block Permutation Test* da 20.000 permutazioni e *Cluster Bootstrap* da 2.000-5.000 repliche) utilizzano un seme pseudocasuale fissato globalmente (`SEED = 0`).
+
 ---
 
-## 5. Esecuzione Sequenziale della Pipeline
+## 4. Guida all'Esecuzione (Sintassi CLI Reale Verificata)
 
-Tutti gli script devono essere eseguiti dalla directory radice del repository (`pdac-ml/`). Il seme dei generatori pseudocasuali e' fissato globalmente (`SEED = 0`) in ogni modulo per garantire la riproducibilita' bit-a-bit di partizioni, permutazioni e ricampionamenti bootstrap.
+Tutti i comandi seguenti devono essere eseguiti dalla directory radice del repository (`pdac-ml/`) e utilizzano gli argomenti CLI effettivamente definiti tramite `argparse` nei rispettivi moduli sorgente:
 
 ```bash
-# 1. Acquisizione metadati GEO, download V(D)J e verifica preliminare delle etichette
-python src/00_fetch_metadata.py --out data/raw/metadata
+# 1. Triage dei metadati GEO, verifica delle etichette e allineamento barcode scRNA-TCR
+python src/00_fetch_metadata.py --outdir data/raw/metadata
 bash src/download_tcr.sh data/raw/metadata/filelist.txt data/raw/tcr
-python src/01_probe_labels.py --raw-dir data/raw
-python src/01b_tcr_check.py --raw-dir data/raw
+python src/01_probe_labels.py --outdir data/raw/probe
+python src/01b_tcr_check.py --probe data/raw/probe
 
-# 2. Costruzione della matrice sparsa AnnData, controllo di qualita' e generazione degli split
-python src/02_build_h5ad.py --modality sc --raw-dir data/raw/GSE278688 --out data/interim/sc_raw.h5ad
-python src/03_eda_qc.py --sc data/interim/sc_raw.h5ad --tcr-dir data/raw/tcr
-python src/04_splits.py --h5ad data/interim/sc_raw.h5ad --out data/interim/splits_sc.csv
+# 2. Conversione MatrixMarket -> AnnData CSR float32, QC per libreria e generazione degli split
+python src/02_build_h5ad.py --which sc --outdir data --no-counts-layer
+python src/03_eda_qc.py --h5ad data/interim/sc_raw.h5ad --tag sc
+python src/04_splits.py --h5ad data/interim/sc_raw.h5ad --tag sc
 
-# 3. Quantificazione della pseudoreplicazione, confronto modelli, feature selection e XAI
+# 3. Quantificazione del divario di generalizzazione, benchmark dei 13 modelli, feature selection e XAI
 python src/05_baseline.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv
-python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv
-python src/12_feature_selection.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv --task task1a_paired
+python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv --tasks task2_v1 task2_hier3
+python src/12_feature_selection.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv --task task2_v1
 python src/20_xai_per_patient.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv --task task1a_paired
 
-# 4. Validazione clonale TCR, controlli di robustezza e arbitrato multi-compartimento
-python src/06_clonotype_consistency.py --sc data/interim/sc_raw.h5ad --tcr-dir data/raw/tcr
-python src/07_robustness.py --sc data/interim/sc_raw.h5ad --tcr-dir data/raw/tcr
-python src/08_disambiguate.py --sc data/interim/sc_raw.h5ad --tcr-dir data/raw/tcr
-python src/09_arbitrate.py --sc data/interim/sc_raw.h5ad --tcr-dir data/raw/tcr
-python src/10_loco.py --sc data/interim/sc_raw.h5ad --tcr-dir data/raw/tcr
+# 4. Tracciamento clonale TCR, controlli di robustezza, arbitrato multi-marker e schema primario PBMC
+python src/06_clonotype_consistency.py --h5ad data/interim/sc_raw.h5ad --filelist data/raw/metadata/filelist.txt --outdir data/raw/tcr
+python src/07_robustness.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
+python src/08_disambiguate.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
+python src/09_arbitrate.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
+python src/10_loco.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
 python src/21_fig_blood_scheme.py
 
-# 5. Inferenza CNV e analisi a livello di paziente / espansione clonale
-python src/13_infercnv.py --h5ad data/interim/sc_raw.h5ad
+# 5. Inferenza CNV (riferimento immunitario intra-paziente), loci PDAC ed effetto di campo
+python src/13_infercnv.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv
 python src/14_cnv_loci.py --h5ad data/interim/sc_raw.h5ad
-python src/15_inventory.py --raw-dir data/raw
+
+# 6. Analisi pseudobulk per paziente (ipotesi H1-H3), espansione clonale, LOYO e NI score (H4)
+python src/15_inventory.py
 python src/16_pseudobulk_patient.py --h5ad data/interim/sc_raw.h5ad --arbitration results/tables/arbitration_blood.csv
 python src/17_clonal_expansion.py --arbitration results/tables/arbitration_blood.csv --pairwise results/tables/pairwise_discordance_clone_b.csv
 python src/18_loyo_check.py --input results/tables/clonal_expansion_joined.csv
