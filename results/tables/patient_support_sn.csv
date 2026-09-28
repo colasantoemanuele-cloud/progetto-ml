@@ -1,0 +1,15 @@
+all_celltype,n_patients_ge_1,n_patients_ge_10,n_patients_ge_50,n_patients_ge_100,n_cells,n_patients_total
+Ductal,8,8,8,8,7247,8
+Myeloid,8,8,8,8,5391,8
+Plasma,8,8,7,7,5143,8
+Acinar,6,5,3,3,4588,8
+B,7,7,4,3,3516,8
+CAF,8,8,8,8,3098,8
+Endothelial,8,8,8,5,1085,8
+Endocrine,8,8,5,4,1053,8
+CD4T,8,6,3,1,374,8
+Stellate,8,8,3,0,293,8
+NK,8,4,0,0,130,8
+CD8T,7,3,0,0,62,8
+Schwann,5,1,0,0,23,8
+Platelet,2,0,0,0,2,8

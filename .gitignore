@@ -1,9 +1,29 @@
+# Dataset grezzi, matrici intermedie AnnData e archivi binari
 data/
-results/models/
-logs/
 *.h5ad
 *.h5
+*.npz
 *.tar.gz
-.ipynb_checkpoints/
+*.gz
+
+# Cache di annotazione genomica e supplementari esterni
+*.sqlite
+.pybiomart.sqlite
+mmc*.xlsx
+
+# Tabelle intermedie ad alta cardinalita' (livello singola cellula / coppia intra-compartimento)
+results/tables/doublet_scores.csv
+results/tables/clone_switching_within.csv
+
+# Modelli serializzati, log e artefatti temporanei
+results/models/
+logs/
 __pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.DS_Store
 .env

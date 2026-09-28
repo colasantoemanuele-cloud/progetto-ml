@@ -1,0 +1,8 @@
+task,n_cells,n_classes,n_patients,primary_eval
+task1a_all,109618,2,13,group_5fold
+task1a_paired,67662,2,5,LOPO
+task2_v1,70547,9,13,group_5fold
+task2_v2,70547,8,13,group_5fold
+task2_hier1,71377,3,13,group_5fold
+task2_hier3,42168,3,13,group_5fold
+rare,14854,5,13,LOPO

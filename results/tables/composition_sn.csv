@@ -1,0 +1,15 @@
+all_celltype,Tumor,total
+Ductal,7247,7247
+Myeloid,5391,5391
+Plasma,5143,5143
+Acinar,4588,4588
+B,3516,3516
+CAF,3098,3098
+Endothelial,1085,1085
+Endocrine,1053,1053
+CD4T,374,374
+Stellate,293,293
+NK,130,130
+CD8T,62,62
+Schwann,23,23
+Platelet,2,2
