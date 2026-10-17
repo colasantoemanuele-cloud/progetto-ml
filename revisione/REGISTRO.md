@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1 fatto (1 ALTA, 18 MEDIA, 29 BASSA corretti o motivati); prossimo: giro 2 incrementale | (commit giro 1) |
+| 2 Loop | giro 1 fatto (1 ALTA, 18 MEDIA, 29 BASSA corretti o motivati); prossimo: giro 2 incrementale | 8058701 |
 | 3 Esecuzione finale | da fare | - |
 
 ## Note iniziali
@@ -166,7 +166,7 @@ Riesecuzioni del giro 1 (log in `revisione/log/giro1/`):
   L'11/100 era rumore delle prime 100 repliche (stesso seme). Prima: 4/6/11/5 su 100 e 5.4% su
   1.000 (c = 1, seme 399); ora c = 1 ha seme 302 come le 100 repliche.
 
-Esecuzione finale di 11 (codice: commit del giro 1; log in `revisione/log/11_final/`):
+Esecuzione finale di 11 (codice di 11 = commit 8058701; log in `revisione/log/11_final/`):
 - processi: `v1_lightgbm` (4 thread, 16:25), `all_but_lgbm` (6 thread, 46:59),
   `lgbm_hier3_task1` (5:14), `conv_iterative` (5 modelli iterativi con la convergenza, 15:06),
   `dense_rerun` (knn, svm_rbf, mlp con BLAS a 1 thread, 7:00), `mlp_check_2thr` (controllo).
@@ -185,7 +185,7 @@ Esecuzione finale di 11 (codice: commit del giro 1; log in `revisione/log/11_fin
 - Convergenza: logreg_l1 ed elasticnet (SGD, max_iter 50) non convergono in nessun fold; logreg_l2,
   svm_linear, mlp convergono in tutti. Scritto nel README.
 - Unione: `merge11.py` (scratchpad), poi `11 --from-table` per riepilogo, confronti e figure.
-- Regola della Fase 3: 11 non si riesegue se dal commit del giro 1 non cambiano il calcolo di 11,
+- Regola della Fase 3: 11 non si riesegue se dal commit 8058701 non cambiano il calcolo di 11,
   `scpipe.py` e `04_splits.py`.
 - `envs/conda-lock.yml` rigenerato (requests e threadpoolctl fissati; percorso relativo).
 
