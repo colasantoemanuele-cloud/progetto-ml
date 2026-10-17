@@ -4,6 +4,7 @@ name: pdac
 channels: [conda-forge, bioconda]
 dependencies:
   - python=3.11.15
+  - requests=2.34.2  # query BioMart via https (13, 14)
   - pip
   - numpy=2.4.6
   - scipy=1.17.1
@@ -18,6 +19,7 @@ dependencies:
   - scikit-misc=0.5.2
   - scrublet=0.2.3
   - scikit-learn=1.9.0
+  - threadpoolctl=3.6.0  # thread BLAS dei modelli densi in 11
   - imbalanced-learn=0.14.2
   - lightgbm=4.6.0
   - xgboost=3.2.0
@@ -37,5 +39,5 @@ dependencies:
       - scirpy==0.22.5
       - session-info==1.0.1
       - openpyxl==3.1.5  # lettura di mmc2.xlsx (19_ni_score.py)
-      - pybiomart==0.2.0  # coordinate dei geni per inferCNV (13, 14)
+      - pybiomart==0.2.0  # non chiamato da src/ (13 e 14 interrogano BioMart con requests); usato da infercnvpy.io.genomic_position_from_biomart
       - pytest==9.1.1  # tests/

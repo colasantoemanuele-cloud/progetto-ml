@@ -1,0 +1,66 @@
+[..] carico h5ad ...
+
+==============================================================================
+task2_v1: 70,547 cellule | 9 classi | split: fold_lopo
+==============================================================================
+  logreg_l2       macro-F1 = 0.9433 ± 0.0161   [    46s]
+  logreg_l1       macro-F1 = 0.9427 ± 0.0188   [    48s]
+  elasticnet      macro-F1 = 0.9391 ± 0.0168   [    52s]
+  svm_linear      macro-F1 = 0.9361 ± 0.0136   [   302s]
+  mlp             macro-F1 = 0.9585 ± 0.0140   [    47s]
+
+==============================================================================
+task2_hier3: 42,168 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  logreg_l2       macro-F1 = 0.8505 ± 0.0449   [    31s]
+  logreg_l1       macro-F1 = 0.8774 ± 0.0379   [    27s]
+  elasticnet      macro-F1 = 0.8621 ± 0.0474   [    33s]
+  svm_linear      macro-F1 = 0.8655 ± 0.0412   [   149s]
+  mlp             macro-F1 = 0.9042 ± 0.0320   [    45s]
+
+==============================================================================
+task1a_paired: 67,662 cellule | 2 classi | split: fold_lopo
+==============================================================================
+  logreg_l2       macro-F1 = 0.7222 ± 0.0818   [    16s]
+  logreg_l1       macro-F1 = 0.7119 ± 0.0755   [    15s]
+  elasticnet      macro-F1 = 0.7104 ± 0.0816   [    15s]
+  svm_linear      macro-F1 = 0.7209 ± 0.0846   [    38s]
+  mlp             macro-F1 = 0.7176 ± 0.0967   [    28s]
+
+[ok] scritto results/tables/model_zoo_fin_conv.csv
+
+--- task2_v1: confronto col migliore (mlp, 0.9585) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  logreg_l2       0.9433  Δ=-0.0152  p_NB=0.081  p_W=0.000
+  logreg_l1       0.9427  Δ=-0.0159  p_NB=0.097  p_W=0.000
+  elasticnet      0.9391  Δ=-0.0194  p_NB=0.015  p_W=0.000
+  svm_linear      0.9361  Δ=-0.0225  p_NB=0.004  p_W=0.000
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task2_hier3: confronto col migliore (mlp, 0.9042) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  logreg_l1       0.8774  Δ=-0.0268  p_NB=0.019  p_W=0.001
+  svm_linear      0.8655  Δ=-0.0387  p_NB=0.009  p_W=0.000
+  elasticnet      0.8621  Δ=-0.0421  p_NB=0.015  p_W=0.000
+  logreg_l2       0.8505  Δ=-0.0537  p_NB=0.004  p_W=0.000
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task1a_paired: confronto col migliore (logreg_l2, 0.7222) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  svm_linear      0.7209  Δ=-0.0013  p_NB=0.676  p_W=0.438
+  mlp             0.7176  Δ=-0.0046  p_NB=0.835  p_W=0.812
+  logreg_l1       0.7119  Δ=-0.0103  p_NB=0.296  p_W=0.125
+  elasticnet      0.7104  Δ=-0.0118  p_NB=0.161  p_W=0.062
+
+NOTA: con 5 fold i gradi di liberta' sono 4 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task2_v1.png
+[ok] figura: results/figures/model_zoo_task2_hier3.png
+[ok] figura: results/figures/model_zoo_task1a_paired.png

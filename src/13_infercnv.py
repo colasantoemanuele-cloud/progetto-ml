@@ -9,8 +9,8 @@ L'annotazione di GSE278694 riunisce tutte le cellule epiteliali duttali nella cl
 inferito dal trascrittoma e misura quanto un classificatore la predice dal
 trascrittoma stesso, in tre stadi:
 
-1. Score CNV con `infercnvpy` (o `copykat` come ripiego): finestre genomiche di 100
-   geni, UNA sola esecuzione con `reference_key="ref_group"`. Il riferimento
+1. Score CNV con `infercnvpy`: finestre genomiche di 100 geni, UNA sola esecuzione
+   con `reference_key="ref_group"`. Il riferimento
    diploide sono le cellule immunitarie (`CD8T`, `CD4T`, `NK`, `B`, `Myeloid`,
    `Plasma`) di TUTTI i pazienti insieme, non dello stesso paziente. Solo la soglia
    e' calcolata per paziente:
@@ -20,6 +20,17 @@ trascrittoma stesso, in tre stadi:
    un'aneuploidia) sposta lo score delle duttali sopra quello degli immuni e tende a
    superarla. In `malignancy_labels.csv` risultano "maligne" anche il 45-62% delle
    duttali di `Adjacent_normal` nei pazienti con almeno 20 duttali adiacenti.
+   I pazienti con meno di 20 immunitarie non hanno soglia: le loro duttali restano
+   senza etichetta (NaN) e sono escluse dalla classificazione.
+
+   Coordinate dei geni: Ensembl release 116 (GRCh38), la release con cui sono state
+   calcolate le cache dell'11/07/2026 (le coordinate delle finestre di
+   `cnv_matrix.npz` coincidono con quelle dei geni di Ensembl 116). La tabella e'
+   scaricata da BioMart via https solo da un host che dichiara la release 116 e
+   salvata in `data/interim/gene_positions_ensembl116.csv`, poi riletta da li'.
+   Se non e' disponibile lo script si ferma: `copykat` non e' un ripiego automatico
+   (richiede `rpy2` e i pacchetti R `copykat` e `stringr`, assenti da
+   `envs/environment.yml`) e si usa solo con `--method copykat`.
 
 2. Classificazione Leave-One-Patient-Out: Random Forest bilanciato sulle duttali del
    tessuto `Tumor` dei pazienti con almeno 150 duttali. Normalizzazione (log1p CP10k)
@@ -31,15 +42,19 @@ trascrittoma stesso, in tre stadi:
    duttali adiacenti, mai viste in training. Non e' una validazione indipendente da
    inferCNV: le duttali adiacenti sono nella stessa esecuzione di inferCNV, con lo
    stesso riferimento e la stessa regola di soglia che definisce l'etichetta.
+   I file `external_test_*` hanno un nome storico: NON sono una validazione esterna.
 
 Input
 -----
   --h5ad       data/interim/sc_raw.h5ad (conteggi grezzi; obs: tissue, patients, all_celltype)
-  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste, altrimenti calcolato e scritto)
+  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste e copre tutte le cellule, altrimenti
+               calcolato e scritto; una cache incompleta ferma lo script)
+  data/interim/gene_positions_ensembl116.csv (letta se esiste, altrimenti scaricata da BioMart)
 
 Output
 ------
   data/interim/cnv_scores.csv                   score CNV per cellula (cache)
+  data/interim/gene_positions_ensembl116.csv    coordinate dei geni (solo se scaricate)
   results/tables/malignancy_labels.csv          duttali maligne per paziente x tessuto
   results/tables/malignancy_lopo.csv            metriche LOPO per paziente (BA, F1, AUC)
   results/tables/malignancy_lopo_summary.csv    media e deviazione standard delle metriche LOPO
@@ -49,8 +64,8 @@ Output
 
 Argomenti
 ---------
-  --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto),
-  --cnv-cache, --n-hvg (default 2000)
+  --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto = infercnv,
+  senza ripiego automatico su copykat), --cnv-cache, --n-hvg (default 2000)
 
 Uso
 ---
@@ -60,6 +75,8 @@ Uso
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import io
 import sys
 import time
 from pathlib import Path
@@ -90,28 +107,99 @@ IMMUNE_REF = ["CD8T", "CD4T", "NK", "B", "Myeloid", "Plasma"]
 MIN_DUCTAL = 150
 N_HVG = 2000
 
+# Coordinate dei geni: release fissa di Ensembl (vedi docstring, punto 1)
+ENSEMBL_RELEASE = 116
+BIOMART_HOSTS = ("https://jun2026.archive.ensembl.org", "https://www.ensembl.org")
+GENE_POS = Path(f"data/interim/gene_positions_ensembl{ENSEMBL_RELEASE}.csv")
+BIOMART_QUERY = (
+    '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query>'
+    '<Query virtualSchemaName="default" formatter="TSV" header="1" uniqueRows="1" '
+    'completionStamp="1" datasetConfigVersion="0.6">'
+    '<Dataset name="hsapiens_gene_ensembl" interface="default">'
+    '<Attribute name="hgnc_symbol"/><Attribute name="start_position"/>'
+    '<Attribute name="end_position"/><Attribute name="chromosome_name"/>'
+    "</Dataset></Query>"
+)
+POS_COLS = ["hgnc_symbol", "start_position", "end_position", "chromosome_name"]
+
+
+def gene_positions(path: Path = GENE_POS) -> pd.DataFrame | None:
+    """Coordinate dei geni della release ENSEMBL_RELEASE (colonne POS_COLS).
+
+    Legge `path` se esiste; altrimenti interroga BioMart via https sul primo host di
+    BIOMART_HOSTS il cui registro dichiara esattamente quella release, controlla che
+    la risposta sia completa (`[success]` finale) e la salva in `path`. Restituisce
+    None se nessun host risponde con la release giusta.
+    """
+    if path.exists():
+        return pd.read_csv(path, dtype={"hgnc_symbol": str, "chromosome_name": str})
+    import requests
+
+    for host in BIOMART_HOSTS:
+        url = f"{host}/biomart/martservice"
+        try:
+            reg = requests.get(url, params={"type": "registry"}, timeout=60)
+            if f'displayName="Ensembl Genes {ENSEMBL_RELEASE}"' not in reg.text:
+                print(f"[!!] {host}: release {ENSEMBL_RELEASE} non servita")
+                continue
+            r = requests.get(url, params={"query": BIOMART_QUERY}, timeout=900)
+            r.raise_for_status()
+        except requests.RequestException as e:
+            print(f"[!!] {host}: {type(e).__name__}: {e}")
+            continue
+        text = r.text.rstrip("\n")
+        if not text.endswith("[success]"):
+            print(f"[!!] {host}: risposta incompleta o errore BioMart")
+            continue
+        tab = pd.read_csv(io.StringIO(text[: -len("[success]")]), sep="\t", dtype=str)
+        if tab.shape[1] != len(POS_COLS):
+            print(f"[!!] {host}: colonne inattese {list(tab.columns)}")
+            continue
+        tab.columns = POS_COLS
+        for c in ("start_position", "end_position"):
+            tab[c] = pd.to_numeric(tab[c])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tab.to_csv(path, index=False)
+        print(f"[ok] coordinate Ensembl {ENSEMBL_RELEASE} da {host} -> {path}")
+        return tab
+    return None
+
+
+def require_copykat() -> None:
+    """Esce con un messaggio chiaro se mancano le dipendenze di copykat (rpy2 + R)."""
+    if importlib.util.find_spec("rpy2") is None:
+        raise SystemExit(
+            "[ERRORE] --method copykat richiede rpy2 e i pacchetti R copykat e stringr, "
+            "assenti da envs/environment.yml: usa --method infercnv."
+        )
+
 
 def add_positions(adata: ad.AnnData) -> bool:
-    """Interroga Ensembl BioMart per annotare coordinate cromosomiche (chromosome, start, end) in `adata.var`."""
-    import infercnvpy as cnv
+    """Annota `chromosome`, `start`, `end` in `adata.var` dalla release Ensembl fissa.
 
+    Stessa regola di `infercnvpy.io.genomic_position_from_biomart`: i simboli HGNC
+    duplicati nella tabella sono scartati e il cromosoma prende il prefisso `chr`.
+    """
     adata.var_names = (
         adata.var["gene_symbol"].astype(str).values
         if "gene_symbol" in adata.var
         else adata.var_names
     )
     adata.var_names_make_unique()
-    try:
-        print("[..] posizioni genomiche da biomart ...")
-        cnv.io.genomic_position_from_biomart(
-            adata, biomart_gene_id="hgnc_symbol", species="hsapiens"
-        )
-        ok = adata.var["chromosome"].notna().sum()
-        print(f"[ok] posizioni per {ok:,}/{adata.n_vars:,} geni")
-        return ok > 5000
-    except Exception as e:  # noqa: BLE001
-        print(f"[!!] biomart fallito: {e}")
+    print(f"[..] coordinate dei geni (Ensembl {ENSEMBL_RELEASE}) ...")
+    tab = gene_positions()
+    if tab is None:
         return False
+    tab = tab.dropna(subset=["hgnc_symbol"])
+    tab = tab[~tab.hgnc_symbol.duplicated(keep=False)].set_index("hgnc_symbol")
+    adata.var["chromosome"] = (
+        ("chr" + tab.chromosome_name).reindex(adata.var_names).values
+    )
+    adata.var["start"] = tab.start_position.reindex(adata.var_names).values
+    adata.var["end"] = tab.end_position.reindex(adata.var_names).values
+    ok = adata.var["chromosome"].notna().sum()
+    print(f"[ok] posizioni per {ok:,}/{adata.n_vars:,} geni")
+    return ok > 5000
 
 
 def run_infercnv(adata: ad.AnnData) -> np.ndarray:
@@ -258,15 +346,24 @@ def main() -> None:
     if args.cnv_cache.exists():
         print(f"\n[ok] CNV score da cache {args.cnv_cache}")
         cs = pd.read_csv(args.cnv_cache, index_col=0)
-        sub.obs["cnv_score"] = cs.reindex(sub.obs_names).cnv_score.values
+        score = cs.reindex(sub.obs_names).cnv_score
+        if score.isna().any():
+            raise SystemExit(
+                f"[ERRORE] la cache {args.cnv_cache} non copre {int(score.isna().sum()):,} "
+                f"cellule su {sub.n_obs:,}: cancellala per ricalcolare inferCNV."
+            )
+        sub.obs["cnv_score"] = score.values
     else:
-        method = args.method
-        if method == "auto":
-            method = "infercnv" if add_positions(sub) else "copykat"
-            print(f"[ok] metodo scelto: {method}")
-        elif method == "infercnv":
+        method = "infercnv" if args.method == "auto" else args.method
+        if method == "infercnv":
             if not add_positions(sub):
-                sys.exit("[ERRORE] posizioni non disponibili; usa --method copykat")
+                raise SystemExit(
+                    f"[ERRORE] coordinate dei geni (Ensembl {ENSEMBL_RELEASE}) non "
+                    f"disponibili: nessun host BioMart risponde e {GENE_POS} non esiste. "
+                    "copykat non e' usato come ripiego (richiede rpy2 e R)."
+                )
+        else:
+            require_copykat()
         t0 = time.time()
         score = run_infercnv(sub) if method == "infercnv" else run_copykat(sub)
         sub.obs["cnv_score"] = score
@@ -279,12 +376,16 @@ def main() -> None:
     print("\n" + "=" * 74)
     print("ETICHETTA DI MALIGNITA' (soglia per paziente sugli immuni di riferimento)")
     print("=" * 74)
-    sub.obs["malignant"] = 0
+    # NaN = paziente senza soglia (troppo poche immunitarie): duttali senza etichetta
+    sub.obs["malignant"] = np.nan
     rows = []
     for pat, g in sub.obs.groupby("patients"):
         imm = g[g.all_celltype.isin(IMMUNE_REF)].cnv_score
         if len(imm) < 20:
-            print(f"  [!] {pat}: {len(imm)} immuni (< 20), nessuna soglia")
+            print(
+                f"  [!] {pat}: {len(imm)} immuni (< 20), nessuna soglia: "
+                "duttali senza etichetta, escluse dalla classificazione"
+            )
             continue
         thr = imm.median() + 3 * (imm - imm.median()).abs().median() * 1.4826
         dmask = (sub.obs.patients == pat) & (sub.obs.all_celltype == "Ductal")
@@ -305,6 +406,10 @@ def main() -> None:
                     }
                 )
     lab = pd.DataFrame(rows)
+    if lab.empty:
+        raise SystemExit(
+            "[ERRORE] nessun paziente con almeno 20 immunitarie: nessuna soglia."
+        )
     print(lab.round(3).to_string(index=False))
     lab.to_csv(TAB / "malignancy_labels.csv", index=False)
 
@@ -323,7 +428,11 @@ def main() -> None:
     print("\n" + "=" * 74)
     print("CLASSIFICATORE LOPO: predire la malignita' dal trascrittoma")
     print("=" * 74)
-    train = sub[(sub.obs.all_celltype == "Ductal") & (sub.obs.tissue == "Tumor")]
+    train = sub[
+        (sub.obs.all_celltype == "Ductal")
+        & (sub.obs.tissue == "Tumor")
+        & sub.obs.malignant.notna()
+    ]
     counts = train.obs.patients.value_counts()
     good = counts[counts >= MIN_DUCTAL].index
     train = train[train.obs.patients.isin(good)]
@@ -336,7 +445,7 @@ def main() -> None:
         f"cellule di training: {train.n_obs:,} | maligne: {train.obs.malignant.mean():.1%}"
     )
     Xtr = sp.csr_matrix(train.X)
-    ytr = train.obs.malignant.values
+    ytr = train.obs.malignant.values.astype(int)
     gtr = train.obs.patients.values
 
     res, preds = classify_lopo(Xtr, ytr, gtr, n_hvg=args.n_hvg)

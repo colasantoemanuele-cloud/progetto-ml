@@ -27,6 +27,9 @@ banda si corregge lo stimatore):
    frazione di p < 0.05 >= 0.50. 400 e 100 repliche.
 6. Regola della maggioranza, macro-F1 sulle classi presenti, livello espanso:
    proprieta' esatte (nessuna banda).
+7. Test di permutazione di Spearman (`scpipe.permutation_corr_test`, unita' = righe,
+   usato per H1-H4 in 16 e 19 con n = 10 pazienti): sotto H0 (x e y indipendenti,
+   n = 10) frazione di p < 0.05 in [0.02, 0.08]. 400 repliche, 2.000 permutazioni.
 """
 
 from __future__ import annotations
@@ -117,6 +120,18 @@ def test_block_permutation_type1_with_patient_confounder():
     rate, rate_c = pos / reps, pos_c / reps
     assert 0.02 <= rate <= 0.08, f"falsi positivi {rate:.3f} fuori banda [0.02, 0.08]"
     assert 0.02 <= rate_c <= 0.08, f"falsi positivi (centrato) {rate_c:.3f} fuori banda"
+
+
+def test_permutation_corr_type1_n10():
+    """Banda 7: frazione di p < 0.05 sotto H0 con n = 10 in [0.02, 0.08]."""
+    rng = np.random.default_rng(77)
+    reps, pos = 400, 0
+    for r in range(reps):
+        x, y = rng.normal(size=10), rng.normal(size=10)
+        _, p = scpipe.permutation_corr_test(x, y, n_perm=2000, seed=r)
+        pos += p < 0.05
+    rate = pos / reps
+    assert 0.02 <= rate <= 0.08, f"falsi positivi {rate:.3f} fuori banda [0.02, 0.08]"
 
 
 # --------------------------------------------------------------------------- #
@@ -258,3 +273,18 @@ def test_cluster_bootstrap_edge_cases():
         {"P1": np.array([1.0]), "P2": np.array([0.0]), "P3": np.array([])}, n_boot=200
     )
     assert m == 0.5 and 0.0 <= lo <= hi <= 1.0
+
+
+def test_small_k_diagnostics():
+    # 4 pazienti: al massimo C(2k-1, k) = 35 multiinsiemi distinti; con 2.000 repliche
+    # compaiono tutti. Differenze tutte positive -> frazione di repliche > 0 = 1.
+    by = {f"P{i}": np.array([0.1 * (i + 1)]) for i in range(4)}
+    d = scpipe.small_k_diagnostics(by, n_boot=2000, seed=0)
+    assert d["n_distinct_resamples"] == 35
+    assert d["frac_boot_gt0"] == 1.0
+    # stesse estrazioni di cluster_bootstrap: stesso seme -> stesse repliche
+    stats, _ = scpipe.cluster_bootstrap_replicates(by, 2000, 0)
+    assert np.mean(stats > 0) == d["frac_boot_gt0"]
+    assert np.isnan(
+        scpipe.small_k_diagnostics({"P0": np.array([1.0])})["frac_boot_gt0"]
+    )

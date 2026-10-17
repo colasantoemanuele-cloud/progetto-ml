@@ -1,0 +1,29 @@
+[..] carico h5ad ...
+
+==============================================================================
+task2_hier3: 42,168 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  lightgbm        macro-F1 = 0.9226 ± 0.0278   [   251s]
+
+==============================================================================
+task1a_paired: 67,662 cellule | 2 classi | split: fold_lopo
+==============================================================================
+  lightgbm        macro-F1 = 0.7205 ± 0.1274   [    52s]
+
+[ok] scritto results/tables/model_zoo_fin_lgbm_rest.csv
+
+--- task2_hier3: confronto col migliore (lightgbm, 0.9226) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task1a_paired: confronto col migliore (lightgbm, 0.7205) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+
+NOTA: con 5 fold i gradi di liberta' sono 4 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task2_hier3.png
+[ok] figura: results/figures/model_zoo_task1a_paired.png

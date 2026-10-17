@@ -9,10 +9,13 @@ di discordanza) e' stimata su 287 cloni di 10 pazienti (versione pubblicata), co
 numero di cloni per paziente molto diseguale. Questo script verifica che il
 risultato non dipenda da un solo paziente: per ciascun paziente rimuove tutti i suoi
 cloni e ricalcola sui restanti il rho di Spearman pooled e il p del block
-permutation test (permutazione Monte Carlo entro paziente, 10.000 permutazioni,
-`scpipe.block_permutation_test`). Riporta segno, variazione di rho e p < 0.05 per
-ogni esclusione. (I nomi dei file contengono "loyo" per ragioni storiche: lo schema
-e' leave-one-patient-out.)
+permutation test (permutazione Monte Carlo entro paziente, `scpipe.block_permutation_test`,
+con gli stessi parametri di 17: 20.000 permutazioni, seme 0; sul campione completo
+il p coincide quindi con `clonal_expansion_tests.csv`). Per ogni esclusione riporta
+segno, variazione di rho, p non centrato, media della distribuzione nulla e p sulla
+statistica centrata. Sensibilita' (errore binario): p di ogni esclusione con i semi
+0-4 a 20.000 permutazioni e con 100.000 permutazioni. (I nomi dei file contengono
+"loyo" per ragioni storiche: lo schema e' leave-one-patient-out.)
 
 Input
 -----
@@ -20,9 +23,13 @@ Input
 
 Output
 ------
-  results/tables/loyo_clonal_expansion_error.csv    una riga per paziente escluso (esito errore 0/1),
-                                                    con rho e p sul campione completo come riferimento
+  results/tables/loyo_clonal_expansion_error.csv    una riga per paziente escluso (esito errore 0/1):
+                                                    rho, p, media nulla, p centrato; rho e p sul
+                                                    campione completo come riferimento
   results/tables/loyo_clonal_expansion_excess.csv   idem per l'eccesso di discordanza
+  results/tables/loyo_clonal_expansion_perm_sensitivity.csv
+                                                    errore 0/1: per paziente escluso, p con semi 0-4
+                                                    (20.000 permutazioni) e con 100.000 permutazioni
   results/figures/loyo_clonal_expansion_error.png, results/figures/loyo_clonal_expansion_excess.png
 
 Argomenti
@@ -54,8 +61,11 @@ from scpipe import block_permutation_test as _bpt  # noqa: E402
 # Percorsi di output e parametri del test di permutazione a blocchi
 FIG = Path("results/figures")
 TAB = Path("results/tables")
+# Stessi parametri di 17_clonal_expansion.py (N_PERM, SEED, semi e permutazioni della sensibilita')
 SEED = 0
-N_PERM = 10000
+N_PERM = 20000
+SENS_SEEDS = (0, 1, 2, 3, 4)
+SENS_N_PERM_LARGE = 100_000
 
 
 def block_permutation_test(
@@ -64,10 +74,9 @@ def block_permutation_test(
     group: np.ndarray,
     n_perm: int = N_PERM,
     seed: int = SEED,
-):
-    """Spearman pooled e p del block permutation test (`scpipe.block_permutation_test`)."""
-    r = _bpt(x, y, group, n_perm=n_perm, seed=seed)
-    return r["rho"], r["p"]
+) -> dict:
+    """Block permutation test (`scpipe.block_permutation_test`): rho, p, null_mean, p_centered."""
+    return _bpt(x, y, group, n_perm=n_perm, seed=seed)
 
 
 def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
@@ -75,21 +84,24 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
     print(f"\n{'=' * 78}\n{label}\n{'=' * 78}")
     pats = sorted(df.patient.unique())
 
-    # Valore di riferimento su tutti i pazienti
-    rho_full, p_full = block_permutation_test(
+    # Valore di riferimento su tutti i pazienti (stessi parametri di 17)
+    full = block_permutation_test(
         df.log_size.values, df[outcome_col].values, df.patient.values
     )
+    rho_full, p_full = full["rho"], full["p"]
     print(
-        f"tutti i {len(pats)} pazienti:  rho={rho_full:+.3f}  p={p_full:.4f}   (riferimento, da 17)\n"
+        f"tutti i {len(pats)} pazienti:  rho={rho_full:+.3f}  p={p_full:.4f}  "
+        f"media nulla={full['null_mean']:+.3f}  p centrato={full['p_centered']:.4f}\n"
     )
 
     rows = []
     for held_out in pats:
         # Esclusione di tutti i cloni associati al paziente held_out
         sub = df[df.patient != held_out]
-        rho, p = block_permutation_test(
+        bp = block_permutation_test(
             sub.log_size.values, sub[outcome_col].values, sub.patient.values
         )
+        rho, p = bp["rho"], bp["p"]
         n_clones_removed = (df.patient == held_out).sum()
         rows.append(
             {
@@ -97,10 +109,14 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
                 "n_clones_removed": n_clones_removed,
                 "rho_without": rho,
                 "p_without": p,
+                "null_mean_without": bp["null_mean"],
+                "p_centered_without": bp["p_centered"],
                 "delta_rho": rho - rho_full,
                 "still_significant": p < 0.05,
                 "rho_full": rho_full,
                 "p_full": p_full,
+                "null_mean_full": full["null_mean"],
+                "p_centered_full": full["p_centered"],
             }
         )
         flag = "" if p < 0.05 else "  [non piu' significativo senza questo paziente]"
@@ -110,6 +126,10 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
 
     # Sintesi su tutte le esclusioni
     out = pd.DataFrame(rows)
+    n_robust_c = int((out.p_centered_without < 0.05).sum())
+    print(
+        f"\ncon il p centrato: p < 0.05 in {n_robust_c}/{len(pats)} versioni leave-one-out."
+    )
     n_robust = out.still_significant.sum()
     print(
         f"\nrisultato resta significativo (p<0.05) in {n_robust}/{len(pats)} versioni leave-one-out."
@@ -118,9 +138,8 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
         print("VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.")
     elif n_robust >= len(pats) - 1:
         print(
-            "VERDETTO: robusto tranne che rimuovendo un paziente specifico (da ispezionare),"
+            "VERDETTO: p < 0.05 tranne che rimuovendo un paziente specifico (da ispezionare)."
         )
-        print("          ma non e' un artefatto di un solo campione.")
     else:
         print(
             "VERDETTO: il segnale dipende da pochi pazienti specifici. Non generalizzabile"
@@ -132,6 +151,30 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
     print(
         f"\npaziente il cui contributo pesa di piu' (rho piu' basso se rimosso): "
         f"{worst.patient_removed} (rho scende a {worst.rho_without:+.3f})"
+    )
+    return out
+
+
+def perm_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
+    """Errore binario: p di ogni esclusione con semi diversi e con piu' permutazioni."""
+    settings = [(s, N_PERM) for s in SENS_SEEDS] + [(SEED, SENS_N_PERM_LARGE)]
+    print(
+        "\n--- sensibilita' del block permutation (errore binario, leave-one-out) ---"
+    )
+    rows = []
+    for held_out in sorted(df.patient.unique()):
+        sub = df[df.patient != held_out]
+        x, y, g = sub.log_size.values, sub["error"].values, sub.patient.values
+        for seed, n_perm in settings:
+            bp = block_permutation_test(x, y, g, n_perm=n_perm, seed=seed)
+            rows.append(
+                {"patient_removed": held_out, "seed": seed, "n_perm": n_perm, **bp}
+            )
+    out = pd.DataFrame(rows)
+    rng = out.groupby("patient_removed").p.agg(["min", "max"])
+    print(
+        f"  p fra semi e numero di permutazioni: da {out.p.min():.4f} a {out.p.max():.4f}; "
+        f"p < 0.05 in {int((rng['max'] < 0.05).sum())}/{len(rng)} esclusioni con tutte le impostazioni"
     )
     return out
 
@@ -198,10 +241,8 @@ def main() -> None:
             "excess",
         ),
     ]:
-        rho_full, _ = block_permutation_test(
-            df.log_size.values, df[outcome_col].values, df.patient.values
-        )
         out = loyo(df, outcome_col, label)
+        rho_full = float(out.rho_full.iloc[0])
         out.to_csv(TAB / f"loyo_clonal_expansion_{fname_suffix}.csv", index=False)
         plot_loyo(
             out,
@@ -210,11 +251,15 @@ def main() -> None:
             label,
         )
 
+    perm_sensitivity(df).to_csv(
+        TAB / "loyo_clonal_expansion_perm_sensitivity.csv", index=False
+    )
+
     print("\n" + "=" * 78)
-    print("Se entrambi gli outcome (errore ed eccesso) restano significativi in")
-    print("tutte le versioni leave-one-out, il risultato di 17 e' da considerare")
-    print("solido: non e' l'artefatto di un paziente con molti cloni o un pattern")
-    print("estremo. Se non lo sono, questo costituisce il risultato da riportare.")
+    print("Se entrambi gli outcome (errore ed eccesso) restano con p < 0.05 in tutte")
+    print("le versioni leave-one-out, il risultato di 17 non dipende da un singolo")
+    print("paziente (resta l'associazione fra 10 pazienti, non una generalizzazione).")
+    print("Se non lo sono, questo costituisce il risultato da riportare.")
     print("=" * 78)
 
 

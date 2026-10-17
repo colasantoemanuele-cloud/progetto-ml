@@ -1,0 +1,57 @@
+==============================================================================
+INVENTARIO obs: 199,184 cellule x 9 colonne
+==============================================================================
+
+--- COLONNE CONSIDERATE dalla pipeline (elenco KNOWN_USED) ---
+      column    dtype  n_unique
+      tissue category         3
+    patients category        14
+all_celltype category        14
+     library category        29
+     barcode category    175385
+       probe category         1
+    n_counts  float32     15152
+     n_genes    int64      5221
+      pct_mt  float32    151523
+
+--- COLONNE NON CONSIDERATE (0) ---
+  nessuna: tutte le colonne di obs sono nell'elenco KNOWN_USED.
+
+==============================================================================
+COLONNE DEI FILE TCR (usate: barcode, chain, cdr3_nt, umis, productive...)
+==============================================================================
+colonne presenti:
+    barcode  (usata)
+    is_cell  (usata)
+    contig_id  [non utilizzata]
+    high_confidence  (usata)
+    length  [non utilizzata]
+    chain  (usata)
+    v_gene  [non utilizzata]
+    d_gene  [non utilizzata]
+    j_gene  [non utilizzata]
+    c_gene  [non utilizzata]
+    full_length  (usata)
+    productive  (usata)
+    cdr3  (usata)
+    cdr3_nt  (usata)
+    reads  [non utilizzata]
+    umis  (usata)
+    raw_clonotype_id  (usata)
+    raw_consensus_id  [non utilizzata]
+
+Le colonne dei segmenti genici V/D/J (v_gene, j_gene) consentono analisi
+descrittive del repertorio recettoriale subordinatamente alla validazione cross-patient.
+
+[ok] file VDJ: 30 -> results/tables/vdj_inventory.csv
+
+==============================================================================
+CRITERI DI VALIDAZIONE METODOLOGICA
+==============================================================================
+
+  Una variabile non confusa con l'identita' del paziente rappresenta un'ipotesi
+  esplorativa. Per costituire un'evidenza statistica robusta richiede:
+    1. Formulazione a priori del meccanismo biologico.
+    2. Validazione su partizioni o coorti indipendenti.
+    3. Controllo rigoroso del tasso di falsi positivi per test multipli (Holm-Bonferroni).
+

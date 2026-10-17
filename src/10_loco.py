@@ -29,11 +29,15 @@ Scopo
 3. Robustezza: LOCO ripetuto escludendo le cellule con n_counts sopra il 90-esimo
    percentile della propria (libreria, classe).
 
-4. Frazione di doppietti fisici nelle NK con TCR, da due stime:
-       d1 = (n_counts(NK TCR+) - n_counts(NK TCR-)) / n_counts(CD8T TCR+)
+4. Frazione di doppietti fisici nelle NK con TCR, da un unico modello di miscela:
+   una NK-TCR+ e' con probabilita' d un doppietto NK + CD8T (UMI totali s + c, TCR
+   della CD8T) e con probabilita' 1 - d una singola cellula con UMI totali s e TCR
+   alla densita' di una T (rapporto r_CD8); s = n_counts(NK TCR-), c = n_counts(CD8T TCR+).
+       d1 = (n_counts(NK TCR+) - s) / c                       (UMI totali)
        d2 = (r_CD8 - r_NK) / (r_CD8 - r_dbl),  r = UMI_TCR per 1000 UMI totali,
-            r_dbl = r_CD8 * n_counts(CD8T) / n_counts(NK TCR+)
-   d2 non e' indipendente da d1: usa le stesse n_counts di CD8T e NK TCR+. Le stime
+            r_dbl = r_CD8 * c / (s + c)                       (diluizione del TCR)
+   d2 non e' indipendente da d1: usa le stesse s e c. La miscela di mediane (o di
+   rapporti) e' un'approssimazione: le due stime sono indicative. Le stime
    principali usano le mediane pooled su tutti i tessuti; come sensibilita' si
    riportano le medie e le stime per compartimento. IC con bootstrap sui pazienti
    (500 repliche, "expanded percentile").
@@ -86,19 +90,22 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scpipe import (  # noqa: E402
+    SMALL_K,
     cluster_bootstrap,
-    cluster_bootstrap_replicates,
     majority_label,
     percentile_ci,
 )
+from scpipe import small_k_diagnostics as _small_k  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
 SEED = 0
 N_BOOT = 2000
 N_BOOT_MIX = 500
-# Sotto questo numero di pazienti l'IC del cluster bootstrap non e' calibrato
-SMALL_K = 5
+# Con n pazienti <= SMALL_K (scpipe, = 5) l'IC del cluster bootstrap non e' calibrato
+
+# Colonne di diagnostica aggiunte ai contrasti con <= SMALL_K pazienti
+DIAG_COLS = ["n_distinct_resamples", "frac_boot_gt0"]
 
 TISSUE_MAP = {"Tumor": "Tumor", "Normal": "Adjacent_normal", "PBMC": "PBMC"}
 COMPS = ["PBMC", "Adjacent_normal", "Tumor"]
@@ -176,19 +183,11 @@ def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
 
 
 def small_k_diagnostics(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> dict:
-    """Con pochi pazienti: ricampionature distinte (come multiinsiemi) e frazione di repliche > 0.
+    """Ricampionature distinte e frazione di repliche > 0 (`scpipe.small_k_diagnostics`).
 
-    Usa lo stesso seme e la stessa sequenza di estrazioni di `cluster_boot`.
+    Stesso seme e stessa sequenza di estrazioni di `cluster_boot`.
     """
-    by_pat = {p: np.asarray(v, dtype=float) for p, v in by_pat.items() if len(v)}
-    if len(by_pat) < 2:
-        return {"n_distinct_resamples": np.nan, "frac_boot_gt0": np.nan}
-    stats, draws = cluster_bootstrap_replicates(by_pat, n, SEED)
-    distinct = {tuple(sorted(d)) for d in draws}
-    return {
-        "n_distinct_resamples": len(distinct),
-        "frac_boot_gt0": float(np.mean(stats > 0)),
-    }
+    return _small_k({p: v for p, v in by_pat.items() if len(v)}, n, SEED)
 
 
 def ambient_cd4(gex: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame]:
@@ -341,7 +340,9 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
             "hi": hi,
         }
         if row["n_pat"] <= SMALL_K:
-            row.update(small_k_diagnostics(by))
+            # per un tasso (sempre >= 0) la frazione di repliche > 0 non e' informativa
+            diag = small_k_diagnostics(by)
+            row["n_distinct_resamples"] = diag["n_distinct_resamples"]
         rows.append(row)
         print(
             f"  {tis:16s} errore = {m:.3f}  IC95% [{lo:.3f}, {hi:.3f}]  "
@@ -353,9 +354,10 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
 
 def paired_diffs(j: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
     """Differenze appaiate dell'errore sugli stessi cloni (Tumor - Adjacent_normal, Tumor - PBMC)."""
+    cols = ["contrast", "n_clones", "n_patients", "diff", "lo", "hi"]
     rows = []
     if j.empty:
-        return pd.DataFrame(rows)
+        return pd.DataFrame(rows, columns=cols)
     piv = j.pivot_table(
         index=["patient", "clone"], columns="tissue", values="error", aggfunc="max"
     )
@@ -384,12 +386,21 @@ def paired_diffs(j: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
             row.update(small_k_diagnostics(by))
         rows.append(row)
         if verbose:
-            v = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
+            v = ci_verdict(lo, hi, row["n_patients"])
             print(
                 f"  {a} - {b} (stessi cloni): {m:+.3f}  IC95% [{lo:+.3f}, {hi:+.3f}]  {v}"
                 f"  (n={len(d)} cloni, {d.patient.nunique()} pz)"
             )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows, columns=cols + [c for c in DIAG_COLS if any(c in r for r in rows)]
+    )
+
+
+def ci_verdict(lo: float, hi: float, n_patients: int) -> str:
+    """Lettura dell'IC; con <= SMALL_K pazienti l'IC non e' calibrato e non si da' verdetto."""
+    if n_patients <= SMALL_K:
+        return f"IC non calibrato ({n_patients} pazienti)"
+    return "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
 
 
 def decompose_tumor_error(j: pd.DataFrame) -> pd.DataFrame:
@@ -469,11 +480,14 @@ def mixture(gex: pd.DataFrame) -> None:
             return np.nan, np.nan
         f = (lambda s: s.median()) if stat == "median" else (lambda s: s.mean())
         s, c, o = f(nk_neg.n_counts), f(cd8.n_counts), f(nk_pos.n_counts)
+        # Modello comune (docstring, punto 4): doppietto = NK + CD8T con UMI s + c e il TCR
+        # della CD8T; non doppietto = una cellula con UMI s e TCR alla densita' r_CD8.
         # d1: eccesso di UMI totali delle NK-TCR+ rispetto al singoletto NK, in unita' di CD8T
         d1 = (o - s) / max(c, 1)
         r_cd8, r_nk = f(cd8.ratio), f(nk_pos.ratio)
-        r_dbl = r_cd8 * c / max(o, 1)
-        # d2: diluizione del rapporto UMI_TCR / n_counts (usa le stesse c e o di d1)
+        # rapporto atteso in un doppietto: gli UMI TCR della CD8T diluiti su s + c
+        r_dbl = r_cd8 * c / max(s + c, 1)
+        # d2: r_NK = (1 - d) r_CD8 + d r_dbl  ->  d = (r_CD8 - r_NK) / (r_CD8 - r_dbl)
         d2 = (r_cd8 - r_nk) / max(r_cd8 - r_dbl, 1e-9)
         return float(np.clip(d1, 0, 1)), float(np.clip(d2, 0, 1))
 
@@ -525,12 +539,26 @@ def mixture(gex: pd.DataFrame) -> None:
                 )
     out = pd.DataFrame(rows)
     out.to_csv(TAB / "doublet_mixture.csv", index=False)
+    if out.empty:
+        print("  nessuno strato con abbastanza cellule: d1 e d2 non stimati.")
+        return
     main_row = out[(out.statistic == "median") & (out.stratum == "all")]
     if len(main_row):
         r = main_row.iloc[0]
         print(
-            f"\nStima principale (mediane, tutti i tessuti): d1 = {r.d1:.3f}, d2 = {r.d2:.3f}."
+            f"\nStima principale (mediane, tutti i tessuti): d1 = {r.d1:.3f} "
+            f"[{r.d1_lo:.3f}, {r.d1_hi:.3f}], d2 = {r.d2:.3f} [{r.d2_lo:.3f}, {r.d2_hi:.3f}]."
         )
+        if min(r.d1_lo, r.d2_lo) > 0.5:
+            print("Entrambe le stime indicano che la maggioranza delle NK-TCR+ e'")
+            print("compatibile con doppietti NK + T (sotto il modello di miscela).")
+        elif max(r.d1_hi, r.d2_hi) < 0.5:
+            print(
+                "Entrambe le stime indicano che i doppietti sono una minoranza delle NK-TCR+."
+            )
+        else:
+            print("Le stime non permettono di dire se i doppietti siano la maggioranza")
+            print("delle NK-TCR+.")
         print("d1 e d2 usano le stesse mediane di n_counts: il loro accordo non e' una")
         print(
             "conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati)."
@@ -673,16 +701,24 @@ def main() -> None:
     print("\n" + "=" * 78)
     ta = diffs[diffs.contrast == "Tumor - Adjacent_normal"]
     for row in ta.itertuples():
-        v = "IC esclude 0" if row.lo > 0 or row.hi < 0 else "IC include 0"
+        v = ci_verdict(row.lo, row.hi, row.n_patients)
         print(
             f"  {row.scheme:6s} Tumor - Adjacent_normal = {row.diff:+.3f} "
             f"[{row.lo:+.3f}, {row.hi:+.3f}]  {v}"
         )
-    if len(ta) and (ta.lo > 0).all():
+    if ta.empty:
+        print("Nessuno schema ha abbastanza cloni appaiati Tumor / Adjacent_normal.")
+    elif (ta.n_patients <= SMALL_K).all():
+        print(f"Tutti i contrasti hanno <= {SMALL_K} pazienti: l'IC non e' calibrato")
+        print("(copertura sotto il 95% in simulazione), quindi nessun verdetto; vedi")
+        print("n_distinct_resamples e frac_boot_gt0 in error_rate_paired_diff.csv.")
+        sign = "positiva" if (ta["diff"] > 0).all() else "di segno non costante"
+        print(f"La stima puntuale e' {sign} in tutti gli schemi.")
+    elif (ta.lo > 0).all():
         print(
             "La differenza Tumor - Adjacent_normal resta positiva in tutti gli schemi."
         )
-    elif len(ta):
+    else:
         print(
             "La differenza Tumor - Adjacent_normal non e' positiva con IC che esclude 0"
         )

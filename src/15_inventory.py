@@ -6,7 +6,9 @@ Scopo
 -----
 Documenta, prima di qualsiasi analisi secondaria, tutte le variabili disponibili:
   1. per ogni colonna di `adata.obs`: tipo, cardinalita', valori piu' frequenti (o
-     intervallo per le numeriche) e se e' gia' usata nella pipeline;
+     intervallo per le numeriche) e se e' fra le colonne considerate dalla pipeline
+     (`already_used`: elenco scritto a mano `KNOWN_USED`; comprende anche colonne
+     tecniche come `barcode`, `probe` e `pct_mt`, non solo variabili di analisi);
   2. per le colonne categoriali con <= 30 livelli, il confondimento con il paziente:
      frazione dei livelli osservati in un solo paziente (1.0 = la variabile coincide
      con il paziente e non e' confrontabile fra pazienti);
@@ -22,7 +24,7 @@ Input
 
 Output
 ------
-  results/tables/obs_inventory.csv
+  results/tables/obs_inventory.csv   una colonna di obs per riga (colonne tutte NaN: n_unique = 0)
   results/tables/vdj_inventory.csv   un file VDJ per riga: GSM, paziente, tessuto, numero di contig
 
 Argomenti
@@ -46,6 +48,7 @@ import numpy as np
 import pandas as pd
 
 TAB = Path("results/tables")
+# Colonne di obs considerate dalla pipeline (elenco scritto a mano, da aggiornare con gli script)
 KNOWN_USED = {
     "tissue",
     "patients",
@@ -95,7 +98,10 @@ def main() -> None:
         dtype = str(s.dtype)
         used = col in KNOWN_USED
         info = {"column": col, "dtype": dtype, "n_unique": card, "already_used": used}
-        if card <= 30 and not pd.api.types.is_float_dtype(s.dtype):
+        if card == 0:
+            info["confound_patient"] = np.nan
+            info["top_values"] = "colonna vuota (tutti i valori mancanti)"
+        elif card <= 30 and not pd.api.types.is_float_dtype(s.dtype):
             info["confound_patient"] = (
                 confounding_with_patient(obs, col) if "patients" in obs else np.nan
             )
@@ -103,7 +109,7 @@ def main() -> None:
             info["top_values"] = "; ".join(f"{k}={v}" for k, v in vals.items())
         else:
             info["confound_patient"] = np.nan
-            if pd.api.types.is_numeric_dtype(s.dtype) and card > 0:
+            if pd.api.types.is_numeric_dtype(s.dtype):
                 info["top_values"] = (
                     f"range [{s.min():.3g}, {s.max():.3g}], median {s.median():.3g}"
                 )
@@ -114,16 +120,16 @@ def main() -> None:
     inv = pd.DataFrame(rows)
     inv.to_csv(TAB / "obs_inventory.csv", index=False)
 
-    print("\n--- COLONNE GIA' USATE nell'analisi ---")
+    print("\n--- COLONNE CONSIDERATE dalla pipeline (elenco KNOWN_USED) ---")
     print(inv[inv.already_used][["column", "dtype", "n_unique"]].to_string(index=False))
 
     unused = inv[~inv.already_used]
-    print(f"\n--- COLONNE NON ANCORA USATE ({len(unused)}) ---")
+    print(f"\n--- COLONNE NON CONSIDERATE ({len(unused)}) ---")
     if unused.empty:
-        print("  nessuna: ogni colonna di obs e' gia' entrata nell'analisi.")
+        print("  nessuna: tutte le colonne di obs sono nell'elenco KNOWN_USED.")
     else:
         for _, r in unused.iterrows():
-            print(f"\n  [{r.column}]  ({r.dtype}, {r.n_unique} valori)")
+            print(f"\n  [{r.column}]  ({r['dtype']}, {r.n_unique} valori)")
             print(f"    {r.top_values}")
             if pd.notna(r.confound_patient):
                 c = r.confound_patient

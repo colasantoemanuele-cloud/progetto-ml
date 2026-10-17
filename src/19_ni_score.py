@@ -7,9 +7,10 @@ Scopo
 La Table S1A del supplementare di Chen et al., Cancer Cell 2025 (`mmc2.xlsx`) riporta
 i metadati clinici dei pazienti, compreso il punteggio di invasione neurale (`NI
 score`). I 14 pazienti con `scRNA-seq = Yes` corrispondono ai 14 pazienti del dataset
-single-cell. Ipotesi H4, formulata prima di calcolare la correlazione: NI score piu'
-alto -> microambiente piu' rimodellato -> piu' errore di annotazione delle T nel
-tumore. Il gruppo dicotomico (`NI group`: 11 High contro 3 Low) e' troppo sbilanciato:
+single-cell. Ipotesi H4, formulata prima di calcolare la correlazione (stesso testo
+stampato dallo script, `H4_TEXT`): NI score piu' alto -> microambiente piu'
+immunosoppresso -> piu' T esauste -> piu' errore di annotazione delle T nel tumore
+(attesa: rho > 0). Il gruppo dicotomico (`NI group`: 11 High contro 3 Low) e' troppo sbilanciato:
 si usa il punteggio continuo.
 
 Test: Spearman con permutazione Monte Carlo (20.000 permutazioni casuali, non
@@ -66,6 +67,11 @@ TAB = Path("results/tables")
 SEED = 0
 N_PERM = 20000
 MIN_CLONES_OUTCOME = 5
+# Unica formulazione di H4 (docstring e messaggi)
+H4_TEXT = (
+    "NI score piu' alto -> microambiente piu' immunosoppresso -> piu' T esauste -> "
+    "piu' errore di annotazione delle T nel tumore (attesa: rho > 0)."
+)
 
 # Schema atteso delle colonne nella Tabella Supplementare S1A (mmc2.xlsx)
 EXPECTED_COLS = [
@@ -203,8 +209,7 @@ def main() -> None:
 
     print("\n" + "#" * 78)
     print("# IPOTESI H4 (formulata prima di calcolare la correlazione):")
-    print("# NI score piu' alto -> microambiente piu' immunosoppresso -> piu'")
-    print("# T esauste -> piu' errore di annotazione nel tumore. Attesa: rho > 0.")
+    print(f"# {H4_TEXT}")
     print("#" * 78)
 
     # Test di correlazione per H4: permutazione Monte Carlo e intervallo bootstrap

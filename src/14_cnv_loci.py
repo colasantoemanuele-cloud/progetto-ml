@@ -19,24 +19,36 @@ sono restituite da infercnvpy: sono interpolate in modo uniforme fra il primo e
 l'ultimo gene annotato di ciascun cromosoma, quindi i confini dei loci sono
 approssimati (una finestra puo' cadere dentro o fuori un locus per qualche Mb).
 L'AUC pooled mescola differenze fra pazienti e fra tessuti; l'AUC entro paziente
-(pazienti con almeno 10 duttali per tessuto) isola il contrasto tissutale.
+(pazienti con almeno 10 duttali per tessuto) isola il contrasto tissutale. Il
+messaggio finale tiene conto di entrambe: una separazione pooled che non si ritrova
+entro paziente non e' attribuita ai loci.
+
+Coordinate dei geni e metodo: le stesse di `13_infercnv.py` (Ensembl release 116,
+tabella in `data/interim/gene_positions_ensembl116.csv`, funzioni importate da 13);
+senza coordinate lo script si ferma, `copykat` si usa solo con `--method copykat`
+e richiede `rpy2` e R (assenti dall'ambiente).
 
 Input
 -----
   --h5ad  data/interim/sc_raw.h5ad
-  cache   data/interim/cnv_matrix.npz (letta se esiste, altrimenti calcolata e scritta)
+  cache   data/interim/cnv_matrix.npz (letta se esiste e copre tutte le cellule, altrimenti
+          calcolata e scritta; una cache con cellule diverse ferma lo script)
+  data/interim/gene_positions_ensembl116.csv (letta se esiste, altrimenti scaricata da BioMart)
 
 Output
 ------
   data/interim/cnv_matrix.npz                    matrice X_cnv e coordinate delle finestre (cache)
-  results/tables/cnv_loci_auc.csv                AUC pooled per segnale (score medio, loci, composito)
+  data/interim/gene_positions_ensembl116.csv     coordinate dei geni (solo se scaricate)
+  results/tables/cnv_loci_auc.csv                AUC pooled per segnale (score medio, loci, composito);
+                                                 n_windows = finestre usate, n_loci = loci nel segnale
   results/tables/cnv_loci_auc_by_patient.csv     AUC entro paziente di PDAC_COMPOSITE e dello score medio
                                                  (ultima riga `_mean`: media sui pazienti valutabili)
   results/figures/cnv_loci_separation.png, results/figures/cnv_loci_auc.png
 
 Argomenti
 ---------
-  --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto)
+  --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto = infercnv,
+  senza ripiego automatico su copykat)
 
 Uso
 ---
@@ -46,7 +58,7 @@ Uso
 from __future__ import annotations
 
 import argparse
-import sys
+import importlib.util
 import time
 from pathlib import Path
 
@@ -65,6 +77,7 @@ FIG = Path("results/figures")
 TAB = Path("results/tables")
 CACHE = Path("data/interim/cnv_matrix.npz")
 SEED = 0
+HERE = Path(__file__).resolve().parent
 
 IMMUNE_REF = ["CD8T", "CD4T", "NK", "B", "Myeloid", "Plasma"]
 
@@ -81,21 +94,12 @@ PDAC_LOCI = [
 ]
 
 
-def add_positions(adata: ad.AnnData) -> bool:
-    """Annota le coordinate cromosomiche dei geni tramite Ensembl BioMart."""
-    import infercnvpy as cnv
-
-    if "gene_symbol" in adata.var:
-        adata.var_names = adata.var["gene_symbol"].astype(str).values
-    adata.var_names_make_unique()
-    try:
-        cnv.io.genomic_position_from_biomart(
-            adata, biomart_gene_id="hgnc_symbol", species="hsapiens"
-        )
-        return adata.var["chromosome"].notna().sum() > 5000
-    except Exception as e:  # noqa: BLE001
-        print(f"[!!] biomart fallito: {e}")
-        return False
+def _infercnv13():
+    """Importa `13_infercnv.py` (stesse coordinate dei geni e stesso controllo di copykat)."""
+    spec = importlib.util.spec_from_file_location("infercnv13", HERE / "13_infercnv.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
 
 
 def compute_cnv(sub: ad.AnnData, method: str):
@@ -190,14 +194,26 @@ def main() -> None:
         npz = np.load(CACHE, allow_pickle=True)
         X, obs_names = npz["X"], npz["obs_names"]
         windows = pd.DataFrame({"chrom": npz["win_chrom"], "pos": npz["win_pos"]})
+        cached, wanted = pd.Index(obs_names), sub.obs_names
+        if len(cached.difference(wanted)) or len(wanted.difference(cached)):
+            raise SystemExit(
+                f"[ERRORE] la cache {CACHE} non corrisponde alle cellule selezionate "
+                f"({len(wanted.difference(cached)):,} mancanti, "
+                f"{len(cached.difference(wanted)):,} in piu'): cancellala per ricalcolare."
+            )
         sub = sub[obs_names].copy()
     else:
-        method = args.method
-        if method == "auto":
-            method = "infercnv" if add_positions(sub) else "copykat"
-            print(f"[ok] metodo: {method}")
-        elif method == "infercnv" and not add_positions(sub):
-            sys.exit("[ERRORE] posizioni assenti; usa --method copykat")
+        m13 = _infercnv13()
+        method = "infercnv" if args.method == "auto" else args.method
+        if method == "infercnv":
+            if not m13.add_positions(sub):
+                raise SystemExit(
+                    f"[ERRORE] coordinate dei geni (Ensembl {m13.ENSEMBL_RELEASE}) non "
+                    f"disponibili: nessun host BioMart risponde e {m13.GENE_POS} non esiste. "
+                    "copykat non e' usato come ripiego (richiede rpy2 e R)."
+                )
+        else:
+            m13.require_copykat()
         t0 = time.time()
         X, windows, obs_names = compute_cnv(sub, method)
         print(f"[ok] X_cnv {X.shape} in {time.time() - t0:.0f}s")
@@ -224,7 +240,7 @@ def main() -> None:
     print("SEPARAZIONE TUMORE vs NORMALE: score medio vs loci PDAC specifici")
     print("=" * 74)
     print("AUC = capacita' discriminativa tra duttali TUMORALI e NORMALI adiacenti.")
-    print("0.5 = distribuzioni sovrapposte | >0.65 = separazione locus-specifica\n")
+    print("0.5 = distribuzioni sovrapposte; l'AUC pooled mescola pazienti diversi\n")
 
     def auc_tn(score):
         y = np.r_[np.ones(tumor.sum()), np.zeros(normal.sum())]
@@ -243,6 +259,7 @@ def main() -> None:
             "signal": "MEAN_|CNV|",
             "auc_tumor_vs_normal": auc_tn(mean_score),
             "n_windows": X.shape[1],
+            "n_loci": np.nan,
         }
     ]
     loci_scores = {}
@@ -257,11 +274,17 @@ def main() -> None:
             ).sum()
         )
         rows.append(
-            {"signal": L["name"], "auc_tumor_vs_normal": auc_tn(s), "n_windows": nwin}
+            {
+                "signal": L["name"],
+                "auc_tumor_vs_normal": auc_tn(s),
+                "n_windows": nwin,
+                "n_loci": 1,
+            }
         )
 
     # Somma standardizzata (z-score) dei contributi direzionali dei singoli loci PDAC
-    valid = [s for s in loci_scores.values() if not np.all(np.isnan(s))]
+    valid_names = [k for k, s in loci_scores.items() if not np.all(np.isnan(s))]
+    valid = [loci_scores[k] for k in valid_names]
     if not valid:
         raise SystemExit("[ERRORE] nessun locus PDAC coperto dalle finestre di X_cnv.")
     comp = np.nansum(
@@ -271,7 +294,10 @@ def main() -> None:
         {
             "signal": "PDAC_COMPOSITE",
             "auc_tumor_vs_normal": auc_tn(comp),
-            "n_windows": len(valid),
+            "n_windows": int(
+                sum(r["n_windows"] for r in rows if r["signal"] in valid_names)
+            ),
+            "n_loci": len(valid),
         }
     )
 
@@ -281,26 +307,6 @@ def main() -> None:
 
     mean_auc = res.loc[res.signal == "MEAN_|CNV|", "auc_tumor_vs_normal"].iloc[0]
     comp_auc = res.loc[res.signal == "PDAC_COMPOSITE", "auc_tumor_vs_normal"].iloc[0]
-    print("\n" + "=" * 74)
-    if comp_auc > mean_auc + 0.05 and comp_auc > 0.65:
-        print(f"ESITO: i loci PDAC separano (AUC {comp_auc:.2f}) meglio dello score")
-        print(
-            f"  medio (AUC {mean_auc:.2f}). Il segnale citogenetico e' locus-specifico."
-        )
-    elif comp_auc < 0.6:
-        print(f"ESITO: sovrapposizione anche sui loci PDAC (AUC {comp_auc:.2f}).")
-        print(
-            "  Le cellule duttali adiacenti condividono il profilo delle duttali tumorali"
-        )
-        print(
-            "  (compatibile con effetto di campo peri-tumorale o risoluzione limitata dell'mRNA)."
-        )
-    else:
-        print(
-            f"ESITO: separazione parziale (loci {comp_auc:.2f} vs medio {mean_auc:.2f})."
-        )
-        print("  Segnale intermedio lungo il continuum epiteliale.")
-    print("=" * 74)
 
     print(
         "\nAUC tumore-vs-normale PDAC_COMPOSITE, per paziente con abbastanza normali:"
@@ -338,13 +344,51 @@ def main() -> None:
             ignore_index=True,
         )
     by_pat.to_csv(TAB / "cnv_loci_auc_by_patient.csv", index=False)
-    by_pat = by_pat[by_pat.patient != "_mean"]
+    if not by_pat.empty:
+        by_pat = by_pat[by_pat.patient != "_mean"]
     if not by_pat.empty:
         print(
             f"  AUC entro paziente PDAC_COMPOSITE: media {by_pat.auc_PDAC_COMPOSITE.mean():.3f}, "
             f"range [{by_pat.auc_PDAC_COMPOSITE.min():.3f}, {by_pat.auc_PDAC_COMPOSITE.max():.3f}] "
             f"su {len(by_pat)} pazienti"
         )
+    within = by_pat.auc_PDAC_COMPOSITE.mean() if not by_pat.empty else np.nan
+
+    # Esito: la separazione pooled e' attribuita ai loci solo se si ritrova entro paziente
+    print("\n" + "=" * 74)
+    print(f"AUC PDAC_COMPOSITE pooled {comp_auc:.2f} (score medio {mean_auc:.2f})")
+    if np.isnan(within):
+        print("ESITO: nessun paziente valutabile entro paziente (minimo 10 duttali per")
+        print(
+            "  tessuto): l'AUC pooled mescola differenze fra pazienti, nessuna conclusione"
+        )
+        print("  sui loci.")
+    else:
+        print(
+            f"AUC PDAC_COMPOSITE entro paziente: media {within:.2f} su {len(by_pat)} pazienti"
+        )
+        if within >= 0.65 and comp_auc > mean_auc + 0.05:
+            print(
+                "ESITO: i loci PDAC separano le duttali tumorali dalle adiacenti anche"
+            )
+            print("  entro paziente, meglio dello score medio.")
+        elif within < 0.6:
+            print(
+                "ESITO: entro paziente le duttali tumorali e adiacenti si sovrappongono"
+            )
+            print(
+                "  anche sui loci PDAC; l'eventuale separazione pooled riflette soprattutto"
+            )
+            print(
+                "  differenze fra pazienti (compatibile con effetto di campo peri-tumorale"
+            )
+            print("  o con la risoluzione limitata dell'mRNA, non distinguibili qui).")
+        else:
+            print(
+                "ESITO: separazione entro paziente parziale; con pochi pazienti valutabili"
+            )
+            print("  non e' attribuibile con sicurezza ai loci.")
+    print("=" * 74)
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.4))
     axes[0].hist(

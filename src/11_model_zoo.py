@@ -26,9 +26,17 @@ Scelte del disegno:
 3. Confronto con il modello migliore: t appaiato corretto di Nadeau-Bengio
    (fattore n_test / n_train) e test di Wilcoxon appaiato sui fold. Con pochi fold la
    potenza e' bassa: un p non significativo NON dimostra che due modelli siano
-   equivalenti.
+   equivalenti. La calibrazione di Nadeau-Bengio e' verificata in
+   `src/sim/sim_a_calibration.py` con StratifiedKFold a 5 fold di dimensione uguale;
+   qui e' applicato a fold LOPO di dimensione diversa con training sottocampionato,
+   caso non coperto da quella verifica.
 Il macro-F1 di ogni fold e' calcolato sulle sole classi presenti nel fold di test.
 Se un modello fallisce in un fold, tutti i suoi fold vengono scartati.
+Riproducibilita': `knn`, `svm_rbf` e `mlp` (proiezione densa) sono addestrati con BLAS a
+un solo thread: con piu' thread l'MLP cambia risultato secondo il numero di thread.
+Convergenza: per i modelli con solutore iterativo (logreg_l2, logreg_l1, elasticnet,
+svm_linear, mlp) ogni fold registra se l'addestramento ha emesso un
+`ConvergenceWarning` (colonna `converged`; vuota per gli altri modelli).
 
 Input
 -----
@@ -37,8 +45,9 @@ Input
 
 Output
 ------
-  results/tables/model_zoo_{tag}.csv            metriche per task x modello x fold
-  results/tables/model_zoo_summary_{tag}.csv    media e sd sui fold per task x modello
+  results/tables/model_zoo_{tag}.csv            metriche e convergenza per task x modello x fold
+  results/tables/model_zoo_summary_{tag}.csv    media e sd sui fold, differenza da logreg_l2 e
+                                                fold non convergenti per task x modello
   results/tables/model_comparison_{task}.csv    differenze dal migliore e p (Nadeau-Bengio, Wilcoxon)
   results/figures/model_zoo_{task}.png
 
@@ -82,6 +91,7 @@ from scpipe import HVGSelector, LogCPM, macro_f1, nadeau_bengio_ttest  # noqa: E
 
 from sklearn.decomposition import TruncatedSVD  # noqa: E402
 from sklearn.dummy import DummyClassifier  # noqa: E402
+from sklearn.exceptions import ConvergenceWarning  # noqa: E402
 from sklearn.ensemble import BaggingClassifier, RandomForestClassifier  # noqa: E402
 from sklearn.linear_model import LogisticRegression, SGDClassifier  # noqa: E402
 from sklearn.metrics import balanced_accuracy_score, matthews_corrcoef  # noqa: E402
@@ -93,15 +103,20 @@ from sklearn.preprocessing import StandardScaler  # noqa: E402
 from sklearn.svm import SVC, LinearSVC  # noqa: E402
 from sklearn.tree import DecisionTreeClassifier  # noqa: E402
 from scipy.stats import wilcoxon  # noqa: E402
+from threadpoolctl import threadpool_limits  # noqa: E402
 
-# UserWarning ripetitivi (es. nomi di feature di LightGBM su matrici sparse)
-warnings.filterwarnings("ignore", category=UserWarning)
+# Solo l'avviso ripetitivo sui nomi delle feature (LightGBM); i ConvergenceWarning, che in
+# scikit-learn derivano da UserWarning, restano visibili e sono registrati per fold
+warnings.filterwarnings("ignore", message=".*feature names.*", category=UserWarning)
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
 SEED = 0
 N_HVG = 2000
 N_SVD = 50
+
+# modelli con solutore iterativo, per cui si registra la convergenza
+ITERATIVE = {"logreg_l2", "logreg_l1", "elasticnet", "svm_linear", "mlp"}
 
 PRIMARY = {"task1a_paired": "fold_lopo", "rare": "fold_lopo"}
 DEFAULT_PRIMARY = "fold_group_5"
@@ -245,10 +260,32 @@ def evaluate(y_true, y_pred, classes) -> dict:  # noqa: ARG001
     }
 
 
+def fit_counting_convergence(pipe: Pipeline, X, y) -> int:
+    """Addestra la pipeline e restituisce il numero di ConvergenceWarning emessi.
+
+    Gli altri avvisi vengono riemessi normalmente.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ConvergenceWarning)
+        pipe.fit(X, y)
+    n_conv = 0
+    for w in caught:
+        if issubclass(w.category, ConvergenceWarning):
+            n_conv += 1
+        else:
+            warnings.showwarning(w.message, w.category, w.filename, w.lineno)
+    return n_conv
+
+
 def run_task(adata, sp_df, task, models, max_train, scheme_override) -> pd.DataFrame:
     """Addestra e valuta la batteria di modelli su tutti i fold del task specificato."""
     sub = sp_df[sp_df.task == task]
     idx = adata.obs_names.get_indexer(sub.cell_id.values)
+    if (idx < 0).any():
+        raise SystemExit(
+            f"[ERRORE] {task}: {int((idx < 0).sum())} cell_id dello split assenti dall'h5ad "
+            "(split e h5ad devono venire dalla stessa esecuzione di 02/04)"
+        )
     X, y = adata.X[idx], sub.y.values
     classes = np.array(sorted(np.unique(y)))
     scheme = scheme_override or PRIMARY.get(task, DEFAULT_PRIMARY)
@@ -271,8 +308,11 @@ def run_task(adata, sp_df, task, models, max_train, scheme_override) -> pd.DataF
                     rng = np.random.default_rng(SEED + int(f))
                     tr = np.sort(rng.choice(tr, max_train, replace=False))
                 pipe = build(model, dense)
-                pipe.fit(X[tr], y[tr])
-                pred = pipe.predict(X[te])
+                # Modelli densi (SVD + scaling): BLAS a un thread, perche' TruncatedSVD e
+                # l'MLP danno risultati diversi con un numero diverso di thread
+                with threadpool_limits(limits=1 if dense else None, user_api="blas"):
+                    n_conv = fit_counting_convergence(pipe, X[tr], y[tr])
+                    pred = pipe.predict(X[te])
                 model_rows.append(
                     {
                         "task": task,
@@ -282,6 +322,7 @@ def run_task(adata, sp_df, task, models, max_train, scheme_override) -> pd.DataF
                         "n_train": len(tr),
                         "n_test": len(te),
                         **evaluate(y[te], pred, classes),
+                        "converged": (n_conv == 0) if model in ITERATIVE else np.nan,
                     }
                 )
         except Exception as e:  # noqa: BLE001
@@ -408,6 +449,14 @@ def main() -> None:
         print(f"[ok] --update: sostituite {int(drop.sum())} righe di {out}")
     if res.empty:
         raise SystemExit("[ERRORE] nessun modello completato: nessuna tabella scritta.")
+    mixed = res.groupby("task").scheme.nunique()
+    if (mixed > 1).any():
+        raise SystemExit(
+            f"[ERRORE] task con piu' schemi di split nella stessa tabella: "
+            f"{sorted(mixed[mixed > 1].index)}; usa un --tag diverso per ogni schema"
+        )
+    if "converged" not in res.columns:
+        res["converged"] = np.nan
     res.to_csv(out, index=False)
     print(f"\n[ok] scritto {out}")
     summ = (
@@ -419,12 +468,20 @@ def main() -> None:
             mcc_mean=("mcc", "mean"),
             n_folds=("fold", "nunique"),
             n_train_mean=("n_train", "mean"),
+            # fold con ConvergenceWarning (NaN per i modelli senza solutore iterativo)
+            n_folds_not_converged=(
+                "converged",
+                lambda c: (c == False).sum() if c.notna().any() else np.nan,  # noqa: E712
+            ),
         )
         .reset_index()
     )
     # differenza dalla logistica L2 dello stesso task (riferimento lineare)
-    ref = summ[summ.model == "logreg_l2"].set_index("task").macro_f1_mean
-    summ["delta_vs_logreg_l2"] = summ.macro_f1_mean - summ.task.map(ref)
+    ref = summ.loc[summ.model == "logreg_l2", ["task", "scheme", "macro_f1_mean"]]
+    summ = summ.merge(
+        ref.rename(columns={"macro_f1_mean": "_ref"}), on=["task", "scheme"], how="left"
+    )
+    summ["delta_vs_logreg_l2"] = summ.macro_f1_mean - summ.pop("_ref")
     summ.to_csv(TAB / f"model_zoo_summary_{args.tag}.csv", index=False)
 
     for t in args.tasks:

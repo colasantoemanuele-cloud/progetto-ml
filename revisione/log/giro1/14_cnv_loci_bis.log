@@ -1,0 +1,44 @@
+[..] carico h5ad ...
+[..] coordinate dei geni (Ensembl 116) ...
+[ok] posizioni per 19,593/30,543 geni
+[..] infercnv, riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] di tutti i pazienti (lento) ...
+[ok] X_cnv (101219, 1674) in 41s
+
+duttali: 8,370 tumorali | 334 normali adiacenti
+
+==========================================================================
+SEPARAZIONE TUMORE vs NORMALE: score medio vs loci PDAC specifici
+==========================================================================
+AUC = capacita' discriminativa tra duttali TUMORALI e NORMALI adiacenti.
+0.5 = distribuzioni sovrapposte; l'AUC pooled mescola pazienti diversi
+
+        signal  auc_tumor_vs_normal  n_windows  n_loci
+    MEAN_|CNV|                0.492       1674     NaN
+   CDKN2A_9p21                0.520          2     1.0
+    TP53_17p13                0.535         11     1.0
+   SMAD4_18q21                0.562          4     1.0
+       1p_loss                0.618         47     1.0
+       6q_loss                0.564         35     1.0
+      MYC_8q24                0.633          8     1.0
+    KRAS_12p12                0.586          7     1.0
+      20q_gain                0.468         26     1.0
+PDAC_COMPOSITE                0.682        140     8.0
+
+AUC tumore-vs-normale PDAC_COMPOSITE, per paziente con abbastanza normali:
+  PA04: non valutabile (tumor n=152, normal n=1, minimo 10)
+  PA06: AUC=0.548  (tumor n=2354, normal n=26)
+  PA08: AUC=0.582  (tumor n=809, normal n=210)
+  PA09: AUC=0.517  (tumor n=981, normal n=14)
+  PA10: AUC=0.512  (tumor n=726, normal n=83)
+  AUC entro paziente PDAC_COMPOSITE: media 0.540, range [0.512, 0.582] su 4 pazienti
+
+==========================================================================
+AUC PDAC_COMPOSITE pooled 0.68 (score medio 0.49)
+AUC PDAC_COMPOSITE entro paziente: media 0.54 su 4 pazienti
+ESITO: entro paziente le duttali tumorali e adiacenti si sovrappongono
+  anche sui loci PDAC; l'eventuale separazione pooled riflette soprattutto
+  differenze fra pazienti (compatibile con effetto di campo peri-tumorale
+  o con la risoluzione limitata dell'mRNA, non distinguibili qui).
+==========================================================================
+
+[ok] figure: results/figures/cnv_loci_separation.png, cnv_loci_auc.png

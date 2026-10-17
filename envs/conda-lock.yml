@@ -9,11 +9,11 @@
 # To update a single package to the latest version compatible with the version constraints in the source:
 #     conda-lock lock  --lockfile conda-lock.yml --update PACKAGE
 # To re-solve the entire environment, e.g. after changing a version constraint in the source file:
-#     conda-lock -f ../../../../../home/nemo/Uni/PROGETTO_ML/pdac-ml/envs/environment.yml --lockfile conda-lock.yml
+#     conda-lock -f environment.yml --lockfile conda-lock.yml
 version: 1
 metadata:
   content_hash:
-    linux-64: a5b416fb81ce3d561b66781ec5931795ff3ecd58bebeb28f5782febf111aa046
+    linux-64: a0b5cf54443510246d199e91a79680e3dbf8bab2dcd16b9aa44a959c90b8735d
   channels:
   - url: conda-forge
     used_env_vars: []
@@ -22,7 +22,7 @@ metadata:
   platforms:
   - linux-64
   sources:
-  - ../../../../../home/nemo/Uni/PROGETTO_ML/pdac-ml/envs/environment.yml
+  - environment.yml
 package:
 - name: _openmp_mutex
   version: '4.5'
@@ -6376,15 +6376,15 @@ package:
   category: main
   optional: false
 - name: threadpoolctl
-  version: 3.7.0
+  version: 3.6.0
   manager: conda
   platform: linux-64
   dependencies:
-    python: '>=3.11'
-  url: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.7.0-pyhc455866_0.conda
+    python: '>=3.9'
+  url: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.6.0-pyhecae5ae_0.conda
   hash:
-    md5: 8c05910e780502e362d658f00f5ec10f
-    sha256: a32d17fe979e59fe1295875b5d4f0431a76dfbbfcee5b01e657a8aa3c4a1b5d1
+    md5: 9d64911b31d57ca443e9f1e36b04385f
+    sha256: 6016672e0e72c4cf23c0cf7b1986283bd86a9c17e8d319212d78d8e9ae42fdfd
   category: main
   optional: false
 - name: throttler

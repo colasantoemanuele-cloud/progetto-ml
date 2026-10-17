@@ -138,16 +138,14 @@ def main() -> None:
         "in questa tabella riflettono doppietti etorotipici, RNA ambientale o discordanza di annotazione."
     )
     print(
-        "Questo rapporto fornisce una stima ortogonale del tasso di discordanza dell'annotazione."
+        "Su una sola libreria e' un controllo preliminare, non una stima del tasso di discordanza."
     )
 
     # Stima della sensibilita di cattura V(D)J sulle cellule annotate trascrizionalmente come linfociti T.
     t_cells = gex[gex.all_celltype.isin(T_LABELS)]
     recall_like = t_cells.bc.isin(inter).mean()
     print(f"\ncellule etichettate T con TCR rilevato  : {recall_like:.1%}")
-    print(
-        "(misura l'efficienza sperimentale di cattura V(D)J 5', tipicamente compresa tra 60% e 85%)"
-    )
+    print("(frazione delle cellule annotate T con un TCR produttivo rilevato)")
 
     # 5. Conteggio delle cellule epiteliali duttali per paziente e compartimento tissutale.
     print("\n" + "=" * 70)

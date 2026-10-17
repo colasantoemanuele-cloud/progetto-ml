@@ -7,21 +7,30 @@ Scopo
 Tre controlli sulla discordanza fenotipica dei cloni T misurata in 07:
 
 1. Contrasto appaiato sui cloni presenti (>= 2 cellule) in PBMC, Adjacent_normal e
-   Tumor dello stesso paziente (solo i pazienti con tessuto adiacente: PA04, PA06,
-   PA08, PA09, PA10). Confrontare gli eccessi di discordanza sugli stessi cloni
+   Tumor dello stesso paziente: possono entrare solo i pazienti con tutti e tre i
+   tessuti (PA06, PA08, PA09, PA10; PA04 ha il tessuto adiacente ma non il PBMC).
+   Confrontare gli eccessi di discordanza sugli stessi cloni
    riduce il confondimento fra paziente e coppia di compartimenti, ma non lo
    elimina: restano le differenze di numerosita' e di campionamento fra
    compartimenti e la selezione dei cloni abbastanza espansi da comparire in tutti
    e tre. IC 95% con cluster bootstrap sui pazienti (`scpipe.cluster_bootstrap`).
+   Con <= 5 pazienti (`scpipe.SMALL_K`) l'IC non e' calibrato (con 4 pazienti copre
+   l'82-83% in simulazione, `src/sim/sim_a_calibration.py`): niente verdetto, si
+   salvano il numero di ricampionature distinte e la frazione di repliche > 0.
 
 2. Marcatori nei cloni discordanti (eccesso > 0.5 in 07) e concordanti (eccesso < 0.05),
    espressi in log1p(CP10k). Per le cellule etichettate CD8T, per tessuto: CD8A medio,
-   frazione con CD8A > 0, test di Mann-Whitney, CD4 medio e rapporto fra le medie di CD4
-   (discordanti / concordanti). Il rapporto e' fra medie di log1p(CP10k), non un
-   fold-change dell'espressione.
+   frazione con CD8A > 0, CD4 medio e rapporto fra le medie di CD4 (discordanti /
+   concordanti). Il rapporto e' fra medie di log1p(CP10k), non un fold-change
+   dell'espressione. Le statistiche a livello di cellula sono descrittive (nessun p:
+   le cellule dello stesso clone e paziente non sono indipendenti); come riassunto
+   per paziente si conta in quanti pazienti valutabili (>= 5 cellule CD8T per gruppo)
+   la frazione CD8A > 0 e' piu' bassa nei discordanti.
 
 3. Doppietti: punteggio Scrublet per libreria, confrontato fra cellule con e senza TCR
-   della stessa classe.
+   della stessa classe. Medie descrittive per cellula (nessun p) e, per paziente, in
+   quanti pazienti valutabili (>= 5 cellule per gruppo) il punteggio medio delle TCR+
+   supera quello delle TCR-.
 
 Input
 -----
@@ -32,11 +41,11 @@ Input
 Output
 ------
   results/tables/triple_clones.csv              eccessi per clone presente nei tre compartimenti
-  results/tables/triple_clones_summary.csv      medie, IC e differenze appaiate (cluster bootstrap)
+  results/tables/triple_clones_summary.csv      medie, IC, differenze appaiate, ricampionature distinte, frazione > 0
   results/tables/markers_disc_vs_conc.csv       marcatori medi per gruppo x tessuto x etichetta
-  results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, p, CD4, rapporto CD4
+  results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, CD4, rapporto CD4, pazienti concordi
   results/tables/doublet_scores.csv             punteggio Scrublet per cellula (cache, escluso da git)
-  results/tables/doublet_tcr_pos_vs_neg.csv     Scrublet TCR+ vs TCR- per classe
+  results/tables/doublet_tcr_pos_vs_neg.csv     Scrublet TCR+ vs TCR- per classe, pazienti concordi
   results/figures/doublet_by_tcr_status.png
 
 Argomenti
@@ -63,10 +72,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.stats import mannwhitneyu
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scpipe import cluster_bootstrap  # noqa: E402
+from scpipe import SMALL_K, cluster_bootstrap, small_k_diagnostics  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -81,6 +89,8 @@ FNAME_RE = re.compile(r"GSM\d+_PA_(\d+)-(\w+)-VDJ_filtered_contig_annotations\.c
 
 DISCORDANT_MIN = 0.50
 CONCORDANT_MAX = 0.05
+# Cellule minime per gruppo perche' un paziente entri nei riassunti per paziente
+MIN_CELLS_PATIENT = 5
 
 
 def load_tcr(tcrdir: Path) -> pd.DataFrame:
@@ -105,6 +115,8 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
         frames.append(
             df[["patient", "tissue", "barcode16", "chain", "cdr3_nt", "umis"]]
         )
+    if not frames:
+        raise SystemExit(f"[ERRORE] nessun file VDJ riconosciuto in {tcrdir}")
     c = pd.concat(frames, ignore_index=True).dropna(subset=["barcode16"])
     c = c.sort_values("umis", ascending=False).drop_duplicates(
         ["patient", "tissue", "barcode16", "chain"]
@@ -188,23 +200,48 @@ def part1(lym: pd.DataFrame) -> None:
     print(f"cellule: {tri[[f'n_{t}' for t in COMPS]].values.sum():,}\n")
 
     cols = [c for c in tri.columns if c.startswith("exc_")]
+    k = tri.patient.nunique()
+    small = k <= SMALL_K
+    if small:
+        print(
+            f"[!!] {k} pazienti (<= {SMALL_K}): l'IC del cluster bootstrap non e' calibrato"
+        )
+        print(
+            "     (con 4 pazienti copre ~82-83% in simulazione): nessun verdetto sugli IC.\n"
+        )
+
+    def summarize(name: str, by: dict) -> dict:
+        m, lo, hi = cluster_boot(by)
+        row = {"contrast": name, "mean": m, "lo": lo, "hi": hi}
+        if small:
+            row.update(small_k_diagnostics(by, N_BOOT, SEED))
+        return row
+
     summary = []
     for c in cols:
-        by = {p: g[c].values for p, g in tri.groupby("patient")}
-        m, lo, hi = cluster_boot(by)
-        star = "*" if lo > 0 else " "
-        print(f"  {c:22s} {m:+.4f}  IC95% [{lo:+.4f}, {hi:+.4f}] {star}")
-        summary.append({"contrast": c, "mean": m, "lo": lo, "hi": hi})
+        row = summarize(c, {p: g[c].values for p, g in tri.groupby("patient")})
+        print(
+            f"  {c:22s} {row['mean']:+.4f}  IC95% [{row['lo']:+.4f}, {row['hi']:+.4f}]"
+        )
+        summary.append(row)
 
     print("\nDIFFERENZE APPAIATE (stesso clone, stesso paziente):")
     for a, b in [("exc_PBM_Tum", "exc_Adj_Tum"), ("exc_PBM_Tum", "exc_PBM_Adj")]:
         if a in tri and b in tri:
             tri["_d"] = tri[a] - tri[b]
-            by = {p: g["_d"].values for p, g in tri.groupby("patient")}
-            m, lo, hi = cluster_boot(by)
-            verdict = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
+            row = summarize(
+                f"{a} - {b}", {p: g["_d"].values for p, g in tri.groupby("patient")}
+            )
+            m, lo, hi = row["mean"], row["lo"], row["hi"]
+            if small:
+                verdict = (
+                    f"IC non calibrato; {row['n_distinct_resamples']} ricampionature "
+                    f"distinte, frazione > 0 = {row['frac_boot_gt0']:.3f}"
+                )
+            else:
+                verdict = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
             print(f"  {a} - {b} = {m:+.4f}  IC95% [{lo:+.4f}, {hi:+.4f}]  {verdict}")
-            summary.append({"contrast": f"{a} - {b}", "mean": m, "lo": lo, "hi": hi})
+            summary.append(row)
     pd.DataFrame(summary).assign(
         n_clones=len(tri), n_patients=tri.patient.nunique()
     ).to_csv(TAB / "triple_clones_summary.csv", index=False)
@@ -266,7 +303,13 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
     tab.to_csv(TAB / "markers_disc_vs_conc.csv")
 
     print(
-        "\n>>> TEST DI MANN-WHITNEY: cellule chiamate CD8T, per tessuto, CD8A discordanti vs concordanti"
+        "\n>>> CD8A nelle cellule chiamate CD8T, per tessuto: discordanti vs concordanti"
+    )
+    print(
+        "    (descrittivo per cellula; riassunto per paziente: frazione CD8A>0 piu' bassa"
+    )
+    print(
+        f"     nei discordanti, pazienti con >= {MIN_CELLS_PATIENT} cellule per gruppo)"
     )
     rows = []
     for tis in COMPS:
@@ -276,11 +319,24 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
         if len(a) < 20 or len(b) < 20:
             print(f"  {tis:16s} n insufficiente (disc={len(a)}, conc={len(b)})")
             continue
-        p = mannwhitneyu(a, b, alternative="two-sided").pvalue
+        # Riassunto per paziente: la cellula non e' l'unita' indipendente
+        fr = (
+            d.assign(pos=d.g_CD8A > 0)
+            .groupby(["patient", "group"])
+            .pos.agg(["mean", "size"])
+        )
+        fr = fr[fr["size"] >= MIN_CELLS_PATIENT]["mean"].unstack()
+        fr = fr.dropna(subset=[c for c in ("discordant", "concordant") if c in fr])
+        if {"discordant", "concordant"}.issubset(fr.columns):
+            n_eval = len(fr)
+            n_lower = int((fr.discordant < fr.concordant).sum())
+        else:
+            n_eval, n_lower = 0, 0
         print(
             f"  {tis:16s} disc={a.mean():6.2f} (n={len(a):5d})  "
             f"conc={b.mean():6.2f} (n={len(b):5d})  "
-            f"frac CD8A>0: {(a > 0).mean():.2f} vs {(b > 0).mean():.2f}  p={p:.2e}"
+            f"frac CD8A>0: {(a > 0).mean():.2f} vs {(b > 0).mean():.2f}  "
+            f"pazienti con frazione piu' bassa nei discordanti: {n_lower}/{n_eval}"
         )
         row = {
             "tissue": tis,
@@ -291,7 +347,8 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
             "mean_CD8A_conc": b.mean(),
             "frac_CD8A_pos_disc": (a > 0).mean(),
             "frac_CD8A_pos_conc": (b > 0).mean(),
-            "p_mannwhitney_CD8A": p,
+            "n_patients_evaluable": n_eval,
+            "n_patients_frac_CD8A_lower_in_disc": n_lower,
             "mean_CD4_disc": dd.g_CD4.mean(),
             "mean_CD4_conc": dc.g_CD4.mean(),
             # rapporto fra medie di log1p(CP10k), non un fold-change dell'espressione
@@ -304,7 +361,10 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
         rows.append(row)
     res = pd.DataFrame(rows)
     res.to_csv(TAB / "marker_test_disc_vs_conc.csv", index=False)
-    tum = res[res.tissue == "Tumor"] if not res.empty else res
+    if res.empty:
+        print("nessun tessuto con abbastanza cellule CD8T in entrambi i gruppi.")
+        return
+    tum = res[res.tissue == "Tumor"]
     if len(tum):
         t = tum.iloc[0]
         print(
@@ -313,11 +373,16 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
         )
         if t.frac_CD8A_pos_disc < 0.5 * t.frac_CD8A_pos_conc:
             print(
-                "Le CD8T dei cloni concordanti del tumore esprimono CD8A, quelle dei cloni"
+                f"Frazione CD8A > 0 nelle CD8T del tumore: {t.frac_CD8A_pos_disc:.2f} nei cloni"
             )
             print(
-                "discordanti molto meno: il dropout tissutale di CD8A da solo non lo spiega."
+                f"discordanti contro {t.frac_CD8A_pos_conc:.2f} nei concordanti (piu' bassa nei"
             )
+            print(
+                f"discordanti in {t.n_patients_frac_CD8A_lower_in_disc}/{t.n_patients_evaluable}"
+                " pazienti valutabili); un dropout di CD8A uguale nei due gruppi non"
+            )
+            print("produrrebbe questa differenza.")
             print(
                 "Il dato e' compatibile con un'etichetta CD8T sbagliata (cellule CD4); resta"
             )
@@ -376,7 +441,13 @@ def part3(gex: pd.DataFrame) -> None:
         neg = g.loc[~g.has_tcr, "doublet_score"].dropna().values
         if len(pos) < 20 or len(neg) < 20:
             continue
-        p = mannwhitneyu(pos, neg, alternative="greater").pvalue
+        # Riassunto per paziente (la cellula non e' l'unita' indipendente)
+        mp = g.dropna(subset=["doublet_score"]).groupby(["patients", "has_tcr"])
+        mp = mp.doublet_score.agg(["mean", "size"])
+        mp = mp[mp["size"] >= MIN_CELLS_PATIENT]["mean"].unstack().dropna()
+        both = {True, False}.issubset(mp.columns)
+        n_eval = len(mp) if both else 0
+        n_higher = int((mp[True] > mp[False]).sum()) if both else 0
         rows.append(
             {
                 "class": cls,
@@ -385,17 +456,22 @@ def part3(gex: pd.DataFrame) -> None:
                 "ds_tcr_pos": pos.mean(),
                 "ds_tcr_neg": neg.mean(),
                 "delta": pos.mean() - neg.mean(),
-                "p_greater": p,
+                "n_patients_evaluable": n_eval,
+                "n_patients_tcr_pos_higher": n_higher,
             }
         )
     out = pd.DataFrame(rows)
+    if out.empty:
+        print("nessuna classe con almeno 20 cellule TCR+ e 20 TCR-: (3) non eseguito.")
+        return
+    print("(medie per cellula, descrittive; ultime colonne: pazienti concordi)")
     print(out.round(4).to_string(index=False))
     out.to_csv(TAB / "doublet_tcr_pos_vs_neg.csv", index=False)
 
     print("\nINTERPRETAZIONE, per classe non-T:")
     print("  delta ~ 0  -> punteggio compatibile con singoletto")
     print(
-        "  delta > 0  -> incremento di punteggio indicativo di profilo ibrido o doppietto"
+        "  delta > 0  -> punteggio piu' alto, compatibile con un profilo ibrido o un doppietto"
     )
     print("\n(CD8T/CD4T costituiscono il controllo negativo con delta atteso ~0.)")
 
@@ -458,6 +534,8 @@ def main() -> None:
     print(f"[ok] {len(gex):,} cellule | TCR: {gex.has_tcr.sum():,}")
 
     lym = gex[gex.clone_b.notna() & gex.all_celltype.isin(LYMPHOID)].copy()
+    if lym.empty:
+        raise SystemExit("[ERRORE] nessuna cellula CD4T/CD8T/NK con TCR.")
 
     part1(lym)
 

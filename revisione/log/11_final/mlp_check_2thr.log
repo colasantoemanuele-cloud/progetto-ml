@@ -1,0 +1,16 @@
+[..] carico h5ad ...
+
+==============================================================================
+task1a_paired: 67,662 cellule | 2 classi | split: fold_lopo
+==============================================================================
+  mlp             macro-F1 = 0.7209 ± 0.0995   [    21s]
+
+[ok] scritto results/tables/model_zoo_chk_mlp.csv
+
+--- task1a_paired: confronto col migliore (mlp, 0.7209) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+
+NOTA: con 5 fold i gradi di liberta' sono 4 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task1a_paired.png

@@ -14,8 +14,8 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | Verifica iniziale | fatta: remote `progetto-ml`, `sc_raw.h5ad` e 30 file VDJ presenti, MatrixMarket grezzi presenti | - |
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
-| 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | (commit Fase 1) |
-| 2 Loop | da fare | - |
+| 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
+| 2 Loop | giro 1 fatto (1 ALTA, 18 MEDIA, 29 BASSA corretti o motivati); prossimo: giro 2 incrementale | (commit giro 1) |
 | 3 Esecuzione finale | da fare | - |
 
 ## Note iniziali
@@ -96,10 +96,109 @@ d'esame): vanno scritte da zero.
 
 ## Comandi in corso
 
-Nessuno. Log della riesecuzione di Fase 1 in `revisione/log/fase1/` (picchi di memoria in
-`_status.txt`: 05 9.7 GB, 14 8.6 GB, 12 6.1 GB, 20 6.0 GB, 13 5.9 GB).
-Prossimo passo: Fase 2, giro 1 (revisione completa).
+Nessun comando di Fase 1 in corso. Log della riesecuzione di Fase 1 in `revisione/log/fase1/`
+(picchi di memoria in `_status.txt`: 05 9.7 GB, 14 8.6 GB, 12 6.1 GB, 20 6.0 GB, 13 5.9 GB).
+
+Esecuzione finale di 11 anticipata (richiesta dell'utente), codice al commit 52ace44
+(`revisione/log/11_final/_commit.txt`), avviata 00:12. Un processo di 11 ha picco 5.4 GB
+(VmHWM, al caricamento) e 4.7 GB a regime; RAM disponibile 17.4 GB -> 2 processi
+(restano >= 8 GB liberi), 4 + 6 thread (restano 2 core liberi; OMP/OPENBLAS/MKL/LOKY limitati).
+- `v1_lightgbm`: task2_v1, lightgbm, tag fin_v1_lightgbm (4 thread)
+- `all_but_lgbm` -> `lgbm_hier3_task1`: i 12 modelli restanti sui 3 task (tag fin_rest), poi
+  lightgbm su task2_hier3 e task1a_paired (tag fin_lgbm_rest) (6 thread)
+Poi: unione (`merge11.py` nello scratchpad) in `model_zoo_{sc,task1}.csv` nell'ordine di
+un'esecuzione unica, `11 --from-table` (stesso codice di 11) per riepilogo, confronti e figure,
+confronto con le tabelle precedenti (copie in `revisione/log/11_final/prev_*`).
+Regola della Fase 3: 11 non si riesegue se dal commit 52ace44 non cambiano il calcolo di 11,
+`scpipe.py` e `04_splits.py`; lo stesso per gli altri script lunghi di Fase 1.
+
+Ribilanciamento proposto dall'utente (elasticnet ~1.700 s, logreg_l1 ~700 s, LightGBM ~400 s):
+verificato nei log locali e NON confermato per il codice attuale, quindi suddivisione invariata.
+I tempi di 1.688 s e 710 s vengono da `logs/11_model_zoo.log` (10/07, 18:40): task2_hier3 con
+fold_group_5 e la versione precedente dei due modelli (LogisticRegression SAGA, vedi i
+FutureWarning di `_logistic.py` nel log). Dopo il passaggio a SGDClassifier (`logs/11_check.log`,
+10/07 23:09: 11 s ciascuno) i tempi LOPO sono: elasticnet 39 / 26 / 12 s, logreg_l1 38 / 25 / 12 s,
+LightGBM 1.450 / 400 / 72 s (task2_v1 / task2_hier3 / task1a_paired; `logs/11_model_zoo_lopo.log`,
+`logs/11_model_zoo_task1.log`). LightGBM su task2_v1 resta il processo piu' lungo.
+I tempi effettivi di questa esecuzione si annotano a fine corsa.
+
+Giro 1 del loop: revisore completo in corso.
+
+## Giro 1 (revisione completa, un revisore)
+
+Esito del revisore: 1 ALTA, 18 MEDIA, 29 BASSA; pytest veloce 98 passati, ruff pulito.
+Rapporto completo: `revisione/log/giro1_revisore.md`.
+- ALTA 1: d2 dei doppietti usava la n_counts osservata delle NK-TCR+ al denominatore del
+  rapporto atteso del doppietto (modello incoerente con d1): corretto con s + c (10, 09).
+- MEDIA 2-19: corrette (dettaglio delle modifiche in fondo al giro).
+- BASSA: corrette quelle economiche; le altre motivate in "Problemi respinti".
+Correzioni divise fra: fork TCR (06-10, 17, 18, 21, scpipe, test_stats, download_tcr.sh,
+01, 01b), fork CNV/sim/test (13-16, 19, sim/*, test_leakage, test_smoke) e me (04, 05, 11,
+12, 20, README, envs, pre-commit).
+- 11: filtro dei warning limitato al messaggio sui nomi di feature; ConvergenceWarning
+  registrati per fold (colonna `converged`, riepilogo `n_folds_not_converged`) per i modelli
+  iterativi; controllo di get_indexer; schema unico per task; nota sulla calibrazione di NB.
+  Il calcolo delle metriche non cambia: i 5 modelli iterativi sono rieseguiti (tag fin_conv)
+  per registrare la convergenza, gli altri restano quelli dell'esecuzione finale.
+- 04: crosstab con colonne fisse e task degeneri saltati con messaggio. Rieseguito con tag di
+  prova: `splits_sc.csv` e `task_summary_sc.csv` identici byte per byte (quindi 11 e gli
+  altri script che leggono gli split non vanno rieseguiti per questa modifica).
+- 12, 20: controllo di get_indexer; 20: parametro inutilizzato tolto, commento sui geni comuni
+  calcolato dai dati, avvertenza sul controllo non appaiato.
+
+Riesecuzioni del giro 1 (log in `revisione/log/giro1/`):
+- TCR: 06, 07 clone_ab, 07 clone_b, 08, 09, 10, 21, 17, 18, poi 15, 16, 19: tutti rc = 0.
+  Numeri cambiati: d2 0.790 [0.660; 0.876] -> 0.676 [0.559; 0.781] (ALTA 1); d2 con le medie
+  0.840 -> 0.693; d2 per compartimento Tumor 0.581 -> 0.419, PBMC 0.935 -> 0.851. d1 invariato.
+  18: p_full 0.0021 (10.000 permutazioni) -> 0.0009 (20.000, come 17); 10/10 invariato.
+  Tolte le colonne dei Mann-Whitney per cellula (sostituite da conteggi per paziente).
+- 13 senza cache (coordinate Ensembl 116 scaricate in `data/interim/gene_positions_ensembl116.csv`):
+  `cnv_scores.csv` identico byte per byte alla cache dell'11/07 (spostata in
+  `data/interim/cache_cnv_20260711/`); AUC 0.829 +- 0.069 e 37.1% invariati. Picco 10.8 GB.
+- 14 senza cache: fermato da Claude Code per memoria critica (in parallelo con 11), nessun file
+  scritto; l'utente ha chiesto di rilanciarlo da solo dopo la fine di 11.
+
+- 14 rilanciato da solo dopo la fine di 11 (rc = 0, picco 11.4 GB): `cnv_matrix.npz` identico
+  alla cache; `cnv_loci_auc.csv` cambia solo per la colonna `n_loci` (e `n_windows` del composito).
+- Simulazione (c) estesa su richiesta dell'utente: 1.000 repliche per livello, IC binomiale
+  esatto. FP del block test 5.0% [3.7; 6.5], 5.9% [4.5; 7.5], 4.8% [3.6; 6.3], 5.1% [3.8; 6.7]
+  (confondente 0; 0.5; 1; 2): nessun livello > 8%, quindi la statistica di 17/18 non cambia.
+  L'11/100 era rumore delle prime 100 repliche (stesso seme). Prima: 4/6/11/5 su 100 e 5.4% su
+  1.000 (c = 1, seme 399); ora c = 1 ha seme 302 come le 100 repliche.
+
+Esecuzione finale di 11 (codice: commit del giro 1; log in `revisione/log/11_final/`):
+- processi: `v1_lightgbm` (4 thread, 16:25), `all_but_lgbm` (6 thread, 46:59),
+  `lgbm_hier3_task1` (5:14), `conv_iterative` (5 modelli iterativi con la convergenza, 15:06),
+  `dense_rerun` (knn, svm_rbf, mlp con BLAS a 1 thread, 7:00), `mlp_check_2thr` (controllo).
+  Picchi 5.2-5.8 GB per processo. Tempi per task (somma dei modelli): task2_v1 ~39 min
+  (LightGBM 972 s), task2_hier3 ~18 min, task1a_paired ~8 min.
+- Verifica: con lo stesso codice, 4 contro 6 thread danno fold identici per tutti i modelli
+  tranne MLP (fino a 0.014 per fold): MLP dipendeva dal numero di thread BLAS. Correzione in 11:
+  BLAS a un thread per i modelli densi (threadpoolctl); dopo la correzione MLP con 6 e 2 thread
+  coincide (differenza 0). knn e svm_rbf cambiano di < 0.0004 per fold.
+- Confronto con le tabelle precedenti: task2_v1 e task2_hier3 identiche per tutti i modelli
+  salvo MLP hier3 0.9032 -> 0.9038 (README 0,903 -> 0,904); task1a_paired: differenze fino a
+  0.003 (elasticnet 0.7077 -> 0.7104, LightGBM 0.7224 -> 0.7205, RF 0.7161 -> 0.7146), presenti
+  anche nei modelli deterministici: la tabella precedente (3 agosto) veniva da un ambiente
+  diverso. dummy 0.229 / p 0.072 e range 0,496-0,725 invariati. 0,851 del README/presentazione
+  era un arrotondamento sbagliato di 0.85049 -> 0,850.
+- Convergenza: logreg_l1 ed elasticnet (SGD, max_iter 50) non convergono in nessun fold; logreg_l2,
+  svm_linear, mlp convergono in tutti. Scritto nel README.
+- Unione: `merge11.py` (scratchpad), poi `11 --from-table` per riepilogo, confronti e figure.
+- Regola della Fase 3: 11 non si riesegue se dal commit del giro 1 non cambiano il calcolo di 11,
+  `scpipe.py` e `04_splits.py`.
+- `envs/conda-lock.yml` rigenerato (requests e threadpoolctl fissati; percorso relativo).
 
 ## Problemi respinti
 
-(nessuno)
+- Giro 1, n. 13 (RISULTATI_FINALI.md assente): il file e' un prodotto della Fase 3; la bozza e'
+  ora generata da `revisione/genera_risultati.py` (solo dalle tabelle). B6 aggiunto al README;
+  la parte su 18 (B4) e' accettata e corretta.
+- Giro 1, n. 43 (unione dei CSV di 11 non e' un comando del README): l'esecuzione in processi
+  paralleli e' solo un'ottimizzazione di tempo; le tabelle unite si confrontano con quelle di
+  un'esecuzione unica (stessi semi, stessi fold) e il comando del README le riproduce.
+  Il "circa un'ora per task" e' sostituito dai tempi misurati.
+- Giro 1, n. 48 (cache inferCNV dell'11 luglio): accettato; 13 rieseguito senza cache nel giro 1.
+- Giro 1, n. 39 per 05 (`n_classes` non usato in `make_pipeline`): respinto. Il parametro non
+  cambia il calcolo; toglierlo cambierebbe il codice di 05 (17 minuti, 9.7 GB) e
+  obbligherebbe a rieseguirlo in Fase 3 senza alcun effetto sui numeri. Corretto in 20.

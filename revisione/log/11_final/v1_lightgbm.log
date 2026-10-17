@@ -1,0 +1,16 @@
+[..] carico h5ad ...
+
+==============================================================================
+task2_v1: 70,547 cellule | 9 classi | split: fold_lopo
+==============================================================================
+  lightgbm        macro-F1 = 0.9621 ± 0.0104   [   972s]
+
+[ok] scritto results/tables/model_zoo_fin_v1_lightgbm.csv
+
+--- task2_v1: confronto col migliore (lightgbm, 0.9621) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task2_v1.png

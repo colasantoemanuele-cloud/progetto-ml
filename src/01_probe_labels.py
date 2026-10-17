@@ -211,7 +211,7 @@ def check_tcr_overlap(sc: pd.DataFrame | None, tcr_path: Path) -> None:
     if len(inter) > 100:
         print("ESITO: barcode appaiati confermati per la validazione V(D)J.")
         print(
-            "  Nota metodologica: il recettore TCR costituisce un marcatore positivo (efficienza di cattura ~60-85%)."
+            "  Nota metodologica: il TCR e' un marcatore positivo ma non rilevato in tutte le cellule T."
         )
         print("  Permette di stimare la precisione delle annotazioni sulle cellule T.")
     elif len(inter) > 0:

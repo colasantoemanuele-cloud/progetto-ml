@@ -22,7 +22,9 @@ un gene = |coefficiente|. Training di ogni fold sottocampionato a 20.000 cellule
 La differenza controllo - LOPO e' una misura indicativa: la simulazione
 `src/sim/sim_d_xai_stability.py` (risultati in `results/tables/sim_d_xai_stability.csv`)
 riporta la differenza con e senza un effetto paziente costruito, su pochi pazienti e
-con una sola forma di effetto.
+con una sola forma di effetto. Il controllo non e' perfettamente appaiato: due
+sottoinsiemi casuali condividono in media piu' cellule di due training LOPO, quindi
+la differenza e' positiva anche senza effetto paziente (in simulazione circa +0,03).
 I geni comuni a tutti i fold includono geni di risposta immediata associati allo
 stress di dissociazione (FOS, CD69, BTG2, HSPH1, DUSP4, CREM nella versione
 pubblicata) e CTRB1, marcatore acinare (probabile RNA ambientale): non sono
@@ -87,9 +89,29 @@ TOP_K = 50  # Cardinalita' del sottoinsieme di geni principali per la metrica di
 N_CONTROL = (
     5  # Numero di repliche casuali per il controllo privo di struttura di gruppo
 )
+# Geni di risposta immediata (stress di dissociazione) e marcatori acinari, per il commento
+# sui geni comuni a tutti i fold
+IMMEDIATE_EARLY = {
+    "FOS",
+    "FOSB",
+    "JUN",
+    "JUNB",
+    "EGR1",
+    "CD69",
+    "BTG2",
+    "DUSP1",
+    "DUSP4",
+    "CREM",
+    "HSPH1",
+    "HSPA1A",
+    "HSPA1B",
+    "IER2",
+    "NR4A1",
+}
+ACINAR = {"CTRB1", "CTRB2", "PRSS1", "CPA1", "CELA3A", "PNLIP", "CLPS"}
 
 
-def fit_explanation(X, y, genes, rng):
+def fit_explanation(X, y, genes):
     """Addestra un classificatore di Regressione Logistica L1 sul fold fornito
     (previa normalizzazione LogCPM, filtro di espressione minima e scaling senza
     centratura densa) e restituisce il vettore completo dei coefficienti massimi
@@ -135,7 +157,7 @@ def lopo_explanations(X, y, folds, patients, genes, rng):
         held_out = pd.Series(patients[folds == f]).mode()[0]
         if len(tr) > MAX_TRAIN:
             tr = np.sort(rng.choice(tr, MAX_TRAIN, replace=False))
-        full, top = fit_explanation(X[tr], y[tr], genes, rng)
+        full, top = fit_explanation(X[tr], y[tr], genes)
         coefs[f], tops[f], labels[f] = full, top, held_out
         nz = int((full > 0).sum())
         print(
@@ -153,7 +175,7 @@ def control_explanations(X, y, n_train, genes, rng, n_control=N_CONTROL):
     ctrl_tops = []
     for i in range(n_control):
         sel = rng.choice(len(y), n_train, replace=False)
-        _, top = fit_explanation(X[sel], y[sel], genes, rng)
+        _, top = fit_explanation(X[sel], y[sel], genes)
         ctrl_tops.append(top)
         print(f"  replica {i + 1}/{n_control} completata")
     return ctrl_tops
@@ -183,6 +205,11 @@ def main() -> None:
     sp_df = pd.read_csv(args.splits)
     sub = sp_df[sp_df.task == args.task]
     idx = adata.obs_names.get_indexer(sub.cell_id.values)
+    if (idx < 0).any():
+        raise SystemExit(
+            f"[ERRORE] {args.task}: {int((idx < 0).sum())} cell_id dello split assenti "
+            "dall'h5ad (split e h5ad devono venire dalla stessa esecuzione di 02/04)"
+        )
     X, y = adata.X[idx], sub.y.values
     folds = sub[args.scheme].values
     patients = sub.patient.values
@@ -247,12 +274,18 @@ def main() -> None:
     ).to_csv(TAB / f"xai_common_genes_{args.task}.csv", index=False)
     if common:
         print(f"  -> {', '.join(sorted(map(str, sym)))}")
-        print(
-            "  (geni di risposta immediata come FOS, CD69, BTG2, DUSP4 sono associati"
-        )
-        print(
-            "  allo stress di dissociazione; CTRB1 e' acinare, probabile RNA ambientale)"
-        )
+        # geni di risposta immediata (stress di dissociazione) e acinari (RNA ambientale)
+        ieg = sorted(set(sym) & IMMEDIATE_EARLY)
+        acinar = sorted(set(sym) & ACINAR)
+        if ieg:
+            print(
+                f"  geni di risposta immediata, associati allo stress di dissociazione: "
+                f"{', '.join(ieg)}"
+            )
+        if acinar:
+            print(
+                f"  marcatori acinari (probabile RNA ambientale): {', '.join(acinar)}"
+            )
     print("\ngeni esclusivi di un solo fold (spiegazione paziente-specifica):")
     for f in fs:
         others = set.union(*[tops[g] for g in fs if g != f])
@@ -298,6 +331,10 @@ def main() -> None:
             "  procedura su dati simulati con e senza effetto paziente): la grandezza e'"
         )
         print("  indicativa, non una stima calibrata dell'effetto.")
+        print(
+            "  Il controllo condivide piu' cellule fra repliche di due training LOPO:"
+        )
+        print("  parte della differenza c'e' anche senza effetto paziente.")
     elif j_ctrl - j_mean > 0.02:
         print("  LETTURA: differenza nella direzione attesa ma di entita' contenuta.")
         print("  Compatibile sia con un effetto-paziente moderato sia con rumore di")

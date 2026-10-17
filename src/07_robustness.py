@@ -36,9 +36,12 @@ Output ({cc} = definizione di clone, clone_b o clone_ab)
   results/tables/pairwise_discordance_{cc}.csv      una riga per (clone, coppia di compartimenti)
   results/tables/excess_summary_{cc}.csv            D_across, D_within, eccesso e versione a pesi
                                                     uguali, con IC cluster e IC ingenuo
-  results/tables/excess_by_compartment_pair_{cc}.csv eccesso per coppia di compartimenti
+  results/tables/excess_by_compartment_pair_{cc}.csv eccesso per coppia di compartimenti; `significativo`
+                                                    (lo > 0) solo se `ic_calibrato` (> 5 pazienti), altrimenti NaN
   results/tables/discordant_clone_markers_{cc}.csv  marcatori nei cloni con eccesso > 0.5
-  results/tables/ambient_discriminant.csv           UMI TRB e appaiamento per classe (non dipende da {cc})
+  results/tables/ambient_discriminant.csv           UMI TRB e appaiamento per classe, pazienti con log(UMI)
+                                                    piu' alto di CD8T / del fondo Ductal+B (descrittivo,
+                                                    nessun test; non dipende da {cc})
   results/tables/chat_sensitivity_raw.csv, chat_sensitivity_hc.csv (non dipendono da {cc})
   results/figures/ambient_vs_real_tcr.png, results/figures/excess_by_pair_{cc}.png
 
@@ -67,15 +70,17 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import mannwhitneyu
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import SMALL_K  # noqa: E402
 from scpipe import cluster_bootstrap as _cluster_bootstrap  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
 SEED = 0
 N_BOOT = 2000
+# Cellule TCR+ minime per (paziente, classe) nei confronti descrittivi per paziente
+MIN_CELLS_PATIENT = 5
 
 TISSUE_MAP = {"Tumor": "Tumor", "Normal": "Adjacent_normal", "PBMC": "PBMC"}
 LYMPHOID = ["CD4T", "CD8T", "NK"]
@@ -108,6 +113,8 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
         frames.append(
             df[["patient", "tissue", "barcode16", "chain", "cdr3_nt", "umis"]]
         )
+    if not frames:
+        raise SystemExit(f"[ERRORE] nessun file VDJ riconosciuto in {tcrdir}")
     c = pd.concat(frames, ignore_index=True).dropna(subset=["barcode16"])
     # Selezione del contig dominante per (cellula, catena) in base al supporto UMI
     c = c.sort_values("umis", ascending=False).drop_duplicates(
@@ -249,26 +256,28 @@ def ambient_discriminant(gex: pd.DataFrame) -> pd.DataFrame:
         )
         .sort_values("n", ascending=False)
     )
-    ref_t = t[t.all_celltype == "CD8T"]
-    ref_amb = t[t.all_celltype.isin(["Ductal", "B"])]
-    for name, ref in (("vs_CD8T", ref_t), ("vs_ambient", ref_amb)):
-        ps = {}
-        for cls, g in t.groupby("all_celltype", observed=True):
-            if (
-                len(g) < 10
-                or cls in ref.all_celltype.values[:1]
-                and name == "vs_CD8T"
-                and cls == "CD8T"
-            ):
-                ps[cls] = np.nan
+    # Confronto descrittivo per paziente (la cellula non e' l'unita' indipendente): per
+    # ogni classe, pazienti con >= MIN_CELLS_PATIENT cellule TCR+ nella classe e nel
+    # riferimento, e quanti di loro hanno log(UMI) medio piu' alto del riferimento.
+    pm = t.groupby(["patients", "all_celltype"], observed=True).log_umi.agg(
+        ["mean", "size"]
+    )
+    pm = pm[pm["size"] >= MIN_CELLS_PATIENT]["mean"].unstack()
+    refs = {"vs_CD8T": ["CD8T"], "vs_ambient": ["Ductal", "B"]}
+    for name, ref_cls in refs.items():
+        rm = t[t.all_celltype.isin(ref_cls)].groupby("patients", observed=True).log_umi
+        rm = rm.agg(["mean", "size"])
+        rm = rm[rm["size"] >= MIN_CELLS_PATIENT]["mean"]
+        n_eval, n_higher = {}, {}
+        for cls in out.index:
+            if cls in ref_cls or cls not in pm.columns:
+                n_eval[cls], n_higher[cls] = np.nan, np.nan
                 continue
-            try:
-                ps[cls] = mannwhitneyu(
-                    g.log_umi, ref.log_umi, alternative="two-sided"
-                ).pvalue
-            except ValueError:
-                ps[cls] = np.nan
-        out[f"p_umi_{name}"] = pd.Series(ps)
+            both = pd.concat([pm[cls], rm], axis=1, keys=["cls", "ref"]).dropna()
+            n_eval[cls] = len(both)
+            n_higher[cls] = int((both.cls > both.ref).sum())
+        out[f"n_patients_eval_{name}"] = pd.Series(n_eval)
+        out[f"n_patients_higher_{name}"] = pd.Series(n_higher)
     return out
 
 
@@ -387,6 +396,7 @@ def main() -> None:
         "Attesa: T reale -> molti UMI, catene appaiate. Ambient -> pochi UMI, 1 catena.\n"
     )
     amb = ambient_discriminant(gex)
+    print("(colonne n_patients_*: confronto descrittivo per paziente, nessun test)")
     print(amb.round(4).to_string())
     amb.to_csv(TAB / "ambient_discriminant.csv")
 
@@ -401,10 +411,10 @@ def main() -> None:
     cmp["ratio"] = (cmp.high_conf / cmp.raw.replace(0, np.nan)).round(3)
     print(cmp.round(4).to_string())
     print(
-        "\nUna classe il cui tasso si abbatte passando ad alta confidenza indica segnale ambientale."
+        "\nUna classe il cui tasso si abbatte ad alta confidenza e' compatibile con segnale ambientale;"
     )
     print(
-        "Una classe il cui tasso persiste ad alta confidenza contiene linfociti T completi."
+        "un tasso che persiste ad alta confidenza e' compatibile con TCR di cellule T reali."
     )
 
     # Analisi di sensibilita' dello stimatore c_hat al variare della classe di riferimento q
@@ -496,7 +506,11 @@ def main() -> None:
                 "excess": mm,
                 "lo": l,
                 "hi": h,
-                "significativo": l > 0,
+                # con <= SMALL_K pazienti l'IC non e' calibrato: niente verdetto
+                "ic_calibrato": g.patient.nunique() > SMALL_K,
+                "significativo": bool(l > 0)
+                if g.patient.nunique() > SMALL_K
+                else np.nan,
             }
         )
     per_pair = pd.DataFrame(rows)
@@ -594,7 +608,7 @@ def main() -> None:
             f"ESITO STATISTICO: eccesso {m:+.4f}, IC95% [{lo_c:+.4f}, {hi_c:+.4f}] con cluster bootstrap."
         )
         print(
-            "  L'eccesso di discordanza permane statisticamente significativo a livello di paziente."
+            "  Con il paziente come unita' di ricampionamento l'IC al 95% esclude lo zero."
         )
     else:
         print(f"ESITO STATISTICO: IC95% [{lo_c:+.4f}, {hi_c:+.4f}] include lo zero.")

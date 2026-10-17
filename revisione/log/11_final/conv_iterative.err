@@ -1,0 +1,23 @@
+	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv --tasks task2_v1 task2_hier3 task1a_paired --scheme fold_lopo --tag fin_conv --models logreg_l2 logreg_l1 elasticnet svm_linear mlp"
+	User time (seconds): 1391.10
+	System time (seconds): 24.00
+	Percent of CPU this job got: 156%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 15:06.43
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 5466224
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1977369
+	Voluntary context switches: 12814
+	Involuntary context switches: 19517
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 240
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

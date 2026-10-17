@@ -1,0 +1,2 @@
+task,scheme,model,macro_f1_mean,macro_f1_std,balanced_accuracy_mean,mcc_mean,n_folds,n_train_mean,n_folds_not_converged,delta_vs_logreg_l2
+task1a_paired,fold_lopo,mlp,0.7208647208505052,0.09954455773418702,0.7292271651042671,0.4651578938861748,5,20000.0,0,

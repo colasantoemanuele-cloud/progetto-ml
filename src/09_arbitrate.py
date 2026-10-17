@@ -16,9 +16,12 @@ Scopo
    Etichetta di maggioranza: moda, pareggi risolti dalla prima comparsa
    (`scpipe.majority_label`).
 
-2. Misure fisiche dei doppietti (sezione B), che non usano il clustering: UMI totali per
-   goccia (`n_counts`; in un doppietto T+NK attesi circa n_counts(NK TCR-) + n_counts(CD8T))
-   e UMI del TCR per 1000 UMI totali (diluiti dall'mRNA della seconda cellula).
+2. Misure fisiche dei doppietti (sezione B): UMI totali per goccia (`n_counts`; in un
+   doppietto T+NK attesi circa n_counts(NK TCR-) + n_counts(CD8T)) e UMI del TCR per
+   1000 UMI totali (diluiti dall'mRNA della seconda cellula). Le misure sono fisiche,
+   ma i gruppi confrontati (NK TCR-/TCR+, CD8T TCR+, ...) vengono dalle classi
+   dell'annotazione. Mediane descrittive, senza test; la stima della frazione di
+   doppietti con IC sui pazienti e' in 10_loco.py.
 
 Input
 -----
@@ -57,7 +60,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scpipe import cluster_bootstrap, majority_label  # noqa: E402
+from scpipe import SMALL_K, cluster_bootstrap, majority_label  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -96,6 +99,8 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
         frames.append(
             df[["patient", "tissue", "barcode16", "chain", "cdr3_nt", "umis"]]
         )
+    if not frames:
+        raise SystemExit(f"[ERRORE] nessun file VDJ riconosciuto in {tcrdir}")
     c = pd.concat(frames, ignore_index=True).dropna(subset=["barcode16"])
     c = c.sort_values("umis", ascending=False).drop_duplicates(
         ["patient", "tissue", "barcode16", "chain"]
@@ -216,8 +221,14 @@ def partA(lym: pd.DataFrame) -> None:
             f"  {tis:16s} errore = {m:.3f}  IC95% [{lo:.3f}, {hi:.3f}]  "
             f"(n={len(g)}, {g.patient.nunique()} pazienti)"
         )
-    res = pd.DataFrame(rows)
+    res = pd.DataFrame(
+        rows,
+        columns=["tissue", "n_clone_comp", "n_patients", "error_rate", "lo", "hi"],
+    )
     res.to_csv(TAB / "error_rate_by_compartment.csv", index=False)
+    if res.empty:
+        print("nessun compartimento con almeno 3 pazienti: niente figura.")
+        return
 
     print("\ndifferenza appaiata Tumor - PBMC, sugli STESSI cloni:")
     piv = j.pivot_table(
@@ -228,8 +239,14 @@ def partA(lym: pd.DataFrame) -> None:
         d["diff"] = d.Tumor - d.PBMC
         by = {p: g["diff"].values for p, g in d.groupby("patient")}
         m, lo, hi = cluster_boot(by)
-        v = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
-        print(f"  {m:+.3f}  IC95% [{lo:+.3f}, {hi:+.3f}]  {v}   (n={len(d)} cloni)")
+        k = d.patient.nunique()
+        if k <= SMALL_K:
+            v = f"IC non calibrato ({k} pazienti)"
+        else:
+            v = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
+        print(
+            f"  {m:+.3f}  IC95% [{lo:+.3f}, {hi:+.3f}]  {v}   (n={len(d)} cloni, {k} pz)"
+        )
 
     print("\ndirezione dell'errore (etichetta autori -> identita' clonale):")
     print(
@@ -261,7 +278,7 @@ def partB(gex: pd.DataFrame) -> None:
     """Verifica se le cellule non-T con TCR presentano massa UMI e diluizione da doppietto fisico."""
     print("\n" + "=" * 78)
     print(
-        "(B) DOPPIETTO FISICO o CELLULA DI CONFINE?  (misure fisiche non trascrittomiche)"
+        "(B) DOPPIETTO FISICO o CELLULA DI CONFINE?  (misure fisiche per classe annotata)"
     )
     print("=" * 78)
     g = gex.copy()
@@ -295,9 +312,22 @@ def partB(gex: pd.DataFrame) -> None:
                     "median_tcr_per_1k": sub.ratio.median() if st == "TCR+" else np.nan,
                 }
             )
-    out = pd.DataFrame(rows)
-    print(out.round(2).to_string(index=False))
+    out = pd.DataFrame(
+        rows,
+        columns=[
+            "class",
+            "tcr",
+            "n",
+            "median_n_counts",
+            "median_n_genes",
+            "median_tcr_per_1k",
+        ],
+    )
     out.to_csv(TAB / "doublet_physical.csv", index=False)
+    if out.empty:
+        print("nessuna classe con almeno 20 cellule: niente misure dei doppietti.")
+        return
+    print(out.round(2).to_string(index=False))
 
     def med(cls, tcr):
         s = out[(out["class"] == cls) & (out.tcr == tcr)]
@@ -323,11 +353,12 @@ def partB(gex: pd.DataFrame) -> None:
             f"\n  UMI TCR per 1000 conte:  CD8T = {float(r_cd8.iloc[0]):.2f}   "
             f"NK-TCR+ = {float(r_nk.iloc[0]):.2f}"
         )
+        # doppietto NK + CD8T: gli UMI TCR della CD8T diluiti su n_counts(NK TCR-) + n_counts(CD8T)
         print(
-            f"  atteso per doppietto: {float(r_cd8.iloc[0]) * cd8 / max(nk_pos, 1):.2f}"
+            f"  atteso per doppietto: {float(r_cd8.iloc[0]) * cd8 / max(nk_neg + cd8, 1):.2f}"
         )
         print(
-            "  Un rapporto osservato nelle NK ridotto rispetto alle CD8T indica diluizione"
+            "  Un rapporto nelle NK piu' basso che nelle CD8T e' compatibile con la diluizione"
         )
         print(
             "  del trascritto TCR da parte dell'mRNA di una seconda cellula co-incapsulata."
@@ -409,8 +440,16 @@ def main() -> None:
     gex["has_tcr"] = gex.clone_b.notna()
     print(f"[ok] {len(gex):,} cellule | TCR: {gex.has_tcr.sum():,}")
 
+    missing = [g for g in ("CD4", "CD8A", "CD8B") if f"g_{g}" not in obs]
+    if missing:
+        raise SystemExit(f"[ERRORE] marcatori assenti dall'h5ad: {missing}")
     lym = gex[gex.has_tcr & gex.all_celltype.isin(["CD4T", "CD8T", "NK"])].copy()
-    partA(lym)
+    if lym.empty:
+        print(
+            "[!!] nessuna cellula CD4T/CD8T/NK con TCR: salto l'arbitrato (sezione A)."
+        )
+    else:
+        partA(lym)
     partB(gex)
 
 

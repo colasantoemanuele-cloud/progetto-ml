@@ -260,6 +260,11 @@ def main() -> None:
     if sub.empty:
         raise SystemExit(f"[ERRORE] task {args.task} assente da {args.splits}")
     idx = adata.obs_names.get_indexer(sub.cell_id.values)
+    if (idx < 0).any():
+        raise SystemExit(
+            f"[ERRORE] {args.task}: {int((idx < 0).sum())} cell_id dello split assenti "
+            "dall'h5ad (split e h5ad devono venire dalla stessa esecuzione di 02/04)"
+        )
     X, y = adata.X[idx], sub.y.values
     folds = sub[args.scheme].values
     classes = np.array(sorted(np.unique(y)))

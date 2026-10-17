@@ -17,8 +17,7 @@ PY_SCRIPTS = sorted(p for p in SRC.glob("*.py")) + sorted((SRC / "sim").glob("*.
 
 @pytest.mark.parametrize("path", PY_SCRIPTS, ids=lambda p: p.name)
 def test_import(path):
-    name = path.stem if path.parent == SRC else path.stem
-    load_script(name)
+    load_script(path.stem)
 
 
 @pytest.mark.parametrize(

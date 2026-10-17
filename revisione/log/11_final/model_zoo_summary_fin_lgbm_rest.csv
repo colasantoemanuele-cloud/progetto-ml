@@ -1,0 +1,3 @@
+task,scheme,model,macro_f1_mean,macro_f1_std,balanced_accuracy_mean,mcc_mean,n_folds,n_train_mean,n_folds_not_converged,delta_vs_logreg_l2
+task1a_paired,fold_lopo,lightgbm,0.7204768606510615,0.12741157940437875,0.7303108350481464,0.46419844041485536,5,20000.0,,
+task2_hier3,fold_lopo,lightgbm,0.9226139323716767,0.027833866945660667,0.9293734225492185,0.8864591402178565,13,20000.0,,

@@ -4,8 +4,10 @@ scpipe.py: trasformatori Scikit-learn senza leakage e funzioni statistiche condi
 
 Scopo
 -----
-Modulo infrastrutturale importato dagli script della pipeline (05, 07-13, 16-20 e
-`src/sim/`). Non e' uno script eseguibile e non scrive file.
+Modulo infrastrutturale importato dagli script della pipeline (05-13, 16-20) e da
+`src/sim/sim_a_calibration.py` e `src/sim/sim_c_block_permutation.py`
+(`sim_b` e `sim_d` lo usano attraverso 10 e 20). Non e' uno script eseguibile e non
+scrive file.
 
 Contenuto
 ---------
@@ -21,12 +23,23 @@ Metriche e test per il confronto di modelli:
   - `nadeau_bengio_ttest`  : t appaiato corretto di Nadeau & Bengio (2003).
   - `jaccard`, `mean_pairwise_jaccard`.
 
-Stimatori con il paziente come unita' (validati in `tests/test_stats.py`):
+Stimatori con il paziente come unita' (calibrazione in `tests/test_stats.py`):
   - `cluster_bootstrap`      : IC 95% della media pooled ricampionando i pazienti,
-                               con intervallo "expanded percentile".
+                               con intervallo "expanded percentile". La copertura e'
+                               verificata solo per la media pooled con 10-11 pazienti
+                               (banda [0.90, 0.99]); non e' verificata per altre
+                               statistiche ricampionate con lo stesso intervallo
+                               (Spearman in 16, 17, 19; d1/d2 in 10) ne' con 4-5
+                               pazienti, dove in simulazione resta sotto il 95%
+                               (`src/sim/sim_a_calibration.py`).
+  - `small_k_diagnostics`    : con <= `SMALL_K` pazienti, ricampionature distinte e
+                               frazione di repliche > 0 (descrittive, non un test).
   - `block_permutation_test` : correlazione di Spearman pooled, permutando l'esito
                                solo entro paziente; p grezzo e p sulla statistica centrata.
-  - `permutation_corr_test`  : Spearman con permutazione Monte Carlo (unita' = righe).
+
+Test con unita' = righe (una riga per osservazione, es. un paziente in H1-H4):
+  - `permutation_corr_test`  : Spearman con permutazione Monte Carlo; frazione di
+                               p < 0.05 sotto H0 verificata in `tests/test_stats.py`.
   - `holm_bonferroni`        : correzione step-down di Holm.
 
 Uso
@@ -224,6 +237,30 @@ def cluster_bootstrap(by_pat: dict, n_boot: int = 2000, seed: int = 0) -> tuple:
     lo, hi = percentile_ci(stats, len(by_pat))
     allv = np.concatenate(list(by_pat.values()))
     return float(allv.mean()), lo, hi
+
+
+# Con un numero di pazienti <= SMALL_K l'IC del cluster bootstrap non e' calibrato
+SMALL_K = 5
+
+
+def small_k_diagnostics(by_pat: dict, n_boot: int = 2000, seed: int = 0) -> dict:
+    """Diagnostica descrittiva del cluster bootstrap con pochi pazienti.
+
+    Restituisce il numero di ricampionature distinte (come multiinsiemi di pazienti:
+    con k pazienti sono al massimo C(2k-1, k), 35 con k = 4) e la frazione di
+    repliche con media > 0. Usa lo stesso seme e la stessa sequenza di estrazioni di
+    `cluster_bootstrap` con gli stessi `n_boot` e `seed`. La frazione > 0 ha senso
+    solo per differenze con segno, non per tassi (sempre >= 0).
+    """
+    by_pat = {p: np.asarray(v, dtype=float) for p, v in by_pat.items() if len(v)}
+    if len(by_pat) < 2:
+        return {"n_distinct_resamples": np.nan, "frac_boot_gt0": np.nan}
+    stats, draws = cluster_bootstrap_replicates(by_pat, n_boot, seed)
+    distinct = {tuple(sorted(d)) for d in draws}
+    return {
+        "n_distinct_resamples": len(distinct),
+        "frac_boot_gt0": float(np.mean(stats > 0)),
+    }
 
 
 def _corr_rows(rx: np.ndarray, ry_perm: np.ndarray) -> np.ndarray:

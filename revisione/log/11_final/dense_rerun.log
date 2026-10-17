@@ -1,0 +1,54 @@
+[..] carico h5ad ...
+
+==============================================================================
+task2_v1: 70,547 cellule | 9 classi | split: fold_lopo
+==============================================================================
+  knn             macro-F1 = 0.9308 ± 0.0267   [    29s]
+  svm_rbf         macro-F1 = 0.9567 ± 0.0156   [    99s]
+  mlp             macro-F1 = 0.9585 ± 0.0139   [    40s]
+
+==============================================================================
+task2_hier3: 42,168 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  knn             macro-F1 = 0.8564 ± 0.0426   [    19s]
+  svm_rbf         macro-F1 = 0.9064 ± 0.0353   [    91s]
+  mlp             macro-F1 = 0.9038 ± 0.0316   [    33s]
+
+==============================================================================
+task1a_paired: 67,662 cellule | 2 classi | split: fold_lopo
+==============================================================================
+  knn             macro-F1 = 0.7103 ± 0.0859   [    10s]
+  svm_rbf         macro-F1 = 0.7249 ± 0.1013   [    73s]
+  mlp             macro-F1 = 0.7209 ± 0.0995   [    16s]
+
+[ok] scritto results/tables/model_zoo_fin_dense.csv
+
+--- task2_v1: confronto col migliore (mlp, 0.9585) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  svm_rbf         0.9567  Δ=-0.0018  p_NB=0.755  p_W=0.497
+  knn             0.9308  Δ=-0.0277  p_NB=0.030  p_W=0.000
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task2_hier3: confronto col migliore (svm_rbf, 0.9064) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  mlp             0.9038  Δ=-0.0027  p_NB=0.543  p_W=0.216
+  knn             0.8564  Δ=-0.0500  p_NB=0.005  p_W=0.000
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task1a_paired: confronto col migliore (svm_rbf, 0.7249) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  mlp             0.7209  Δ=-0.0041  p_NB=0.577  p_W=0.312
+  knn             0.7103  Δ=-0.0146  p_NB=0.863  p_W=1.000
+
+NOTA: con 5 fold i gradi di liberta' sono 4 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task2_v1.png
+[ok] figura: results/figures/model_zoo_task2_hier3.png
+[ok] figura: results/figures/model_zoo_task1a_paired.png

@@ -1,0 +1,136 @@
+[ok] TCR: 125,970 cellule | appaiate TRA+TRB: 82.3%
+[ok] GEX: 199,184 | TCR: 105,809 | TCR alta confidenza: 87,993
+
+==============================================================================
+(C) VERA CELLULA T MAL ETICHETTATA  vs  CONTAMINAZIONE AMBIENTALE
+==============================================================================
+Attesa: T reale -> molti UMI, catene appaiate. Ambient -> pochi UMI, 1 catena.
+
+(colonne n_patients_*: confronto descrittivo per paziente, nessun test)
+                  n frac_paired  median_umi_TRB  mean_log_umi  n_patients_eval_vs_CD8T  n_patients_higher_vs_CD8T  n_patients_eval_vs_ambient  n_patients_higher_vs_ambient
+all_celltype                                                                                                                                                               
+CD4T          53044    0.865074            11.0        1.0587                     14.0                       12.0                        10.0                          10.0
+CD8T          50247    0.853265            10.0        1.0221                      NaN                        NaN                        10.0                          10.0
+NK             1673    0.859534            12.0        1.0834                     14.0                       12.0                        10.0                          10.0
+Platelet        219    0.917808            10.0        1.0412                     10.0                        5.0                         8.0                           7.0
+Stellate        153    0.797386             8.0        0.9530                      9.0                        1.0                         7.0                           6.0
+Myeloid         137    0.729927             7.0        0.9267                     10.0                        2.0                         9.0                           8.0
+Endothelial     136    0.867647            10.0        1.0204                      9.0                        5.0                         8.0                           7.0
+B                84    0.309524             5.5        0.8556                      7.0                        1.0                         NaN                           NaN
+Ductal           39    0.564103             6.0        0.8542                      4.0                        0.0                         NaN                           NaN
+CAF              31    0.870968             9.0        1.0543                      2.0                        0.0                         2.0                           2.0
+Acinar           24    0.791667             9.0        0.9687                      2.0                        1.0                         1.0                           1.0
+Plasma           15    0.666667            10.0        1.0747                      NaN                        NaN                         NaN                           NaN
+Endocrine         7    0.714286             9.0        1.0241                      NaN                        NaN                         NaN                           NaN
+
+>>> tasso di TCR per etichetta: grezzo vs alta confidenza
+                 raw  high_conf      n  ratio
+all_celltype                                 
+CD4T          0.9346     0.7842  56757  0.839
+CD8T          0.8525     0.7035  58939  0.825
+Platelet      0.1380     0.1222   1587  0.886
+Endocrine     0.1167     0.0833     60  0.714
+Acinar        0.0800     0.0633    300  0.792
+NK            0.0593     0.0497  28199  0.837
+Endothelial   0.0562     0.0467   2421  0.831
+Stellate      0.0548     0.0416   2791  0.758
+Myeloid       0.0151     0.0101   9102  0.672
+Plasma        0.0141     0.0094   1064  0.667
+CAF           0.0117     0.0102   2656  0.871
+Ductal        0.0045     0.0020   8713  0.436
+B             0.0032     0.0009  26360  0.298
+Schwann       0.0000     0.0000    235    NaN
+
+Una classe il cui tasso si abbatte ad alta confidenza e' compatibile con segnale ambientale;
+un tasso che persiste ad alta confidenza e' compatibile con TCR di cellule T reali.
+
+==============================================================================
+c_hat DELLA CONTAMINAZIONE NK - sensibilita' alla scelta di q
+==============================================================================
+
+TCR grezzo:
+     q_from  n_patients  c_hat_median  c_hat_q25  c_hat_q75
+          B          14        0.0730     0.0320     0.1157
+     Ductal          12        0.0767     0.0577     0.1250
+    Myeloid          14        0.0586     0.0252     0.1109
+        CAF          13        0.0801     0.0307     0.1250
+   Stellate          13        0.0528     0.0000     0.1089
+Endothelial          13        0.0180     0.0000     0.0539
+     Plasma           9        0.0601     0.0236     0.0801
+
+TCR ALTA CONFIDENZA:
+     q_from  n_patients  c_hat_median  c_hat_q25  c_hat_q75
+          B          14        0.0782     0.0328     0.1162
+     Ductal          12        0.0835     0.0539     0.1314
+    Myeloid          14        0.0606     0.0264     0.1109
+        CAF          13        0.0902     0.0323     0.1217
+   Stellate          13        0.0476     0.0000     0.1069
+Endothelial          13        0.0231     0.0000     0.0675
+     Plasma           9        0.0487     0.0265     0.0902
+
+La dipendenza di c_hat dalla classe di riferimento q documenta la sensibilita' al rumore di fondo.
+Si riporta pertanto l'intero intervallo inter-riferimento.
+
+==============================================================================
+(A) ECCESSO DI DISCORDANZA - stimatore a coppie, non distorto (clone_ab)
+==============================================================================
+coppie clone x compartimento: 908 | pazienti: 11
+D_across  medio : 0.1678
+D_within  medio : 0.1026   (basale appaiato, stesso clone)
+ECCESSO   medio : +0.0653
+
+==============================================================================
+(B) INTERVALLO DI CONFIDENZA - l'unita' indipendente e' il PAZIENTE
+==============================================================================
+bootstrap ingenuo (sui cloni)   : +0.0653  IC95% [+0.0523, +0.0785]
+cluster bootstrap (sui pazienti): +0.0653  IC95% [+0.0345, +0.1214]
+l'IC si allarga di 3.3x
+sensibilita', pesi uguali 1/2||pA-pB||^2: +0.0780  IC95% [+0.0509, +0.1261]
+
+per coppia di compartimenti (cluster bootstrap):
+         comp_a comp_b  n_pairs  n_patients  excess      lo     hi  ic_calibrato significativo
+Adjacent_normal   PBMC      163           4  0.0378 -0.0151 0.0629         False           NaN
+Adjacent_normal  Tumor      340           5  0.0194 -0.0014 0.0651         False           NaN
+           PBMC  Tumor      405          10  0.1148  0.0722 0.1550          True          True
+
+per paziente (eccesso medio):
+           mean  size
+patient              
+PA04     0.0367    44
+PA05     0.1230    21
+PA06     0.0745   143
+PA07     0.1972    65
+PA08     0.0288   241
+PA09     0.0339    92
+PA10    -0.0034   104
+PA11     0.0847    46
+PA12     0.1131    96
+PA13     0.1366    47
+PA14     0.0796     9
+
+==============================================================================
+(D) TRANSIZIONE CD4T -> CD8T: verifica sui marcatori canonici
+==============================================================================
+cloni fortemente discordanti: 40 | cellule: 2,184
+
+                              g_CD4  g_CD8A  g_CD8B  g_CD3D     g_NKG7     g_GNLY
+tissue          all_celltype                                                     
+Adjacent_normal CD4T          1.697   0.000   0.000  10.142   4.934000   1.737000
+                CD8T          0.139  13.229   4.088   8.293  31.336000   2.575000
+                NK            0.000  13.080   6.938   6.767  44.983002  21.010000
+PBMC            CD4T          2.140   0.140   0.013  11.205  55.270000  32.403999
+                CD8T          0.114  13.199   7.834  14.013  87.166000  29.363001
+                NK            1.197   2.538   1.071   7.014  89.036003  80.147003
+Tumor           CD4T          2.845   0.118   0.000  10.389  30.525000  21.263000
+                CD8T          1.446   0.818   0.295   6.695  25.969000  22.426001
+                NK            0.666   5.545   3.208  11.111  61.626999  20.674999
+
+CD8A medio (CP10k): CD4T 0.14 vs CD8T 10.66 (rapporto 0.01)
+  Le CD4T di questi cloni esprimono poco CD8A: l'etichetta CD4T e'
+  coerente con i marcatori; la discordanza va cercata nelle cellule
+  etichettate CD8T o NK (vedi 08_disambiguate.py).
+
+==============================================================================
+ESITO STATISTICO: eccesso +0.0653, IC95% [+0.0345, +0.1214] con cluster bootstrap.
+  Con il paziente come unita' di ricampionamento l'IC al 95% esclude lo zero.
+==============================================================================

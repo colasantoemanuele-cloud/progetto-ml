@@ -1,0 +1,12 @@
+[00:12:38] START v1_lightgbm
+[00:14:13] START all_but_lgbm
+[00:29:03] END v1_lightgbm rc=0 peakKB=5563712 wall=16:24.84
+[00:30:44] START conv_iterative
+[00:45:51] END conv_iterative rc=0 peakKB=5466224 wall=15:06.43
+[01:01:12] END all_but_lgbm rc=0 peakKB=5801216 wall=46:59.05
+[01:01:12] START lgbm_hier3_task1
+[01:06:26] END lgbm_hier3_task1 rc=0 peakKB=5301636 wall=5:14.10
+[01:24:16] START dense_rerun
+[01:24:36] START mlp_check_2thr
+[01:25:11] END mlp_check_2thr rc=0 peakKB=5184584 wall=0:35.08
+[01:31:16] END dense_rerun rc=0 peakKB=5495292 wall=6:59.72

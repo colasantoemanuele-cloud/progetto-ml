@@ -105,13 +105,15 @@ def build_tasks(obs: pd.DataFrame) -> tuple[dict[str, pd.DataFrame], list[str]]:
     tumor = o[o.tissue == "Tumor"]
 
     # Identificazione dei pazienti con campionamento appaiato (Tumor e Adjacent_normal)
-    tis = pd.crosstab(o.patients, o.tissue)
-    paired = sorted(
-        tis.index[(tis.get("Tumor", 0) > 0) & (tis.get("Adjacent_normal", 0) > 0)]
+    # colonne fisse: un tessuto assente vale 0 per tutti i pazienti (invece di un KeyError)
+    tis = pd.crosstab(o.patients, o.tissue).reindex(
+        columns=sorted(set(o.tissue.astype(str)) | {"Tumor", "Adjacent_normal"}),
+        fill_value=0,
     )
+    paired = sorted(tis.index[(tis["Tumor"] > 0) & (tis["Adjacent_normal"] > 0)])
     print(
-        f"[i] pazienti con Tumor: {int((tis.get('Tumor', 0) > 0).sum())} | "
-        f"con Adjacent_normal: {int((tis.get('Adjacent_normal', 0) > 0).sum())} | "
+        f"[i] pazienti con Tumor: {int((tis['Tumor'] > 0).sum())} | "
+        f"con Adjacent_normal: {int((tis['Adjacent_normal'] > 0).sum())} | "
         f"con entrambi: {len(paired)} -> {paired}"
     )
 
@@ -276,6 +278,13 @@ def main() -> None:
     # Assegnazione dei fold e audit di integrita' per ciascun task
     all_ok, frames, rows = True, [], []
     for name, df in tasks.items():
+        # servono almeno 2 pazienti e 2 classi per uno split per paziente
+        if df.patient.nunique() < 2 or df.y.nunique() < 2:
+            print(
+                f"[!!] {name}: {df.patient.nunique()} pazienti, {df.y.nunique()} classi: "
+                "task saltato (servono almeno 2 pazienti e 2 classi)"
+            )
+            continue
         df = assign_folds(df)
         all_ok &= audit(name, df)
         df.insert(0, "task", name)
@@ -290,6 +299,8 @@ def main() -> None:
             }
         )
 
+    if not frames:
+        raise SystemExit("[ERRORE] nessun task valutabile: nessuno split scritto.")
     out = OUT / f"splits_{args.tag}.csv"
     pd.concat(frames).to_csv(out, index=False)
     print(f"\n[ok] scritto {out}")

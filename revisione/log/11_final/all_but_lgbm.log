@@ -1,0 +1,108 @@
+[..] carico h5ad ...
+
+==============================================================================
+task2_v1: 70,547 cellule | 9 classi | split: fold_lopo
+==============================================================================
+  dummy           macro-F1 = 0.0985 ± 0.0078   [    35s]
+  naive_bayes     macro-F1 = 0.9535 ± 0.0138   [    34s]
+  knn             macro-F1 = 0.9308 ± 0.0267   [    45s]
+  logreg_l2       macro-F1 = 0.9433 ± 0.0161   [    69s]
+  logreg_l1       macro-F1 = 0.9427 ± 0.0188   [    63s]
+  elasticnet      macro-F1 = 0.9391 ± 0.0168   [    70s]
+  decision_tree   macro-F1 = 0.8654 ± 0.0332   [    76s]
+  bagging         macro-F1 = 0.9187 ± 0.0227   [   430s]
+  random_forest   macro-F1 = 0.9555 ± 0.0119   [   191s]
+  svm_linear      macro-F1 = 0.9361 ± 0.0136   [   305s]
+  svm_rbf         macro-F1 = 0.9567 ± 0.0155   [   120s]
+  mlp             macro-F1 = 0.9585 ± 0.0140   [    48s]
+
+==============================================================================
+task2_hier3: 42,168 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  dummy           macro-F1 = 0.3295 ± 0.0109   [    17s]
+  naive_bayes     macro-F1 = 0.8817 ± 0.0524   [    17s]
+  knn             macro-F1 = 0.8564 ± 0.0426   [    23s]
+  logreg_l2       macro-F1 = 0.8505 ± 0.0449   [    37s]
+  logreg_l1       macro-F1 = 0.8774 ± 0.0379   [    29s]
+  elasticnet      macro-F1 = 0.8621 ± 0.0474   [    30s]
+  decision_tree   macro-F1 = 0.8535 ± 0.0436   [    41s]
+  bagging         macro-F1 = 0.8808 ± 0.0426   [   226s]
+  random_forest   macro-F1 = 0.9012 ± 0.0333   [   140s]
+  svm_linear      macro-F1 = 0.8655 ± 0.0412   [   133s]
+  svm_rbf         macro-F1 = 0.9064 ± 0.0353   [   105s]
+  mlp             macro-F1 = 0.9034 ± 0.0324   [    36s]
+
+==============================================================================
+task1a_paired: 67,662 cellule | 2 classi | split: fold_lopo
+==============================================================================
+  dummy           macro-F1 = 0.4962 ± 0.0021   [     8s]
+  naive_bayes     macro-F1 = 0.6453 ± 0.1155   [     8s]
+  knn             macro-F1 = 0.7104 ± 0.0858   [    11s]
+  logreg_l2       macro-F1 = 0.7222 ± 0.0818   [    14s]
+  logreg_l1       macro-F1 = 0.7119 ± 0.0755   [    16s]
+  elasticnet      macro-F1 = 0.7104 ± 0.0816   [    16s]
+  decision_tree   macro-F1 = 0.6659 ± 0.0979   [    25s]
+  bagging         macro-F1 = 0.6814 ± 0.1189   [   107s]
+  random_forest   macro-F1 = 0.7146 ± 0.1067   [    80s]
+  svm_linear      macro-F1 = 0.7209 ± 0.0846   [    68s]
+  svm_rbf         macro-F1 = 0.7249 ± 0.1013   [   101s]
+  mlp             macro-F1 = 0.7204 ± 0.1003   [    22s]
+
+[ok] scritto results/tables/model_zoo_fin_rest.csv
+
+--- task2_v1: confronto col migliore (mlp, 0.9585) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  svm_rbf         0.9567  Δ=-0.0019  p_NB=0.743  p_W=0.455
+  random_forest   0.9555  Δ=-0.0030  p_NB=0.189  p_W=0.010
+  naive_bayes     0.9535  Δ=-0.0050  p_NB=0.512  p_W=0.216
+  logreg_l2       0.9433  Δ=-0.0152  p_NB=0.080  p_W=0.000
+  logreg_l1       0.9427  Δ=-0.0159  p_NB=0.095  p_W=0.000
+  elasticnet      0.9391  Δ=-0.0194  p_NB=0.012  p_W=0.000
+  svm_linear      0.9361  Δ=-0.0225  p_NB=0.003  p_W=0.000
+  knn             0.9308  Δ=-0.0277  p_NB=0.029  p_W=0.000
+  bagging         0.9187  Δ=-0.0399  p_NB=0.000  p_W=0.000
+  decision_tree   0.8654  Δ=-0.0931  p_NB=0.000  p_W=0.000
+  dummy           0.0985  Δ=-0.8600  p_NB=0.000  p_W=0.000
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task2_hier3: confronto col migliore (svm_rbf, 0.9064) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  mlp             0.9034  Δ=-0.0030  p_NB=0.512  p_W=0.340
+  random_forest   0.9012  Δ=-0.0052  p_NB=0.343  p_W=0.110
+  naive_bayes     0.8817  Δ=-0.0247  p_NB=0.209  p_W=0.080
+  bagging         0.8808  Δ=-0.0256  p_NB=0.006  p_W=0.000
+  logreg_l1       0.8774  Δ=-0.0290  p_NB=0.005  p_W=0.000
+  svm_linear      0.8655  Δ=-0.0409  p_NB=0.003  p_W=0.000
+  elasticnet      0.8621  Δ=-0.0443  p_NB=0.007  p_W=0.000
+  knn             0.8564  Δ=-0.0500  p_NB=0.005  p_W=0.000
+  decision_tree   0.8535  Δ=-0.0529  p_NB=0.000  p_W=0.000
+  logreg_l2       0.8505  Δ=-0.0559  p_NB=0.002  p_W=0.000
+  dummy           0.3295  Δ=-0.5769  p_NB=0.000  p_W=0.000
+
+NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+
+--- task1a_paired: confronto col migliore (svm_rbf, 0.7249) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  logreg_l2       0.7222  Δ=-0.0027  p_NB=0.916  p_W=0.625
+  svm_linear      0.7209  Δ=-0.0040  p_NB=0.859  p_W=0.625
+  mlp             0.7204  Δ=-0.0045  p_NB=0.538  p_W=0.188
+  random_forest   0.7146  Δ=-0.0103  p_NB=0.776  p_W=0.625
+  logreg_l1       0.7119  Δ=-0.0130  p_NB=0.667  p_W=0.438
+  elasticnet      0.7104  Δ=-0.0145  p_NB=0.509  p_W=0.312
+  knn             0.7104  Δ=-0.0145  p_NB=0.864  p_W=1.000
+  bagging         0.6814  Δ=-0.0435  p_NB=0.281  p_W=0.125
+  decision_tree   0.6659  Δ=-0.0590  p_NB=0.080  p_W=0.062
+  naive_bayes     0.6453  Δ=-0.0796  p_NB=0.316  p_W=0.062
+  dummy           0.4962  Δ=-0.2287  p_NB=0.072  p_W=0.062
+
+NOTA: con 5 fold i gradi di liberta' sono 4 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task2_v1.png
+[ok] figura: results/figures/model_zoo_task2_hier3.png
+[ok] figura: results/figures/model_zoo_task1a_paired.png

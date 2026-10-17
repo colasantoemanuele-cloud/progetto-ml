@@ -12,16 +12,19 @@ Adjacent_normal e Tumor dello stesso paziente.
   1. Eccesso di discordanza: frazione di coppie (clone, compartimento A, compartimento B)
      con etichetta di maggioranza diversa, meno la discordanza basale entro
      compartimento, stimata con 20 bipartizioni casuali (split-half) delle cellule
-     di ciascun clone in ciascun tessuto. IC 95% con cluster bootstrap sui pazienti
+     di ciascun clone in ciascun tessuto. Soglie: un clone entra nel confronto fra
+     compartimenti se ha almeno 2 cellule in ciascuno dei due compartimenti, e nello
+     split-half di un compartimento se vi ha almeno 4 cellule (2 per meta'). IC 95% con cluster bootstrap sui pazienti
      (si ricampionano i pazienti, non le coppie ne' le repliche; 2.000 repliche,
      intervallo "expanded percentile", vedi `scpipe.cluster_bootstrap`).
      E' la versione esplorativa: lo stimatore principale, non distorto, e' in
      `07_robustness.py`.
   2. Contaminazione da cellule T nella classe NK: c_hat = (f - q) / (pi - q), con f, pi
      e q le frazioni di cellule con TCR fra le NK, le T e le non-T. E' un limite
-     superiore della frazione di T vere etichettate NK: `10_loco.py` mostra che le
-     NK con TCR sono soprattutto doppietti fisici T+NK, che c_hat non distingue
-     dalle cellule T mal etichettate.
+     superiore della frazione di T vere etichettate NK: c_hat non distingue le cellule
+     T mal etichettate dai doppietti fisici T+NK, e la stima della frazione di
+     doppietti in `10_loco.py` (d1, d2) e' compatibile con una quota consistente di
+     doppietti fra le NK con TCR.
 
 Regole: i cloni sono definiti entro paziente dalla sequenza nucleotidica esatta
 della CDR3 (non da `raw_clonotype_id`, che e' locale al campione). L'etichetta di
@@ -43,7 +46,7 @@ Output
   results/tables/clone_switching_within_{cc}.csv    repliche split-half (escluso da git: grande)
   results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni e pazienti
   ({cc} = clone_b o clone_ab)
-  results/figures/clone_label_switching.png
+  results/figures/clone_label_switching_{cc}.png
 
 Argomenti
 ---------
@@ -528,7 +531,7 @@ def main() -> None:
         f"eccesso = {a_rate - w_rate:+.3f}   IC95% cluster bootstrap [{lo:+.3f}, {hi:+.3f}]"
     )
     fig.tight_layout()
-    fig.savefig(FIG / "clone_label_switching.png", dpi=140)
+    fig.savefig(FIG / f"clone_label_switching_{cc}.png", dpi=140)
     plt.close(fig)
 
     print("\n" + "=" * 74)

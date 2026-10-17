@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -116,6 +115,7 @@ def nb_replicate(rep: int, seed0: int, n: int, k: int, effect: bool):
 
 
 def sim_nb(reps: int) -> pd.DataFrame:
+    """Frazione di p < 0.05 di Nadeau-Bengio e del t non corretto, sotto H0 e con effetto."""
     rows = []
     scen = [("H0", 90, 3, False, 55_003), ("H0", 90, 5, False, 55_005)]
     scen.append(("effect", 120, 5, True, 51_005))
@@ -138,6 +138,7 @@ def sim_nb(reps: int) -> pd.DataFrame:
 
 
 def draw_groups(rng, k: int, kind: str, mean: float):
+    """Osservazioni simulate di `k` pazienti (dizionario paziente -> array), continue o binarie."""
     sizes = SIZES[:k] if k <= len(SIZES) else rng.integers(5, 60, k)
     if kind == "binary":
         p = rng.beta(2, 8, k)
@@ -147,6 +148,7 @@ def draw_groups(rng, k: int, kind: str, mean: float):
 
 
 def sim_cb(reps: int, n_boot: int = 1000) -> pd.DataFrame:
+    """Copertura e frazione di IC che escludono 0 del cluster bootstrap, per scenario e k."""
     rows = []
     scen = [
         ("coverage_continuous", "continuous", 0.06, 0.06),
@@ -185,6 +187,7 @@ def sim_cb(reps: int, n_boot: int = 1000) -> pd.DataFrame:
 
 
 def main() -> None:
+    """Esegue le due simulazioni e scrive le tabelle."""
     ap = argparse.ArgumentParser(
         description="Simulazione (a): Nadeau-Bengio e cluster bootstrap sotto H0 e con effetto."
     )
@@ -195,7 +198,6 @@ def main() -> None:
     if args.quick:
         args.reps_nb, args.reps_cb = args.reps_nb // 10, args.reps_cb // 10
     TAB.mkdir(parents=True, exist_ok=True)
-    warnings.filterwarnings("ignore", category=UserWarning)
     nb = sim_nb(args.reps_nb)
     nb.to_csv(TAB / "sim_a_nadeau_bengio.csv", index=False)
     cb = sim_cb(args.reps_cb)

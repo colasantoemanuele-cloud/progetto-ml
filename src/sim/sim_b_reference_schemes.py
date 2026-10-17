@@ -28,6 +28,13 @@ lignaggio CD4: CD8A 0.03, CD8B 0.02, CD4 0.45. Etichetta sbagliata: CD4 -> CD8T,
 CD8 -> CD4T o NK con uguale probabilita'. 30 repliche per condizione, semi fissi.
 I parametri sono scelti a priori (non tarati per riprodurre un numero atteso).
 
+Limite: dato il lignaggio, etichette e marcatori sono simulati indipendenti (l'errore
+di etichetta non dipende dai marcatori osservati). Nei dati reali l'etichetta del
+clustering e i marcatori usati per l'identita' vengono dalle stesse cellule: la
+circolarita' dello schema `naive` (il compartimento giudicato entra nel proprio
+riferimento) qui NON e' simulata, quindi il basso bias di `naive` in questa
+simulazione non dice che `naive` sia corretto sui dati reali.
+
 Input
 -----
   nessuno (dati simulati); importa src/10_loco.py
@@ -133,6 +140,7 @@ def simulate(rng, artifact) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def run(reps: int) -> pd.DataFrame:
+    """Errore stimato e vero medio per condizione x schema x compartimento."""
     loco = load_loco()
     rows = []
     for ci, (cond, art) in enumerate(ARTIFACTS.items()):
@@ -176,6 +184,7 @@ def run(reps: int) -> pd.DataFrame:
 
 
 def main() -> None:
+    """Esegue la simulazione e scrive la tabella."""
     ap = argparse.ArgumentParser(
         description="Simulazione (b): schemi di riferimento naive, LOCO e blood."
     )

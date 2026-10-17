@@ -12,8 +12,10 @@ indipendenti. 10 pazienti con il numero di cloni dei dati (5-59 per paziente,
 287 in totale). Per ogni replica: p non centrato (usato in 17/18), p centrato sulla
 media della distribuzione nulla e, per confronto, la permutazione che ignora i
 pazienti. Frazione di p < 0.05 = tasso di falsi positivi.
-Forza del confondente c in {0, 0.5, 1, 2}; 100 repliche (come nel disegno citato
-nella presentazione) e 1.000 repliche per c = 1; 2.000 permutazioni per replica.
+Forza del confondente c in {0, 0.5, 1, 2}; 1.000 repliche per livello, 2.000 permutazioni
+per replica; intervallo binomiale esatto (Clopper-Pearson) al 95% per ogni tasso. Le prime
+100 repliche di ogni livello sono quelle del disegno da 100 repliche citato nella
+presentazione (stesso seme): il loro conteggio e' riportato a parte.
 
 Input
 -----
@@ -21,11 +23,12 @@ Input
 
 Output
 ------
-  results/tables/sim_c_block_permutation.csv  c, repliche, falsi positivi (conteggio e frazione) per metodo
+  results/tables/sim_c_block_permutation.csv  c, repliche, falsi positivi (conteggio, frazione, IC binomiale)
+                                               per metodo, falsi positivi nelle prime 100 repliche
 
 Argomenti
 ---------
-  --n-perm (default 2000)
+  --n-perm (default 2000), --reps (repliche per livello, default 1000)
 
 Uso
 ---
@@ -40,6 +43,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import binomtest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scpipe import block_permutation_test, permutation_corr_test  # noqa: E402
@@ -49,10 +53,12 @@ SIZES = np.array([17, 26, 47, 42, 22, 10, 30, 59, 29, 5])
 
 
 def run(conf: float, reps: int, n_perm: int, seed: int) -> dict:
+    """Falsi positivi (p < 0.05) su `reps` repliche sotto H0 con confondente di forza `conf`."""
     rng = np.random.default_rng(seed)
     gi = np.repeat(np.arange(len(SIZES)), SIZES)
     g = np.array([f"P{i:02d}" for i in gi])
     fp = {"block": 0, "block_centered": 0, "naive": 0}
+    fp100 = dict(fp)
     for r in range(reps):
         z = rng.normal(0, 1, len(SIZES))
         x = conf * z[gi] + rng.normal(0, 1, len(gi))
@@ -63,25 +69,35 @@ def run(conf: float, reps: int, n_perm: int, seed: int) -> dict:
         fp["block"] += bp["p"] < 0.05
         fp["block_centered"] += bp["p_centered"] < 0.05
         fp["naive"] += p_naive < 0.05
-    return {
-        "confounder": conf,
-        "reps": reps,
-        **{f"fp_{k}": v for k, v in fp.items()},
-        **{f"rate_{k}": v / reps for k, v in fp.items()},
-    }
+        if r == 99:
+            fp100 = dict(fp)
+    out = {"confounder": conf, "reps": reps}
+    for k, v in fp.items():
+        ci = binomtest(int(v), reps).proportion_ci(
+            confidence_level=0.95, method="exact"
+        )
+        out |= {
+            f"fp_{k}": int(v),
+            f"rate_{k}": v / reps,
+            f"lo_{k}": ci.low,
+            f"hi_{k}": ci.high,
+        }
+    return out | {f"fp_first100_{k}": int(v) for k, v in fp100.items()}
 
 
 def main() -> None:
+    """Esegue la simulazione e scrive la tabella."""
     ap = argparse.ArgumentParser(
         description="Simulazione (c): block permutation test sotto H0 con confondente di paziente."
     )
     ap.add_argument("--n-perm", type=int, default=2000)
+    ap.add_argument("--reps", type=int, default=1000)
     args = ap.parse_args()
     TAB.mkdir(parents=True, exist_ok=True)
     rows = [
-        run(c, 100, args.n_perm, seed=300 + i) for i, c in enumerate((0, 0.5, 1.0, 2.0))
+        run(c, args.reps, args.n_perm, seed=300 + i)
+        for i, c in enumerate((0, 0.5, 1.0, 2.0))
     ]
-    rows.append(run(1.0, 1000, args.n_perm, seed=399))
     out = pd.DataFrame(rows)
     out.to_csv(TAB / "sim_c_block_permutation.csv", index=False)
     print(out.round(3).to_string(index=False))

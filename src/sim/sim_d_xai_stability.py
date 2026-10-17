@@ -17,6 +17,12 @@ conteggi Poisson con profondita' variabile per cellula. 5 repliche per condizion
 semi fissi. La differenza attesa e' piu' grande con effetto paziente; la simulazione
 misura di quanto.
 
+Limite del confronto (vale anche per 20): due training LOPO condividono le cellule di
+3 pazienti su 5 (1.800 cellule su 2.400), mentre due sottoinsiemi casuali di 2.400
+cellule su 3.000 ne condividono in media 2.400 * 2.400 / 3.000 = 1.920. Il controllo
+ha quindi piu' cellule in comune fra repliche dei fold LOPO, e questo da solo rende
+positiva la differenza anche senza effetto paziente (scenario `no_patient_effect`).
+
 Input
 -----
   nessuno (dati simulati); importa src/20_xai_per_patient.py
@@ -63,6 +69,7 @@ def load_xai():
 
 
 def simulate(rng, patient_effect: bool):
+    """Conteggi simulati (cellule x geni), etichetta Tumor, paziente e fold LOPO."""
     base = rng.gamma(0.8, 0.5, N_GENES)
     shared = rng.choice(N_GENES, N_SHARED, replace=False)
     X, y, pats = [], [], []
@@ -93,6 +100,7 @@ def simulate(rng, patient_effect: bool):
 
 
 def run(reps: int) -> pd.DataFrame:
+    """Jaccard medio fra i top-50 dei fold LOPO e del controllo, per condizione e replica."""
     xai = load_xai()
     genes = np.array([f"G{i}" for i in range(N_GENES)])
     rows = []
@@ -128,6 +136,7 @@ def run(reps: int) -> pd.DataFrame:
 
 
 def main() -> None:
+    """Esegue la simulazione e scrive la tabella."""
     ap = argparse.ArgumentParser(
         description="Simulazione (d): stabilita' XAI LOPO contro controllo, con e senza effetto paziente."
     )

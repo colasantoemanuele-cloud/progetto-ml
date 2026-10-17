@@ -6,6 +6,8 @@ di training del fold. Il test addestra due volte lo stesso fold: la seconda volt
 valori delle cellule di TEST sono sostituiti da conteggi completamente diversi.
 Se il codice e' privo di leakage, i geni scelti e tutti i parametri stimati per quel
 fold restano identici (confronto esatto, nessuna banda statistica).
+Controllo positivo (ogni script): in un fold il cui TRAINING contiene le cellule
+alterate almeno un parametro stimato cambia, quindi il confronto non e' banalmente vero.
 
 Per 04 si verifica che gli split per paziente non mettano lo stesso paziente in due fold.
 """
@@ -96,6 +98,13 @@ def assert_same_params(p1: dict, p2: dict):
         np.testing.assert_array_equal(p1[k], p2[k], err_msg=k)
 
 
+def params_differ(p1: dict, p2: dict) -> bool:
+    """True se almeno un parametro stimato cambia (controllo positivo)."""
+    return any(
+        p1[k].shape != p2[k].shape or not np.array_equal(p1[k], p2[k]) for k in p1
+    )
+
+
 # --------------------------------------------------------------------------- #
 def test_05_baseline_no_leakage(monkeypatch):
     m = load_script("05_baseline")
@@ -156,6 +165,8 @@ def test_11_model_zoo_no_leakage(monkeypatch, model):
     )
     second = list(built)
     assert_same_params(fitted_params(first[0]), fitted_params(second[0]))
+    # controllo positivo: il fold 1 ha le cellule alterate (paziente del fold 0) nel training
+    assert params_differ(fitted_params(first[1]), fitted_params(second[1]))
 
 
 def test_12_feature_selection_no_leakage():
@@ -192,6 +203,25 @@ def test_12_feature_selection_no_leakage():
     assert out1["chosen"].keys() == out2["chosen"].keys()
     for key in out1["chosen"]:
         assert out1["chosen"][key] == out2["chosen"][key], key
+    # controllo positivo: nel fold 1 le cellule alterate sono nel training
+    tr1, te1 = np.where(folds != 1)[0], np.where(folds == 1)[0]
+    outs = [
+        m.run_fold(
+            Xa[tr1],
+            y[tr1],
+            Xa[te1],
+            y[te1],
+            genes,
+            classes,
+            list(m.SELECTORS),
+            np.random.default_rng(0),
+            k_values=(5, 10),
+        )
+        for Xa in (X, X2)
+    ]
+    assert any(
+        outs[0]["chosen"][key] != outs[1]["chosen"][key] for key in outs[0]["chosen"]
+    )
 
 
 def test_13_infercnv_no_leakage():
@@ -206,6 +236,8 @@ def test_13_infercnv_no_leakage():
     _, _, models1 = m.classify_lopo(X, yb, groups, n_hvg=20, return_models=True)
     _, _, models2 = m.classify_lopo(X2, yb, groups, n_hvg=20, return_models=True)
     assert_same_params(fitted_params(models1["P0"]), fitted_params(models2["P0"]))
+    # controllo positivo: il modello di P1 ha P0 (alterato) nel training
+    assert params_differ(fitted_params(models1["P1"]), fitted_params(models2["P1"]))
     # il modello finale per Adjacent_normal sceglie i geni sul solo training:
     # coincidono con quelli di un HVGSelector stimato a parte sulle sole duttali tumorali,
     # e applicarlo a cellule esterne diverse non li modifica
@@ -234,6 +266,8 @@ def test_20_xai_no_leakage():
     coefs2, tops2 = r2[0], r2[1]
     assert tops1[0] == tops2[0]
     np.testing.assert_array_equal(coefs1[0].values, coefs2[0].values)
+    # controllo positivo: il fold 1 ha le cellule alterate nel training
+    assert not np.array_equal(coefs1[1].values, coefs2[1].values)
 
 
 # --------------------------------------------------------------------------- #
