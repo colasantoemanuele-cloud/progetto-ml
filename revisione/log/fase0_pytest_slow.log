@@ -1,0 +1,64 @@
+FFFF.                                                                    [100%]
+=================================== FAILURES ===================================
+__________________ test_cluster_bootstrap_coverage[False-10] ___________________
+
+k = 10, binary = False
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("k", [10, 11])
+    @pytest.mark.parametrize("binary", [False, True])
+    def test_cluster_bootstrap_coverage(k, binary):
+        cov = simulate_coverage(k, binary, reps=400, seed=100 + k + int(binary))
+>       assert 0.90 <= cov <= 0.99, f"copertura {cov:.3f} fuori banda [0.90, 0.99]"
+E       AssertionError: copertura 0.877 fuori banda [0.90, 0.99]
+E       assert 0.9 <= 0.8775
+
+tests/test_stats.py:76: AssertionError
+__________________ test_cluster_bootstrap_coverage[False-11] ___________________
+
+k = 11, binary = False
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("k", [10, 11])
+    @pytest.mark.parametrize("binary", [False, True])
+    def test_cluster_bootstrap_coverage(k, binary):
+        cov = simulate_coverage(k, binary, reps=400, seed=100 + k + int(binary))
+>       assert 0.90 <= cov <= 0.99, f"copertura {cov:.3f} fuori banda [0.90, 0.99]"
+E       AssertionError: copertura 0.885 fuori banda [0.90, 0.99]
+E       assert 0.9 <= 0.885
+
+tests/test_stats.py:76: AssertionError
+___________________ test_cluster_bootstrap_coverage[True-10] ___________________
+
+k = 10, binary = True
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("k", [10, 11])
+    @pytest.mark.parametrize("binary", [False, True])
+    def test_cluster_bootstrap_coverage(k, binary):
+        cov = simulate_coverage(k, binary, reps=400, seed=100 + k + int(binary))
+>       assert 0.90 <= cov <= 0.99, f"copertura {cov:.3f} fuori banda [0.90, 0.99]"
+E       AssertionError: copertura 0.892 fuori banda [0.90, 0.99]
+E       assert 0.9 <= 0.8925
+
+tests/test_stats.py:76: AssertionError
+___________________ test_cluster_bootstrap_coverage[True-11] ___________________
+
+k = 11, binary = True
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("k", [10, 11])
+    @pytest.mark.parametrize("binary", [False, True])
+    def test_cluster_bootstrap_coverage(k, binary):
+        cov = simulate_coverage(k, binary, reps=400, seed=100 + k + int(binary))
+>       assert 0.90 <= cov <= 0.99, f"copertura {cov:.3f} fuori banda [0.90, 0.99]"
+E       AssertionError: copertura 0.882 fuori banda [0.90, 0.99]
+E       assert 0.9 <= 0.8825
+
+tests/test_stats.py:76: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_stats.py::test_cluster_bootstrap_coverage[False-10] - Asser...
+FAILED tests/test_stats.py::test_cluster_bootstrap_coverage[False-11] - Asser...
+FAILED tests/test_stats.py::test_cluster_bootstrap_coverage[True-10] - Assert...
+FAILED tests/test_stats.py::test_cluster_bootstrap_coverage[True-11] - Assert...
+4 failed, 1 passed, 86 deselected in 45.20s
