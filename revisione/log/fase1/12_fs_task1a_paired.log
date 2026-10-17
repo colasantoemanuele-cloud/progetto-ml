@@ -1,0 +1,78 @@
+[..] carico h5ad ...
+[ok] task1a_paired: 67,662 cellule | 2 classi | fold_lopo
+
+fold 0: train 20,000 | test 17,658
+  random      [    1s] non nulli 18,978
+  hvg         [    1s] non nulli 18,910
+  anova       [    4s] non nulli 18,963
+  chi2        [    3s] non nulli 18,978
+  l1_logreg   [   93s] non nulli 1,708 | iter 181 | convergenza True
+  rf_import   [   48s] non nulli 17,637
+
+fold 1: train 20,000 | test 13,571
+  random      [    2s] non nulli 18,398
+  hvg         [    2s] non nulli 18,350
+  anova       [    6s] non nulli 18,386
+  chi2        [    4s] non nulli 18,398
+  l1_logreg   [  118s] non nulli 1,942 | iter 177 | convergenza True
+  rf_import   [   60s] non nulli 17,222
+
+fold 2: train 20,000 | test 14,516
+  random      [    2s] non nulli 18,608
+  hvg         [    3s] non nulli 18,550
+  anova       [   11s] non nulli 18,592
+  chi2        [    6s] non nulli 18,608
+  l1_logreg   [  158s] non nulli 1,713 | iter 208 | convergenza True
+  rf_import   [   58s] non nulli 17,122
+
+fold 3: train 20,000 | test 11,327
+  random      [    2s] non nulli 18,691
+  hvg         [    2s] non nulli 18,626
+  anova       [    9s] non nulli 18,679
+  chi2        [    5s] non nulli 18,691
+  l1_logreg   [  164s] non nulli 1,984 | iter 213 | convergenza True
+  rf_import   [   54s] non nulli 17,404
+
+fold 4: train 20,000 | test 10,590
+  random      [    3s] non nulli 18,551
+  hvg         [    3s] non nulli 18,507
+  anova       [   10s] non nulli 18,541
+  chi2        [    3s] non nulli 18,551
+  l1_logreg   [  184s] non nulli 1,616 | iter 268 | convergenza True
+  rf_import   [   49s] non nulli 17,118
+
+==============================================================================
+(a) PRESTAZIONE: macro-F1 (media ± sd sui fold)
+==============================================================================
+             mean                     std                
+k            50      200     1000    50      200     1000
+method                                                   
+anova      0.7058  0.7185  0.7326  0.0756  0.0717  0.0976
+chi2       0.6965  0.7158  0.7418  0.0989  0.0773  0.0827
+hvg        0.6229  0.6550  0.7161  0.1117  0.0839  0.0946
+l1_logreg  0.7119  0.7515  0.7515  0.1030  0.0908  0.1021
+random     0.5892  0.6778  0.6752  0.0710  0.0904  0.1164
+rf_import  0.7350  0.7440  0.7482  0.0813  0.0899  0.1055
+
+==============================================================================
+(b) STABILITA': Jaccard medio a coppie fra i fold di fold_lopo
+==============================================================================
+            50     200    1000
+random     0.000  0.004  0.027
+hvg        0.458  0.725  0.771
+anova      0.519  0.572  0.665
+chi2       0.522  0.594  0.678
+l1_logreg  0.273  0.264  0.254
+rf_import  0.469  0.539  0.646
+
+Jaccard 1.0 = stessi geni in tutti i fold; 0.0 = insiemi disgiunti.
+
+[ok] figura: results/figures/feature_selection_task1a_paired.png
+
+>>> geni scelti in tutti i fold (k=50), per metodo:
+  random       0/50 stabili: 
+  hvg         18/50 stabili: APOD, CCL19, CGA, CPA3, CST1, CXCL13, GNLY, IGFBP7, IGHV3-15, IGKV3-15, LUM, MGP
+  anova       19/50 stabili: CD151, CD37, CD48, CD69, CD9, CORO1A, CXCR4, CYSTM1, EEF1A1, FCMR, GPSM3, HLA-E
+  chi2        19/50 stabili: C19orf33, CD69, CD9, CLDN4, CST3, CYSTM1, ELF3, FCMR, IFI27, IGFBP7, KRT18, KRT19
+  l1_logreg    4/50 stabili: CD69, DUSP4, MT-CO2, SPP1
+  rf_import   16/50 stabili: CD69, CXCR4, EEF1A1, EEF1G, FAU, FCMR, HSPA1A, HSPA1B, LIMD2, LMNA, LTB, NACA

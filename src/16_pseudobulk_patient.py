@@ -1,51 +1,62 @@
 #!/usr/bin/env python3
 """
-16_pseudobulk_patient.py: Analisi pseudobulk a livello di paziente e test di ipotesi pre-specificate.
+16_pseudobulk_patient.py - Covariate per paziente (H1-H3) contro il tasso d'errore nel tumore.
 
-Inquadramento Metodologico
---------------------------
-Mentre gli script precedenti modellano la singola cellula come unita' osservazionale
-correggendo l'inferenza a posteriori per la struttura di clustering (split per gruppo,
-cluster bootstrap), questo modulo aggrega ciascun paziente in un unico profilo
-pseudobulk prima dell'inferenza statistica. Riducendo le 199.184 cellule alle unita'
-cliniche effettivamente indipendenti (n = 10-14 pazienti valutabili), la dipendenza
-intra-paziente viene eliminata alla radice per costruzione sperimentale.
+Scopo
+-----
+Usa il paziente come unita' (n = 10 pazienti con outcome e covariate nella versione
+pubblicata): l'outcome e' il tasso d'errore delle etichette T nel Tumor per paziente
+(schema `blood` di 10_loco.py, pazienti con almeno 5 cloni); le covariate sono
+calcolate dal compartimento tumorale. Un'analisi su tutti i ~20.000 geni con n = 10
+produrrebbe circa 1.000 p < 0.05 per caso: l'analisi si limita a tre ipotesi,
+formulate dopo i moduli 08-10 ma prima di calcolare le covariate.
 
-Controllo della Molteplicita' su Piccoli Campioni
--------------------------------------------------
-Con una numerosita' campionaria pari a n = 10-14 pazienti, una scansione esplorativa
-non vincolata sull'intero trascrittoma (~20.000 geni) produrrebbe circa 1.000 falsi
-positivi nominali a soglia alfa = 0.05 sotto l'ipotesi nulla globale, rendendo
-impossibile distinguere il segnale biologico dal rumore campionario. Per preservare
-la validita' dell'inferenza, l'analisi e' rigorosamente circoscritta a tre ipotesi
-meccanicistiche formulate a priori sulla base delle evidenze emerse nei moduli 08-10:
+  - H1 (esaurimento CD8T): media, sulle cellule tumorali etichettate CD8T, del punteggio
+    di esaurimento di ciascuna cellula (media di log1p(CP10k) di PDCD1, LAG3, HAVCR2,
+    TOX, CTLA4, TIGIT). Ipotesi: piu' esaurimento -> piu' errore, per una deriva delle
+    CD8T esauste verso profili CD4T/NK. Due limiti noti:
+      * la deriva ipotizzata va nel senso opposto agli errori osservati: nel Tumor gli
+        errori sono soprattutto cloni CD4 nel sangue etichettati CD8T, poi CD8 -> NK e
+        CD4 -> NK, mentre CD8 -> CD4 non compare (conteggi in
+        `error_decomposition_blood.csv`: 38, 12, 6 e 0 nella versione pubblicata);
+      * il punteggio usa le cellule etichettate CD8T, cioe' le stesse etichette il cui
+        errore e' l'outcome (circolarita'): le CD4 etichettate CD8T entrano nel punteggio.
+    Non e' un punteggio pseudobulk: e' la media dei punteggi delle singole cellule.
+  - H2 (frazione mieloide nel tumore): piu' mieloidi -> piu' errore (RNA ambientale,
+    doppietti mieloide-T).
+  - H3 (frazione CAF nel tumore): piu' fibrosi -> dissociazione piu' aggressiva -> piu'
+    errore. Indicata come speculativa fin dall'inizio.
 
-  - H1 (Esaurimento CD8T tumorali): il punteggio medio di espressione dei marker di
-    esaurimento (PDCD1, LAG3, HAVCR2, TOX, CTLA4, TIGIT) nelle cellule CD8T infiltranti
-    correla positivamente con il tasso di errore di annotazione nel tessuto tumorale,
-    poiche' la convergenza trascrizionale verso fenotipi disfunzionali attenua il
-    confine rispetto alle popolazioni CD4T e NK.
-  - H2 (Frazione mieloide tumorale): la proporzione di cellule mieloidi nel
-    microambiente tumorale correla positivamente con il tasso di errore, riflettendo
-    il contributo di RNA ambientale e doppietti eterotipici mieloide-T.
-  - H3 (Frazione stromale CAF): la proporzione di fibroblasti associati al cancro (CAF)
-    correla positivamente con il tasso di errore, in quanto una maggiore densita'
-    desmoplastica richiede protocolli di dissociazione enzimatica piu' intensi che
-    degradano l'integrita' del profilo trascrizionale.
+Test: Spearman con permutazione Monte Carlo (20.000 permutazioni casuali, non
+esatto), IC 95% bootstrap sui pazienti ("expanded percentile"), Holm-Bonferroni sui 3
+test (`scpipe`). La famiglia completa con H4 e' corretta in 19_ni_score.py. La PCA
+pseudobulk (profilo medio CD8T+CD4T tumorali per paziente) e' solo descrittiva.
 
-La significativita' statistica e' valutata mediante test di permutazione esatto a due
-code (20.000 permutazioni del vettore dei ranghi, esente da assunzioni asintotiche di
-normalita') con correzione sequenziale di Holm-Bonferroni sulla famiglia dei 3 test.
+Input
+-----
+  --h5ad         data/interim/sc_raw.h5ad
+  --arbitration  results/tables/arbitration_blood.csv (da 10_loco.py)
 
-Esecuzione:
-    python src/16_pseudobulk_patient.py \
-        --h5ad data/interim/sc_raw.h5ad \
+Output
+------
+  results/tables/pseudobulk_patient_table.csv     outcome e covariate per paziente
+  results/tables/pseudobulk_hypothesis_tests.csv  rho, p, IC e p di Holm per H1-H3
+  results/figures/pseudobulk_patient_pca.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --arbitration
+
+Uso
+---
+    python src/16_pseudobulk_patient.py --h5ad data/interim/sc_raw.h5ad \
         --arbitration results/tables/arbitration_blood.csv
 """
 
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import anndata as ad
@@ -58,6 +69,9 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 from sklearn.decomposition import PCA
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import holm_bonferroni, percentile_ci, permutation_corr_test  # noqa: E402
 
 # Percorsi di output e iperparametri del protocollo inferenziale
 FIG = Path("results/figures")
@@ -73,7 +87,7 @@ EXHAUSTION_GENES = ["PDCD1", "LAG3", "HAVCR2", "TOX", "CTLA4", "TIGIT"]
 # Definizione formale delle tre ipotesi a priori e della direzione attesa dell'effetto
 HYPOTHESES = {
     "exhaustion_score": (
-        "H1: esaurimento CD8T tumorali -> piu' errore (deriva CD8->CD4/NK)",
+        "H1: esaurimento CD8T tumorali -> piu' errore (deriva CD8->CD4/NK ipotizzata)",
         "positive",
     ),
     "myeloid_fraction": (
@@ -88,41 +102,11 @@ HYPOTHESES = {
 
 
 # --------------------------------------------------------------------------- #
-def permutation_corr_test(
-    x: np.ndarray, y: np.ndarray, n_perm: int = N_PERM, seed: int = SEED
-):
-    """Calcola il coefficiente di correlazione di Spearman e il relativo p-value
-    a due code mediante test di permutazione vettorizzato sui ranghi.
-    L'implementazione calcola simultaneamente la correlazione di Pearson tra i
-    ranghi osservati di x e una matrice di n_perm permutazioni indipendenti dei
-    ranghi di y, garantendo esattezza a campioni finiti senza approssimazioni normali."""
-    rng = np.random.default_rng(seed)
-    n = len(x)
-    # Trasformazione nei ranghi per ottenere la statistica non parametrica di Spearman
-    rx = pd.Series(x).rank().values
-    ry = pd.Series(y).rank().values
-    rho_obs = float(np.corrcoef(rx, ry)[0, 1])
-
-    # Generazione vettorizzata di n_perm permutazioni casuali degli indici tramite argsort
-    perm_idx = np.argsort(rng.random((n_perm, n)), axis=1)
-    ry_perm = ry[perm_idx]  # (n_perm, n)
-    # Centratura dei ranghi e calcolo vettorizzato del coseno angolare (correlazione)
-    rx_c = rx - rx.mean()
-    ry_c = ry_perm - ry_perm.mean(axis=1, keepdims=True)
-    num = (ry_c * rx_c).sum(axis=1)
-    den = np.sqrt((rx_c**2).sum()) * np.sqrt((ry_c**2).sum(axis=1))
-    perm_rhos = num / np.maximum(den, 1e-12)
-
-    # Stima conservativa di Phipson-Smyth (+1 al numeratore e denominatore) del p-value a due code
-    p = (np.sum(np.abs(perm_rhos) >= abs(rho_obs) - 1e-12) + 1) / (n_perm + 1)
-    return rho_obs, float(p), perm_rhos
-
-
 def bootstrap_ci_corr(
     x: np.ndarray, y: np.ndarray, n_boot: int = 2000, seed: int = SEED
 ):
-    """Stima l'intervallo di confidenza al 95% per la correlazione di Spearman
-    mediante ricampionamento bootstrap non parametrico delle unita' paziente."""
+    """IC 95% della correlazione di Spearman con bootstrap sui pazienti (righe),
+    intervallo "expanded percentile"; repliche degeneri (senza variabilita') scartate."""
     rng = np.random.default_rng(seed)
     n = len(x)
     vals = []
@@ -137,22 +121,7 @@ def bootstrap_ci_corr(
             vals.append(r)
     if len(vals) < 20:
         return np.nan, np.nan
-    return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
-
-
-def holm_bonferroni(pvals: dict) -> dict:
-    """Applica la procedura step-down di Holm-Bonferroni per il controllo
-    forte del Family-Wise Error Rate (FWER) su una famiglia finita di test."""
-    # Ordinamento crescente dei p-value grezzi e applicazione dei moltiplicatori (m - i)
-    items = sorted(pvals.items(), key=lambda kv: kv[1])
-    m = len(items)
-    adj, running_max = {}, 0.0
-    for i, (name, p) in enumerate(items):
-        # Imposizione del vincolo di monotonia cumulativa sui p-value aggiustati
-        val = min((m - i) * p, 1.0)
-        running_max = max(running_max, val)
-        adj[name] = running_max
-    return adj
+    return percentile_ci(np.array(vals), n)
 
 
 # --------------------------------------------------------------------------- #
@@ -191,7 +160,6 @@ def build_predictors(adata: ad.AnnData) -> pd.DataFrame:
     """Estrae i tre predittori biologici a livello di paziente (punteggio di
     esaurimento CD8T, frazione mieloide e frazione CAF) dal compartimento tumorale."""
     obs = adata.obs
-    rows = []  # noqa: F841
     tumor = obs[obs.tissue == "Tumor"]
 
     # Calcolo delle frequenze relative dei tipi cellulari nel tessuto tumorale di ciascun paziente
@@ -214,9 +182,15 @@ def build_predictors(adata: ad.AnnData) -> pd.DataFrame:
     if missing:
         print(f"[!] geni di esaurimento assenti dal pannello: {missing}")
     found = [g for g in EXHAUSTION_GENES if g not in missing]
+    if not found:
+        raise SystemExit(
+            "[ERRORE] nessun gene della firma di esaurimento nel pannello."
+        )
     col_idx = np.concatenate([idx[g] for g in found])
 
-    # Calcolo del punteggio medio di esaurimento log1p(CPM/100) sulle cellule CD8T tumorali per paziente
+    # Punteggio di esaurimento: per ogni cellula etichettata CD8T nel tumore, media di
+    # log1p(CP10k) dei geni della firma; per paziente, media dei punteggi delle cellule.
+    # Non e' pseudobulk, e usa le stesse etichette CD8T il cui errore e' l'outcome.
     exh_scores = {}
     for pat, g in tumor[tumor.all_celltype == "CD8T"].groupby("patients"):
         if len(g) < MIN_CD8T_TUMOR:
@@ -246,7 +220,9 @@ def build_predictors(adata: ad.AnnData) -> pd.DataFrame:
 def main() -> None:
     """Orchestra la costruzione della tabella pseudobulk per paziente, l'esecuzione
     dei test di permutazione sulle tre ipotesi a priori e la PCA descrittiva."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Covariate per paziente (H1-H3) contro il tasso d'errore nel tumore."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument(
         "--arbitration", type=Path, default=Path("results/tables/arbitration_blood.csv")
@@ -291,14 +267,18 @@ def main() -> None:
     print("\n" + "=" * 78)
     print(f"TEST DI CORRELAZIONE A LIVELLO DI PAZIENTE (n={len(df)})")
     print("=" * 78)
-    print("Tre ipotesi, dichiarate PRIMA di guardare i dati. Permutation test,")
-    print(f"{N_PERM} permutazioni. Correzione di Holm-Bonferroni sui 3 test.\n")
+    print(
+        "Tre ipotesi, formulate dopo i moduli 08-10 e prima di calcolare le covariate."
+    )
+    print(
+        f"Permutazione Monte Carlo ({N_PERM} permutazioni). Holm-Bonferroni sui 3 test.\n"
+    )
 
     # Valutazione di ciascuna ipotesi tramite correlazione di Spearman, permutazione e IC bootstrap
     results = {}
     for col, (desc, direction) in HYPOTHESES.items():
         x, y = df[col].values, df.error_rate.values
-        rho, p, _ = permutation_corr_test(x, y)
+        rho, p = permutation_corr_test(x, y, N_PERM, SEED)
         lo, hi = bootstrap_ci_corr(x, y)
         results[col] = {
             "desc": desc,
@@ -344,14 +324,9 @@ def main() -> None:
     ]
     pats = [p for p in df.patient if (tumor.patients == p).sum() >= MIN_CD8T_TUMOR]
     if len(pats) >= 5:
-        sym = (  # noqa: F841
-            adata.var.gene_symbol.astype(str).values
-            if "gene_symbol" in adata.var
-            else adata.var_names.values
-        )
         pb = []
         for p in pats:
-            # Estrazione e normalizzazione log1p(CPM/100) del profilo medio per singolo paziente
+            # Profilo pseudobulk: media di CP10k sulle cellule del paziente, poi log1p
             idxp = adata.obs_names.get_indexer(tumor.index[tumor.patients == p])
             Xp = adata.X[idxp]
             nc = adata.obs.n_counts.values[idxp].reshape(-1, 1)

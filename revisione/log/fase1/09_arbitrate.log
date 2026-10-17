@@ -1,0 +1,66 @@
+[..] carico h5ad ...
+[ok] 199,184 cellule | TCR: 105,809
+
+==============================================================================
+(A) ARBITRATO: tasso d'errore per compartimento anatomico
+==============================================================================
+cloni con >=3 cellule in almeno un compartimento: 2,668 (di cui in >=2 compartimenti: 518)
+  in >=2 compartimenti con identita' risolta (margine >= 0.2): 487 ({'CD8T': 376, 'CD4T': 111})
+  ambigui (scartati): 212
+
+tasso d'errore dell'etichetta degli autori, per compartimento
+(riferimento = identita' clonale dai marcatori, pesata ugualmente fra compartimenti)
+
+  PBMC             errore = 0.035  IC95% [0.013, 0.063]  (n=312, 10 pazienti)
+  Adjacent_normal  errore = 0.052  IC95% [0.030, 0.106]  (n=289, 5 pazienti)
+  Tumor            errore = 0.144  IC95% [0.080, 0.241]  (n=457, 11 pazienti)
+
+differenza appaiata Tumor - PBMC, sugli STESSI cloni:
+  +0.156  IC95% [+0.046, +0.253]  IC esclude 0   (n=282 cloni)
+
+direzione dell'errore (etichetta autori -> identita' clonale):
+tissue           lab   identity
+Tumor            CD8T  CD4T        47
+Adjacent_normal  CD8T  CD4T        13
+Tumor            NK    CD8T        12
+PBMC             CD8T  CD4T         9
+Tumor            NK    CD4T         6
+PBMC             CD4T  CD8T         2
+Adjacent_normal  CD4T  CD8T         1
+                 NK    CD8T         1
+Tumor            CD4T  CD8T         1
+
+==============================================================================
+(B) DOPPIETTO FISICO o CELLULA DI CONFINE?  (misure fisiche non trascrittomiche)
+==============================================================================
+      class  tcr     n  median_n_counts  median_n_genes  median_tcr_per_1k
+       CD8T TCR+ 50247           3277.0          1624.0               4.01
+       CD8T TCR-  8692           3309.0          1644.5                NaN
+       CD4T TCR+ 53044           3308.0          1634.0               4.29
+       CD4T TCR-  3713           2836.0          1420.0                NaN
+         NK TCR+  1673           5868.0          2453.0               2.61
+         NK TCR- 26526           3500.0          1790.0                NaN
+   Platelet TCR+   219           4321.0          2034.0               3.24
+   Platelet TCR-  1368           1353.0           481.5                NaN
+Endothelial TCR+   136           8605.5          3516.5               1.53
+Endothelial TCR-  2285           6107.0          2646.0                NaN
+    Myeloid TCR+   137          11993.0          3609.0               0.85
+    Myeloid TCR-  8965           6475.0          2360.0                NaN
+          B TCR+    84           6384.0          2646.5               1.12
+          B TCR- 26276           3058.0          1517.0                NaN
+     Ductal TCR+    39          12006.0          4093.0               0.64
+     Ductal TCR-  8674           3645.0          1646.5                NaN
+
+>>> PREDIZIONE quantitativa, se le NK-TCR+ sono doppietti T+NK
+  n_counts atteso  = n_counts(NK TCR-) + n_counts(CD8T) = 3500 + 3277 = 6777
+  n_counts osservato (NK TCR+)                          = 5868
+  rapporto osservato/atteso: 0.87   (1.0 = doppietto perfetto; ~0.5 = singoletto)
+
+  UMI TCR per 1000 conte:  CD8T = 4.01   NK-TCR+ = 2.61
+  atteso per doppietto: 2.24
+  Un rapporto osservato nelle NK ridotto rispetto alle CD8T indica diluizione
+  del trascritto TCR da parte dell'mRNA di una seconda cellula co-incapsulata.
+
+CONTROLLO: le CD8T-TCR+ costituiscono il riferimento per i singoletti T.
+Valori di n_counts simili a quelli dei singoletti sono compatibili con singoletti;
+valori vicini alla somma di due cellule sono compatibili con doppietti.

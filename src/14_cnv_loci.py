@@ -1,24 +1,45 @@
 #!/usr/bin/env python3
 """
-14_cnv_loci.py - Analisi citogenetica direzionale sui loci ricorrenti del PDAC.
+14_cnv_loci.py - Score CNV sui loci ricorrenti del PDAC: separazione fra duttali tumorali e adiacenti.
 
-Poiche' lo score CNV globale medio (`mean |X_cnv|`) aggrega indistintamente
-l'intero genoma e puo' risultare sensibile a programmi trascrizionali tessuto-specifici
-o a fenomeni di cancerizzazione di campo nell'epitelio peri-tumorale, questo
-modulo valuta la separabilita' tra cellule duttali tumorali (`Tumor`) e normali
-adiacenti (`Adjacent_normal`) restringendo il calcolo ai loci cromosomici
-soggetti ad alterazioni strutturali ricorrenti nell'adenocarcinoma duttale
-pancreatico (PDAC):
-  - Delezioni attese (`direction = -1`):
-      * 9p21 (`CDKN2A`), 17p13 (`TP53`), 18q21 (`SMAD4`), 1p, 6q
-  - Amplificazioni attese (`direction = +1`):
-      * 8q24 (`MYC`), 12p12 (`KRAS`), 20q
+Scopo
+-----
+Lo score CNV globale (`mean |X_cnv|`) aggrega l'intero genoma e risente dei
+programmi trascrizionali tessuto-specifici. Questo modulo restringe il calcolo ai
+loci con alterazioni ricorrenti nell'adenocarcinoma duttale pancreatico e misura
+l'AUC tumore-vs-adiacente delle duttali, sia pooled sia entro paziente:
+  - perdite attese (`direction = -1`): 9p21 (`CDKN2A`), 17p13 (`TP53`), 18q21 (`SMAD4`), 1p, 6q
+  - guadagni attesi (`direction = +1`): 8q24 (`MYC`), 12p12 (`KRAS`), 20q
+Calcola uno score direzionale per locus e un indice composito (somma degli z-score,
+`PDAC_COMPOSITE`).
 
-Il modulo calcola gli score direzionali per singolo locus e un indice composito
-standardizzato (`PDAC_COMPOSITE`), confrontando l'AUC ROC di discriminazione
-tra tessuto tumorale e tessuto adiacente normale rispetto allo score globale.
+Come in `13_infercnv.py`, inferCNV gira una sola volta con il riferimento formato
+dalle immunitarie di TUTTI i pazienti. Le coordinate delle finestre di `X_cnv` non
+sono restituite da infercnvpy: sono interpolate in modo uniforme fra il primo e
+l'ultimo gene annotato di ciascun cromosoma, quindi i confini dei loci sono
+approssimati (una finestra puo' cadere dentro o fuori un locus per qualche Mb).
+L'AUC pooled mescola differenze fra pazienti e fra tessuti; l'AUC entro paziente
+(pazienti con almeno 10 duttali per tessuto) isola il contrasto tissutale.
 
-Uso:
+Input
+-----
+  --h5ad  data/interim/sc_raw.h5ad
+  cache   data/interim/cnv_matrix.npz (letta se esiste, altrimenti calcolata e scritta)
+
+Output
+------
+  data/interim/cnv_matrix.npz                    matrice X_cnv e coordinate delle finestre (cache)
+  results/tables/cnv_loci_auc.csv                AUC pooled per segnale (score medio, loci, composito)
+  results/tables/cnv_loci_auc_by_patient.csv     AUC entro paziente di PDAC_COMPOSITE e dello score medio
+                                                 (ultima riga `_mean`: media sui pazienti valutabili)
+  results/figures/cnv_loci_separation.png, results/figures/cnv_loci_auc.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto)
+
+Uso
+---
     python src/14_cnv_loci.py --h5ad data/interim/sc_raw.h5ad
 """
 
@@ -88,7 +109,7 @@ def compute_cnv(sub: ad.AnnData, method: str):
         sc.pp.log1p(a)
         a = a[:, a.var["chromosome"].notna()].copy()
         ref = [c for c in IMMUNE_REF if c in a.obs["ref_group"].unique()]
-        print(f"[..] infercnv, riferimento = {ref} (lento) ...")
+        print(f"[..] infercnv, riferimento = {ref} di tutti i pazienti (lento) ...")
         cnv.tl.infercnv(
             a, reference_key="ref_group", reference_cat=ref, window_size=100
         )
@@ -99,7 +120,11 @@ def compute_cnv(sub: ad.AnnData, method: str):
     X = a.obsm["X_cnv"]
     X = np.asarray(X.todense()) if issparse(X) else np.asarray(X)
 
-    # Ricostruzione dell'appartenenza cromosomica e della coordinata interpolata per ciascuna finestra di X_cnv
+    # Ricostruzione del cromosoma e della coordinata di ciascuna finestra di X_cnv.
+    # infercnvpy restituisce solo la colonna d'inizio di ogni cromosoma (chr_pos), non le
+    # coordinate delle finestre: la posizione e' interpolata in modo UNIFORME fra il primo
+    # e l'ultimo gene annotato del cromosoma. I geni non sono equispaziati, quindi i
+    # confini dei loci in PDAC_LOCI sono applicati in modo approssimato.
     chr_pos = a.uns["cnv"]["chr_pos"]
     n_win = X.shape[1]
     order = sorted(chr_pos.items(), key=lambda kv: kv[1])
@@ -136,7 +161,9 @@ def locus_score(X, windows, locus) -> np.ndarray:
 
 def main() -> None:
     """Punto di ingresso principale per la valutazione citogenetica locus-specifica."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Score CNV sui loci PDAC: AUC tumore vs adiacente, pooled ed entro paziente."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--method", choices=["infercnv", "copykat", "auto"], default="auto")
     args = ap.parse_args()
@@ -188,6 +215,10 @@ def main() -> None:
     tumor = duct & (obs.tissue.values == "Tumor")
     normal = duct & (obs.tissue.values == "Adjacent_normal")
     print(f"\nduttali: {tumor.sum():,} tumorali | {normal.sum():,} normali adiacenti")
+    if tumor.sum() == 0 or normal.sum() == 0:
+        raise SystemExit(
+            "[ERRORE] servono duttali sia in Tumor sia in Adjacent_normal."
+        )
 
     print("\n" + "=" * 74)
     print("SEPARAZIONE TUMORE vs NORMALE: score medio vs loci PDAC specifici")
@@ -196,7 +227,6 @@ def main() -> None:
     print("0.5 = distribuzioni sovrapposte | >0.65 = separazione locus-specifica\n")
 
     def auc_tn(score):
-        s = score[tumor | normal]
         y = np.r_[np.ones(tumor.sum()), np.zeros(normal.sum())]
         idx = np.r_[np.where(tumor)[0], np.where(normal)[0]]
         s = score[idx]
@@ -232,6 +262,8 @@ def main() -> None:
 
     # Somma standardizzata (z-score) dei contributi direzionali dei singoli loci PDAC
     valid = [s for s in loci_scores.values() if not np.all(np.isnan(s))]
+    if not valid:
+        raise SystemExit("[ERRORE] nessun locus PDAC coperto dalle finestre di X_cnv.")
     comp = np.nansum(
         [(s - np.nanmean(s)) / (np.nanstd(s) + 1e-9) for s in valid], axis=0
     )
@@ -274,16 +306,45 @@ def main() -> None:
         "\nAUC tumore-vs-normale PDAC_COMPOSITE, per paziente con abbastanza normali:"
     )
     pat = obs.patients.values
+    by_pat = []
     for p in np.unique(pat[normal]):
         t = tumor & (pat == p)
         n = normal & (pat == p)
         if n.sum() < 10 or t.sum() < 10:
+            print(
+                f"  {p}: non valutabile (tumor n={t.sum()}, normal n={n.sum()}, minimo 10)"
+            )
             continue
-        s = comp[np.r_[np.where(t)[0], np.where(n)[0]]]
+        idx = np.r_[np.where(t)[0], np.where(n)[0]]
         y = np.r_[np.ones(t.sum()), np.zeros(n.sum())]
-        ok = ~np.isnan(s)
-        a = roc_auc_score(y[ok], s[ok]) if len(np.unique(y[ok])) > 1 else np.nan
-        print(f"  {p}: AUC={a:.3f}  (tumor n={t.sum()}, normal n={n.sum()})")
+        row = {"patient": p, "n_tumor": int(t.sum()), "n_normal": int(n.sum())}
+        for name, score in (("PDAC_COMPOSITE", comp), ("MEAN_|CNV|", mean_score)):
+            s = score[idx]
+            ok = ~np.isnan(s)
+            row[f"auc_{name}"] = (
+                roc_auc_score(y[ok], s[ok]) if len(np.unique(y[ok])) > 1 else np.nan
+            )
+        by_pat.append(row)
+        print(
+            f"  {p}: AUC={row['auc_PDAC_COMPOSITE']:.3f}  "
+            f"(tumor n={t.sum()}, normal n={n.sum()})"
+        )
+    by_pat = pd.DataFrame(by_pat)
+    if not by_pat.empty:
+        # riga di riepilogo: media delle AUC entro paziente
+        mean_row = by_pat.drop(columns="patient").mean(numeric_only=True).to_dict()
+        by_pat = pd.concat(
+            [by_pat, pd.DataFrame([{"patient": "_mean", **mean_row}])],
+            ignore_index=True,
+        )
+    by_pat.to_csv(TAB / "cnv_loci_auc_by_patient.csv", index=False)
+    by_pat = by_pat[by_pat.patient != "_mean"]
+    if not by_pat.empty:
+        print(
+            f"  AUC entro paziente PDAC_COMPOSITE: media {by_pat.auc_PDAC_COMPOSITE.mean():.3f}, "
+            f"range [{by_pat.auc_PDAC_COMPOSITE.min():.3f}, {by_pat.auc_PDAC_COMPOSITE.max():.3f}] "
+            f"su {len(by_pat)} pazienti"
+        )
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.4))
     axes[0].hist(

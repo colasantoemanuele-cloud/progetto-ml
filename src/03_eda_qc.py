@@ -1,21 +1,34 @@
 #!/usr/bin/env python3
 """
-03_eda_qc.py: Analisi esplorativa, controllo di qualita e valutazione del supporto per paziente in modalita out-of-core.
+03_eda_qc.py - Controllo di qualita' descrittivo per libreria, composizione e supporto per paziente.
 
-Artefatti prodotti:
-  results/tables/qc_by_library_{tag}.csv     Statistiche descrittive QC (n_genes, n_counts, pct_mt) per libreria
-  results/tables/composition_{tag}.csv       Matrice di contingenza tipo cellulare x compartimento tissutale
-  results/tables/patient_support_{tag}.csv   Numero di soggetti indipendenti che supportano ciascuna classe
-  results/figures/qc_*.png                   Distribuzioni violin-plot e complessita trascrizionale
-  results/figures/composition_*.png          Composizione cellulare per tessuto e per paziente
+Scopo
+-----
+Legge l'h5ad in modalita' backed (senza caricare X in memoria) e produce tabelle e
+figure descrittive. Non applica soglie di QC e non filtra cellule: le cellule usate a
+valle sono quelle pubblicate dagli autori. In una validazione per paziente una classe
+e' valutabile solo se e' presente in abbastanza pazienti: per questo lo script conta
+anche i pazienti che supportano ciascuna classe con almeno 1, 10, 50, 100 cellule.
 
-Razionale statistico:
-In uno schema di validazione incrociata raggruppata per soggetto (StratifiedGroupKFold o Leave-One-Patient-Out),
-l'apprendibilita e la valutabilita di una classe citologica dipendono dal numero di pazienti indipendenti in cui
-tale popolazione e rappresentata con numerosita sufficiente, poiché il paziente costituisce l'unita statistica
-indipendente del disegno sperimentale.
+Input
+-----
+  --h5ad  data/interim/{sc,sn}_raw.h5ad (da 02_build_h5ad.py)
 
-Uso:
+Output
+------
+  results/tables/dataset_summary_{tag}.csv   cellule, geni, librerie, pazienti; cellule e pazienti per tessuto
+  results/tables/qc_by_library_{tag}.csv     mediane di n_genes, n_counts, pct_mt per libreria
+  results/tables/composition_{tag}.csv       tipo cellulare x compartimento
+  results/tables/patient_support_{tag}.csv   pazienti con almeno 1/10/50/100 cellule per classe
+  results/figures/qc_by_library_{tag}.png, qc_complexity_{tag}.png,
+  composition_by_tissue_{tag}.png, patient_by_celltype_{tag}.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --tag (default sc)
+
+Uso
+---
     python src/03_eda_qc.py --h5ad data/interim/sc_raw.h5ad --tag sc
     python src/03_eda_qc.py --h5ad data/interim/sn_raw.h5ad --tag sn
 """
@@ -51,7 +64,8 @@ def check_counts(adata: ad.AnnData) -> None:
         print(f"[qc] min={d.min():.3g} max={d.max():.3g} media={d.mean():.3g}")
         if not is_int:
             print(
-                "[!!] HVG seurat_v3 e inferCNV assumono conte grezze. Fermati e verifica."
+                "[!!] X non sembra fatta di conteggi interi: LogCPM, HVGSelector e inferCNV "
+                "a valle assumono conteggi grezzi. (03 non applica soglie di QC.)"
             )
     except Exception as e:  # noqa: BLE001
         print(f"[!] impossibile ispezionare X: {e}")
@@ -69,6 +83,24 @@ def validate(obs: pd.DataFrame, tag: str) -> None:
         assert n_pat == EXPECTED_PATIENTS[tag], (
             f"{n_pat} pazienti, attesi {EXPECTED_PATIENTS[tag]}."
         )
+
+
+def dataset_summary(obs: pd.DataFrame, n_genes: int, tag: str) -> None:
+    """Numeri descrittivi del dataset: cellule, geni, librerie, pazienti e cellule per tessuto."""
+    row = {
+        "n_cells": len(obs),
+        "n_genes": n_genes,
+        "n_libraries": obs.library.nunique(),
+        "n_patients": obs.patients.nunique(),
+    }
+    if "tissue" in obs:
+        for t, n in obs.tissue.astype(str).value_counts().items():
+            row[f"n_cells_{t}"] = int(n)
+            row[f"n_patients_{t}"] = int(
+                obs.loc[obs.tissue.astype(str) == t, "patients"].nunique()
+            )
+    pd.DataFrame([row]).to_csv(TAB / f"dataset_summary_{tag}.csv", index=False)
+    print("[ok] riepilogo: " + ", ".join(f"{k}={v:,}" for k, v in row.items()))
 
 
 def qc_tables(obs: pd.DataFrame, tag: str) -> None:
@@ -209,7 +241,9 @@ def patient_support(obs: pd.DataFrame, tag: str, thresholds=(1, 10, 50, 100)) ->
 
 def main() -> None:
     """Apre l'archivio AnnData in modalita backed='r' (sola lettura dei metadati) ed esegue l'intera suite QC/EDA."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="QC descrittivo per libreria, composizione e supporto per paziente (nessun filtro)."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tag", default="sc")
     args = ap.parse_args()
@@ -227,6 +261,7 @@ def main() -> None:
     obs["library"] = obs.library.astype(str)
 
     validate(obs, args.tag)
+    dataset_summary(obs, adata.n_vars, args.tag)
     qc_tables(obs, args.tag)
     qc_figures(obs, args.tag)
     composition(obs, args.tag)

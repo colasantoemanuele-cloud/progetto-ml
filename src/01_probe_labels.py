@@ -1,19 +1,36 @@
 #!/usr/bin/env python3
 """
-01_probe_labels.py: Verifica preliminare delle tabelle di annotazione cellulare e dei barcode nelle SubSeries GEO.
+01_probe_labels.py - Verifica preliminare delle etichette cellulari e dei barcode nelle SubSeries GEO.
 
-La SuperSeries GSE278694 e articolata in quattro SubSeries specializzate:
-    GSE278687  Trascrittomica spaziale Visium (ST)
-    GSE278688  scRNA-seq (sc_matrix.mtx.gz: 1.0 GB; sc_metadata.csv.gz: 1.1 MB)
+Scopo
+-----
+La SuperSeries GSE278694 comprende quattro SubSeries:
+    GSE278687  trascrittomica spaziale Visium
+    GSE278688  scRNA-seq (sc_matrix.mtx.gz: 1,0 GB; sc_metadata.csv.gz: 1,1 MB)
     GSE278689  snRNA-seq (sn_matrix.mtx.gz: 101 MB; sn_metadata.csv.gz: 192 KB)
     GSE300435  scTCR-seq V(D)J
+Lo script scarica solo i metadati, le liste di barcode e un file VDJ pilota
+(GSM9060613, PA01 Tumor) e verifica:
+  Q3  presenza e cardinalita' delle etichette di tipo cellulare (`all_celltype`);
+  Q2  sovrapposizione dei barcode 10x a 16 nt fra il file VDJ pilota e i metadati GEX;
+  Q1b struttura delle coorti di pazienti scRNA-seq e snRNA-seq.
+I 5 pazienti con Tumor e Adjacent_normal appaiati sono identificati da 04_splits.py.
 
-Questo script acquisisce esclusivamente i file di metadati e di barcode per verificare:
-  Q3  Presenza e cardinalita delle etichette di tipo cellulare ('all_celltype') nei metadati scRNA e snRNA.
-  Q2  Grado di sovrapposizione dei barcode 10x a 16 nucleotidi tra librerie TCR e librerie GEX.
-  Q1b Struttura delle coorti di pazienti tra scRNA-seq e snRNA-seq direttamente dalle colonne dei metadati.
+Input
+-----
+  rete: https://ftp.ncbi.nlm.nih.gov/geo (i file gia' presenti non vengono riscaricati)
 
-Uso:
+Output
+------
+  {outdir}/sc_metadata.csv.gz, sc_barcodes.tsv.gz, sn_metadata.csv.gz,
+  sn_barcodes.tsv.gz, tcr_PA01_tumor.csv.gz (solo download; nessuna tabella)
+
+Argomenti
+---------
+  --outdir (default data/raw/probe)
+
+Uso
+---
     python src/01_probe_labels.py --outdir data/raw/probe
 """
 
@@ -182,9 +199,7 @@ def check_tcr_overlap(sc: pd.DataFrame | None, tcr_path: Path) -> None:
                 f"[!] non trovo PA01 Tumor in '{samp_col}'. Uso TUTTE le cellule (stima non stratificata per libreria)."
             )
 
-    sc_bc = set(
-        core_barcode(subset[sc.columns[0] if samp_col is None else bc_col]).dropna()
-    )
+    sc_bc = set(core_barcode(subset[bc_col]).dropna())
     inter = tcr_bc & sc_bc
     print(f"\nbarcode GEX nel sottoinsieme : {len(sc_bc)}")
     print(f"intersezione TCR ∩ GEX       : {len(inter)}")
@@ -211,7 +226,9 @@ def check_tcr_overlap(sc: pd.DataFrame | None, tcr_path: Path) -> None:
 
 def main() -> None:
     """Orchestra il download dei file pilota e l'analisi esplorativa delle etichette e dei barcode."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Verifica preliminare di etichette e barcode nelle SubSeries GEO."
+    )
     ap.add_argument("--outdir", type=Path, default=Path("data/raw/probe"))
     args = ap.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,6 @@
+ confounder  reps  fp_block  fp_block_centered  fp_naive  rate_block  rate_block_centered  rate_naive
+        0.0   100         4                  6         4       0.040                0.060       0.040
+        0.5   100         6                  7        28       0.060                0.070       0.280
+        1.0   100        11                  4        87       0.110                0.040       0.870
+        2.0   100         5                  2        99       0.050                0.020       0.990
+        1.0  1000        54                 53       855       0.054                0.053       0.855

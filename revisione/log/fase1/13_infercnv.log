@@ -1,0 +1,80 @@
+[..] carico h5ad ...
+[ok] sottoinsieme: 101,219 cellule (8,704 duttali, 92,515 immuni di riferimento)
+
+duttali per paziente x tessuto:
+tissue    Adjacent_normal  Tumor   All
+patients                              
+PA01                    0    270   270
+PA02                    0    278   278
+PA04                    1    152   153
+PA05                    0   1296  1296
+PA06                   26   2354  2380
+PA07                    0    188   188
+PA08                  210    809  1019
+PA09                   14    981   995
+PA10                   83    726   809
+PA11                    0    389   389
+PA12                    0    230   230
+PA13                    0    678   678
+PA14                    0     19    19
+All                   334   8370  8704
+
+[ok] CNV score da cache data/interim/cnv_scores.csv
+
+==========================================================================
+ETICHETTA DI MALIGNITA' (soglia per paziente sugli immuni di riferimento)
+==========================================================================
+patient          tissue    n  malignant  frac_malig
+   PA01           Tumor  270        121       0.448
+   PA02           Tumor  278        117       0.421
+   PA04           Tumor  152         47       0.309
+   PA04 Adjacent_normal    1          0       0.000
+   PA05           Tumor 1296       1133       0.874
+   PA06           Tumor 2354        848       0.360
+   PA06 Adjacent_normal   26         16       0.615
+   PA07           Tumor  188         38       0.202
+   PA08           Tumor  809        323       0.399
+   PA08 Adjacent_normal  210         95       0.452
+   PA09           Tumor  981        643       0.655
+   PA09 Adjacent_normal   14          4       0.286
+   PA10           Tumor  726        553       0.762
+   PA10 Adjacent_normal   83         48       0.578
+   PA11           Tumor  389        212       0.545
+   PA12           Tumor  230         67       0.291
+   PA13           Tumor  678        398       0.587
+   PA14           Tumor   19          1       0.053
+
+==========================================================================
+CLASSIFICATORE LOPO: predire la malignita' dal trascrittoma
+==========================================================================
+pazienti con >=150 duttali tumorali: 12 -> ['PA01', 'PA02', 'PA04', 'PA05', 'PA06', 'PA07', 'PA08', 'PA09', 'PA10', 'PA11', 'PA12', 'PA13']
+cellule di training: 8,351 | maligne: 53.9%
+
+per paziente (leave-one-patient-out):
+patient  n_test  balanced_acc  f1_malig   auc
+   PA01     270         0.711     0.661 0.838
+   PA02     278         0.662     0.576 0.767
+   PA04     152         0.765     0.683 0.888
+   PA05    1296         0.797     0.788 0.930
+   PA06    2354         0.601     0.581 0.711
+   PA07     188         0.735     0.542 0.837
+   PA08     809         0.674     0.586 0.792
+   PA09     981         0.735     0.823 0.830
+   PA10     726         0.690     0.800 0.736
+   PA11     389         0.792     0.789 0.893
+   PA12     230         0.743     0.648 0.913
+   PA13     678         0.723     0.788 0.819
+
+AUC media: 0.829 ± 0.069
+balanced accuracy media: 0.719 ± 0.056
+
+==========================================================================
+DUTTALI DEL TESSUTO ADIACENTE (mai in training; stessa esecuzione inferCNV)
+==========================================================================
+duttali normali adiacenti: 334
+predette maligne: 37.1% | non maligne: 62.9%
+La frazione predetta maligna misura quanto il classificatore separa le duttali
+tumorali dalle duttali peri-tumorali; non e' un tasso di falsi positivi
+rispetto a una verita' indipendente (vedi docstring, punto 3).
+
+[ok] figura: results/figures/malignancy.png

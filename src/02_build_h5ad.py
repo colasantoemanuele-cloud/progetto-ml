@@ -1,32 +1,43 @@
 #!/usr/bin/env python3
 """
-02_build_h5ad.py: Costruzione a memoria controllata degli archivi AnnData (.h5ad) dalle matrici Matrix Market.
+02_build_h5ad.py - Conversione delle matrici MatrixMarket di GEO in AnnData (.h5ad) a memoria controllata.
 
-Razionale sistemistico e gestione della memoria RAM:
-L'utilizzo diretto di `scipy.io.mmread` su una matrice sparsa `.mtx.gz` con circa 350 milioni di
-elementi non nulli comporta un'allocazione transitoria di diverse decine di gigabyte. Questo modulo
-legge il flusso compresso a blocchi (`chunksize = 20_000_000`) mediante il parser C di pandas,
-popola tre vettori pre-allocati (`int32` per indici di riga/colonna e `float32` per le conte UMI) e
-converte la struttura in formato CSR (`Compressed Sparse Row`, cellule x geni), contenendo il picco
-di memoria intorno a 10-12 GB.
+Scopo
+-----
+`scipy.io.mmread` su una matrice `.mtx.gz` con ~360 milioni di elementi non nulli
+richiede decine di GB. Lo script legge il file compresso a blocchi
+(`CHUNK = 20_000_000` righe) con il parser C di pandas, riempie tre vettori
+pre-allocati (`int32` per gli indici, `float32` per i conteggi UMI) e costruisce una
+matrice CSR cellule x geni; il picco di memoria resta intorno a 10-12 GB.
 
-Struttura e armonizzazione dei barcode:
-Coesistono due formati di identificatori cellulari nelle serie GEO:
-    scRNA-seq        PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1     (16 nt barcode cellulare)
-    snRNA-seq (4/8)  1869485_FFPE_AAACAAGCAAGCTATG-1             (16 nt barcode cellulare)
-    snRNA-seq (4/8)  2021124_FFPE_AAACAAGCAATCGTGAATGTTGAC-1     (16 nt barcode + 8 nt probe 10x Flex)
-Nei campioni multiplexati 10x Genomics Flex a 24 nucleotidi, i primi 16 nt rappresentano il barcode
-della goccia cellulare e gli ultimi 8 nt identificano la sonda di multiplexing del campione.
+Identificativi delle cellule nelle serie GEO:
+    scRNA-seq        PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1      (barcode 16 nt)
+                     PDAC05_PBMC_GEX_out_AAACCTGAGATAGTCA-1       (separatore "_")
+    snRNA-seq (4/8)  1869485_FFPE_AAACAAGCAAGCTATG-1              (barcode 16 nt)
+    snRNA-seq (4/8)  2021124_FFPE_AAACAAGCAATCGTGAATGTTGAC-1      (16 nt + 8 nt di sonda 10x Flex)
+Libreria, barcode e sonda sono estratti con `CELL_ID_RE`. Vengono calcolati
+`n_counts`, `n_genes` e `pct_mt` per cellula. h5py non accetta NaN nelle colonne di
+stringhe: le colonne testuali diventano stringhe senza mancanti e poi `category`.
+Il file e' scritto su un temporaneo e poi rinominato (scrittura atomica).
 
-Serializzazione HDF5:
-Poiche `h5py` non consente valori `float` (`NaN`) all'interno di colonne stringa, tutte le variabili
-descrittive testuali vengono convertite in stringhe prive di valori mancanti e tipizzate come
-`category` prima del salvataggio atomico su disco.
+Input
+-----
+  {outdir}/raw/GSE278688/ (sc) o {outdir}/raw/GSE278689/ (sn): matrix.mtx.gz,
+  barcodes.tsv.gz, features.tsv.gz, metadata.csv.gz di GEO; scaricati se mancano.
 
-Uso:
-    python src/02_build_h5ad.py --which sn --outdir data --no-counts-layer
+Output
+------
+  {outdir}/interim/{sc,sn}_raw.h5ad   ({sc,sn}_raw_dev.h5ad con --subsample)
+
+Argomenti
+---------
+  --which {sc,sn} (obbligatorio), --outdir (default data),
+  --subsample N (cellule casuali per sviluppo, 0 = tutte), --no-counts-layer
+
+Uso
+---
     python src/02_build_h5ad.py --which sc --outdir data --no-counts-layer
-    python src/02_build_h5ad.py --which sc --outdir data --subsample 20000
+    python src/02_build_h5ad.py --which sn --outdir data --no-counts-layer
 """
 
 from __future__ import annotations
@@ -200,7 +211,9 @@ def check_counts(X: sp.csr_matrix) -> None:
 
 def main() -> None:
     """Esegue la pipeline completa di download, assemblaggio CSR, calcolo metriche QC e scrittura atomica .h5ad."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Conversione delle matrici MatrixMarket di GEO in AnnData (.h5ad)."
+    )
     ap.add_argument("--which", choices=["sc", "sn"], required=True)
     ap.add_argument("--outdir", type=Path, default=Path("data"))
     ap.add_argument(

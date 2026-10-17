@@ -1,22 +1,33 @@
 #!/usr/bin/env python3
 """
-01b_tcr_check.py: Intersezione clonale tra sequenze V(D)J e trascrittoma su singola libreria (PDAC01-Tumor).
+01b_tcr_check.py - Allineamento dei barcode TCR e GEX su una libreria pilota (PDAC01-Tumor).
 
-Metodologia:
-L'intersezione dei barcode 10x a 16 nucleotidi viene calcolata rigorosamente all'interno della
-medesima libreria di sequenziamento (PDAC01-Tumor), anziche sull'intero pool di barcode del
-dataset. Poiche i barcode 10x Genomics con chimica 5' v1/v2 provengono da una whitelist finita
-di 737.280 sequenze, il confronto globale contro ~175.000 barcode GEX produrrebbe un tasso di
-collisione casuale attesa pari a circa il 24%. Lo script quantifica il valore atteso sotto
-indipendenza stocastica e il relativo fattore di arricchimento osservato.
+Scopo
+-----
+Usa il file VDJ pilota scaricato da 01_probe_labels.py (PA01 Tumor) e i metadati GEX.
+L'intersezione dei barcode 10x a 16 nt si calcola dentro la stessa libreria
+(PDAC01-Tumor), non sull'insieme di tutti i barcode: la whitelist 10x 5' v1/v2 ha
+737.280 sequenze, quindi un confronto globale contro ~175.000 barcode GEX darebbe
+circa il 24% di coincidenze casuali. Lo script riporta l'intersezione osservata, quella
+attesa per caso e il rapporto; le etichette GEX delle cellule con TCR produttivo; la
+frazione di cellule etichettate T con TCR rilevato; le duttali per paziente e tessuto.
+Gli identificativi GEX hanno due forme, entrambe riconosciute:
+"PDAC01-Tumor-GEX_out_<barcode>-1" e "PDAC05_PBMC_GEX_out_<barcode>-1".
 
-Valutazione ortogonale:
-Per le cellule dotate di un contig TCR alfa/beta produttivo ad alta confidenza nella libreria
-PDAC01-Tumor, viene calcolata la distribuzione delle annotazioni citologiche assegnate nel
-trascrittoma, stimando la concordanza sui linfociti T (CD4T/CD8T) e la disponibilita di cellule
-duttali per paziente e compartimento tissutale.
+Input
+-----
+  --probe  cartella con sc_metadata.csv.gz e tcr_PA01_tumor.csv.gz (da 01_probe_labels.py)
 
-Uso:
+Output
+------
+  solo testo a video (nessun file scritto)
+
+Argomenti
+---------
+  --probe (default data/raw/probe)
+
+Uso
+---
     python src/01b_tcr_check.py --probe data/raw/probe
 """
 
@@ -42,7 +53,9 @@ NKT_LABELS = {
 
 def main() -> None:
     """Esegue la verifica di sovrapposizione dei barcode TCR/GEX entro libreria e il controllo delle etichette."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Allineamento dei barcode TCR e GEX sulla libreria pilota PDAC01-Tumor."
+    )
     ap.add_argument("--probe", type=Path, default=Path("data/raw/probe"))
     args = ap.parse_args()
 
@@ -51,9 +64,10 @@ def main() -> None:
     tcr = pd.read_csv(args.probe / "tcr_PA01_tumor.csv.gz", low_memory=False)
 
     # 1. Estrazione del prefisso di libreria e del barcode cellulare a 16 nt dall'indice composito GEX
-    # (formato standard del dataset: PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1).
+    # Formati del dataset: PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1 e
+    # PDAC05_PBMC_GEX_out_AAACCTGAGATAGTCA-1 (separatore "_" invece di "-").
     parts = sc.index.to_series().str.extract(
-        r"^(?P<library>.+?)-GEX_out_(?P<bc>[ACGT]{16})"
+        r"^(?P<library>.+?)[-_]GEX_out_(?P<bc>[ACGT]{16})"
     )
     sc = sc.join(parts)
     n_bad = sc.library.isna().sum()

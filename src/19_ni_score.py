@@ -1,35 +1,42 @@
 #!/usr/bin/env python3
 """
-19_ni_score.py: Test di associazione tra punteggio clinico di invasione neurale (NI score) ed errore di annotazione.
+19_ni_score.py - Ipotesi H4: punteggio di invasione neurale (NI score) contro errore di etichetta nel tumore.
 
-Razionale Clinico e Ipotesi H4
-------------------------------
-La Tabella Supplementare S1A (`mmc2.xlsx` dello studio di riferimento Chen et al.,
-Cancer Cell 2025) riporta i metadati clinici e istopatologici dei pazienti, incluso
-il punteggio quantitativo di invasione neurale (`NI score`). I 14 pazienti con
-`scRNA-seq = Yes` nella tabella clinica corrispondono biunivocamente ai 14 pazienti
-del dataset single-cell.
+Scopo
+-----
+La Table S1A del supplementare di Chen et al., Cancer Cell 2025 (`mmc2.xlsx`) riporta
+i metadati clinici dei pazienti, compreso il punteggio di invasione neurale (`NI
+score`). I 14 pazienti con `scRNA-seq = Yes` corrispondono ai 14 pazienti del dataset
+single-cell. Ipotesi H4, formulata prima di calcolare la correlazione: NI score piu'
+alto -> microambiente piu' rimodellato -> piu' errore di annotazione delle T nel
+tumore. Il gruppo dicotomico (`NI group`: 11 High contro 3 Low) e' troppo sbilanciato:
+si usa il punteggio continuo.
 
-Si formula l'ipotesi a priori (H4) che un `NI score` piu' elevato, indicativo di un
-microambiente tumorale maggiormente rimodellato dall'invasione perineurale e
-associato a disfunzione immunitaria, correli positivamente con il tasso di errore
-di annotazione dei linfociti T nel compartimento tumorale. Poiche' la dicotomizzazione
-clinica (`NI group`: 11 High vs 3 Low) presenta un marcato sbilanciamento di classe,
-l'inferenza viene condotta direttamente sulla variabile continua `NI score`.
+Test: Spearman con permutazione Monte Carlo (20.000 permutazioni casuali, non
+esatto) e IC bootstrap sui pazienti ("expanded percentile"). H4 usa lo stesso
+outcome di H1-H3 (16_pseudobulk_patient.py): i p grezzi di H1-H3 vengono ricaricati
+e Holm-Bonferroni e' ricalcolato sulla famiglia completa di 4 ipotesi.
 
-Controllo Congiunto della Molteplicita' (Famiglia di 4 Ipotesi)
----------------------------------------------------------------
-Poiche' H4 viene valutata contro il medesimo outcome a livello di paziente (tasso
-d'errore nel tessuto tumorale da `arbitration_blood.csv`) gia' impiegato per le tre
-ipotesi trascrizionali H1-H3 in `16_pseudobulk_patient.py`, testare H4 isolatamente
-senza aggiornare la correzione per test multipli determinerebbe un'inflazione del
-Family-Wise Error Rate attraverso sessioni successive. Questo modulo carica i p-value
-di permutazione di H1-H3 e ricalcola la procedura step-down di Holm-Bonferroni
-sull'intera famiglia congiunta di 4 ipotesi (H1, H2, H3, H4).
+Input
+-----
+  --table-s1        data/raw/paper_supplement/mmc2.xlsx (Table S1 di Chen et al. 2025)
+  --arbitration     results/tables/arbitration_blood.csv (da 10_loco.py)
+  --previous-tests  results/tables/pseudobulk_hypothesis_tests.csv (da 16_pseudobulk_patient.py)
 
-Esecuzione:
-    python src/19_ni_score.py \
-        --table-s1 mmc2.xlsx \
+Output
+------
+  results/tables/ni_score_joined.csv       outcome e variabili cliniche per paziente
+  results/tables/ni_score_test.csv         rho, p grezzo e IC di H4
+  results/tables/ni_score_holm_joint.csv   p grezzo e p di Holm per H1-H4
+  results/figures/ni_score_vs_error.png
+
+Argomenti
+---------
+  --table-s1 (default data/raw/paper_supplement/mmc2.xlsx), --arbitration, --previous-tests
+
+Uso
+---
+    python src/19_ni_score.py --table-s1 data/raw/paper_supplement/mmc2.xlsx \
         --arbitration results/tables/arbitration_blood.csv \
         --previous-tests results/tables/pseudobulk_hypothesis_tests.csv
 """
@@ -38,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -48,6 +56,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import openpyxl
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import holm_bonferroni, percentile_ci, permutation_corr_test  # noqa: E402
 
 # Percorsi di output e costanti del protocollo inferenziale
 FIG = Path("results/figures")
@@ -104,32 +115,10 @@ def load_table_s1a(path: Path) -> pd.DataFrame:
     return df
 
 
-def permutation_corr_test(
-    x: np.ndarray, y: np.ndarray, n_perm: int = N_PERM, seed: int = SEED
-):
-    """Esegue il test di permutazione esatto a due code (20.000 permutazioni
-    vettorizzate dei ranghi) per il coefficiente di correlazione di Spearman."""
-    rng = np.random.default_rng(seed)
-    n = len(x)
-    rx = pd.Series(x).rank().values
-    ry = pd.Series(y).rank().values
-    rho_obs = float(np.corrcoef(rx, ry)[0, 1])
-    perm_idx = np.argsort(rng.random((n_perm, n)), axis=1)
-    ry_perm = ry[perm_idx]
-    rx_c = rx - rx.mean()
-    ry_c = ry_perm - ry_perm.mean(axis=1, keepdims=True)
-    num = (ry_c * rx_c).sum(axis=1)
-    den = np.sqrt((rx_c**2).sum()) * np.sqrt((ry_c**2).sum(axis=1))
-    rhos = num / np.maximum(den, 1e-12)
-    p = (np.sum(np.abs(rhos) >= abs(rho_obs) - 1e-12) + 1) / (n_perm + 1)
-    return rho_obs, float(p)
-
-
 def bootstrap_ci_corr(
     x: np.ndarray, y: np.ndarray, n_boot: int = 2000, seed: int = SEED
 ):
-    """Calcola l'intervallo di confidenza al 95% per la correlazione di Spearman
-    mediante ricampionamento bootstrap non parametrico sui pazienti."""
+    """IC 95% di Spearman con bootstrap sui pazienti (righe), "expanded percentile"."""
     rng = np.random.default_rng(seed)
     n = len(x)
     vals = []
@@ -142,20 +131,7 @@ def bootstrap_ci_corr(
             vals.append(r)
     if len(vals) < 20:
         return np.nan, np.nan
-    return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
-
-
-def holm_bonferroni(pvals: dict) -> dict:
-    """Applica la correzione sequenziale di Holm-Bonferroni all'insieme completo
-    dei p-value della famiglia di ipotesi."""
-    items = sorted(pvals.items(), key=lambda kv: kv[1])
-    m = len(items)
-    adj, running_max = {}, 0.0
-    for i, (name, p) in enumerate(items):
-        val = min((m - i) * p, 1.0)
-        running_max = max(running_max, val)
-        adj[name] = running_max
-    return adj
+    return percentile_ci(np.array(vals), n)
 
 
 def build_outcome(arb_path: Path) -> pd.DataFrame:
@@ -176,8 +152,12 @@ def build_outcome(arb_path: Path) -> pd.DataFrame:
 def main() -> None:
     """Orchestra l'allineamento dei metadati clinici NI score, il test di
     permutazione per H4 e il ricalcolo congiunto di Holm-Bonferroni su H1-H4."""
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--table-s1", type=Path, required=True)
+    ap = argparse.ArgumentParser(
+        description="Ipotesi H4: NI score contro errore di etichetta nel tumore."
+    )
+    ap.add_argument(
+        "--table-s1", type=Path, default=Path("data/raw/paper_supplement/mmc2.xlsx")
+    )
     ap.add_argument(
         "--arbitration", type=Path, default=Path("results/tables/arbitration_blood.csv")
     )
@@ -192,6 +172,11 @@ def main() -> None:
     TAB.mkdir(parents=True, exist_ok=True)
 
     # Caricamento dei metadati clinici e selezione della coorte sottoposta a scRNA-seq
+    if not args.table_s1.exists():
+        raise SystemExit(
+            f"[ERRORE] {args.table_s1} assente: scarica la Table S1 (mmc2.xlsx) dal "
+            "supplementare di Chen et al. 2025 (vedi README)."
+        )
     clin = load_table_s1a(args.table_s1)
     scrna = clin[clin["scRNA-seq"] == "Yes"].copy()
     print(f"[ok] pazienti con scRNA-seq=Yes in Table S1A: {len(scrna)}")
@@ -217,19 +202,34 @@ def main() -> None:
     df.to_csv(TAB / "ni_score_joined.csv", index=False)
 
     print("\n" + "#" * 78)
-    print("# IPOTESI H4 (dichiarata prima di guardare il risultato):")
+    print("# IPOTESI H4 (formulata prima di calcolare la correlazione):")
     print("# NI score piu' alto -> microambiente piu' immunosoppresso -> piu'")
     print("# T esauste -> piu' errore di annotazione nel tumore. Attesa: rho > 0.")
     print("#" * 78)
 
-    # Test di correlazione per H4 mediante permutazione esatta e intervallo bootstrap
-    x, y = df["NI score"].values, df.error_rate.values
-    rho, p = permutation_corr_test(x, y)
+    # Test di correlazione per H4: permutazione Monte Carlo e intervallo bootstrap
+    if len(df) < 6:
+        raise SystemExit(f"[ERRORE] solo {len(df)} pazienti con outcome e NI score.")
+    x, y = df["NI score"].values.astype(float), df.error_rate.values
+    rho, p = permutation_corr_test(x, y, N_PERM, SEED)
     lo, hi = bootstrap_ci_corr(x, y)
     print(
         f"\nn={len(df)} pazienti | rho={rho:+.3f}  p_perm={p:.4f}  IC95% boot=[{lo:+.3f}, {hi:+.3f}]"
     )
     print(f"{'COERENTE con H4 (rho>0)' if rho > 0 else 'direzione OPPOSTA a H4'}")
+    pd.DataFrame(
+        [
+            {
+                "hypothesis": "H4_ni_score",
+                "n_patients": len(df),
+                "rho": rho,
+                "p_perm": p,
+                "ci_lo": lo,
+                "ci_hi": hi,
+                "n_perm": N_PERM,
+            }
+        ]
+    ).to_csv(TAB / "ni_score_test.csv", index=False)
 
     # Correzione congiunta di Holm-Bonferroni integrando i p-value di H1, H2 e H3
     print("\n" + "=" * 78)
@@ -256,12 +256,14 @@ def main() -> None:
         marker = "  [H4: questo script]" if k == "H4_ni_score" else ""
         print(f"  {k:20s} p_adj = {v:.4f}   {sig}{marker}")
 
-    pd.Series(adj, name="p_holm_family_of_4").to_csv(TAB / "ni_score_holm_joint.csv")
+    pd.DataFrame(
+        {"p_raw": pd.Series(all_p), "p_holm_family_of_4": pd.Series(adj)}
+    ).rename_axis("hypothesis").to_csv(TAB / "ni_score_holm_joint.csv")
 
     print("\n" + "=" * 78)
     print(f"n={len(df)} pazienti: come per H1-H3, questo e' un test a bassa potenza.")
-    print("Un p<0.05 qui e' un indizio da prendere sul serio (variabile clinica")
-    print("indipendente, non costruita da noi) ma NON prova causalita', e andrebbe")
+    print("Un p<0.05 qui sarebbe un indizio (variabile clinica misurata dagli autori,")
+    print("non derivata dal trascrittoma) ma non proverebbe causalita', e andrebbe")
     print("verificato su una coorte esterna prima di essere riportato come risultato.")
     print("=" * 78)
 

@@ -1,38 +1,63 @@
 #!/usr/bin/env python3
 """
-11_model_zoo.py - Benchmark comparativo multi-modello con validazione per paziente.
+11_model_zoo.py - Confronto di 13 classificatori con validazione per paziente.
 
-Questo modulo confronta sistematicamente tredici famiglie di classificatori
-supervisionati:
+Scopo
+-----
+Confronta tredici classificatori:
     dummy, naive_bayes, knn, logreg_l2, logreg_l1, elasticnet,
     decision_tree, bagging, random_forest, lightgbm,
     svm_linear, svm_rbf, mlp
 
-Architettura sperimentale e scelte metodologiche:
-1. Parita' di supporto campionario di training:
-   Per garantire che il confronto misuri la capacita' induttiva degli algoritmi
-   e non il diverso costo computazionale asintotico (es. complessita' quadratica
-   di SVM-RBF e k-NN), ciascun fold di training viene sottocampionato in modo
-   deterministico allo stesso budget di cellule (default: 20.000 cellule per fold,
-   estratte esclusivamente dopo lo split per paziente).
+Scelte del disegno:
+1. Stesso numero di cellule di training per tutti i modelli: ogni fold di training
+   e' sottocampionato in modo casuale uniforme (non stratificato) a `--max-train`
+   cellule (default 20.000, seme SEED + fold), dopo lo split per paziente. Il
+   confronto misura quindi gli algoritmi a parita' di dati, non il loro costo.
+2. Rappresentazione: tutti i modelli partono da `LogCPM` (log1p CP10k) e dai 2.000
+   geni piu' dispersi (`HVGSelector`), stimati sul training del fold.
+   - `knn`, `svm_rbf` e `mlp` lavorano su `TruncatedSVD` a 50 componenti seguita da
+     `StandardScaler` (stimati sul training): per knn e svm_rbf, basati su distanze
+     e kernel, si riduce la concentrazione delle distanze; per l'MLP, che non e'
+     basato su distanze, la proiezione densa serve a ridurre dimensione e costo.
+   - `naive_bayes` (MultinomialNB) usa direttamente i valori log-normalizzati, non
+     negativi, senza scaling (lo scaling non e' necessario e non cambia il segno).
+   - gli altri modelli usano la matrice CSR scalata senza centratura.
+3. Confronto con il modello migliore: t appaiato corretto di Nadeau-Bengio
+   (fattore n_test / n_train) e test di Wilcoxon appaiato sui fold. Con pochi fold la
+   potenza e' bassa: un p non significativo NON dimostra che due modelli siano
+   equivalenti.
+Il macro-F1 di ogni fold e' calcolato sulle sole classi presenti nel fold di test.
+Se un modello fallisce in un fold, tutti i suoi fold vengono scartati.
 
-2. Adattamento della rappresentazione allo spazio metrico del classificatore:
-   - I modelli basati su distanze euclidee o kernel radiali (`knn`, `svm_rbf`, `mlp`)
-     operano su una proiezione densa `TruncatedSVD` a 50 componenti (stimata
-     esclusivamente sul fold di training) seguita da `StandardScaler`, mitigando
-     la concentrazione delle distanze nello spazio sparso a 2.000 dimensioni.
-   - I modelli lineari sparsi e gli ensemble ad albero operano direttamente
-     sulla matrice CSR dei 2.000 geni ad alta variabilita' (`HVGSelector`).
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad
+  --splits  data/interim/splits_sc.csv (da 04_splits.py)
 
-3. Inferenza statistica corretta per la sovrapposizione dei training set:
-   La significativita' delle differenze di Macro-F1 rispetto al modello migliore
-   viene valutata mediante il t-test corretto di Nadeau-Bengio (che incorpora il
-   fattore di correlazione `n_test / n_train` tra i fold) affiancato dal test
-   non parametrico dei ranghi con segno di Wilcoxon.
+Output
+------
+  results/tables/model_zoo_{tag}.csv            metriche per task x modello x fold
+  results/tables/model_zoo_summary_{tag}.csv    media e sd sui fold per task x modello
+  results/tables/model_comparison_{task}.csv    differenze dal migliore e p (Nadeau-Bengio, Wilcoxon)
+  results/figures/model_zoo_{task}.png
 
-Uso:
+Argomenti
+---------
+  --h5ad, --splits (obbligatori), --tasks (default task2_hier3 task2_v1),
+  --models (default tutti), --max-train (default 20000; 0 = tutte le cellule),
+  --scheme (forza fold_group_5 / fold_random_5 / fold_lopo), --tag (default sc),
+  --update (sostituisce nella tabella esistente solo i modelli e i task rieseguiti),
+  --from-table (non addestra: rigenera riepilogo, confronti e figure dalla tabella per fold)
+
+Uso
+---
     python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad \
-        --splits data/interim/splits_sc.csv --tasks task2_v1 task2_hier3
+        --splits data/interim/splits_sc.csv --tasks task2_v1 task2_hier3 --scheme fold_lopo
+    python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad \
+        --splits data/interim/splits_sc.csv --tasks task1a_paired --tag task1 --scheme fold_lopo
+    # rieseguire un solo modello senza perdere gli altri:
+    python src/11_model_zoo.py ... --models lightgbm --update
 """
 
 from __future__ import annotations
@@ -53,13 +78,13 @@ import pandas as pd
 import scipy.sparse as sp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scpipe import HVGSelector, LogCPM, nadeau_bengio_ttest  # noqa: E402
+from scpipe import HVGSelector, LogCPM, macro_f1, nadeau_bengio_ttest  # noqa: E402
 
 from sklearn.decomposition import TruncatedSVD  # noqa: E402
 from sklearn.dummy import DummyClassifier  # noqa: E402
 from sklearn.ensemble import BaggingClassifier, RandomForestClassifier  # noqa: E402
 from sklearn.linear_model import LogisticRegression, SGDClassifier  # noqa: E402
-from sklearn.metrics import balanced_accuracy_score, f1_score, matthews_corrcoef  # noqa: E402
+from sklearn.metrics import balanced_accuracy_score, matthews_corrcoef  # noqa: E402
 from sklearn.naive_bayes import MultinomialNB  # noqa: E402
 from sklearn.neighbors import KNeighborsClassifier  # noqa: E402
 from sklearn.neural_network import MLPClassifier  # noqa: E402
@@ -69,6 +94,7 @@ from sklearn.svm import SVC, LinearSVC  # noqa: E402
 from sklearn.tree import DecisionTreeClassifier  # noqa: E402
 from scipy.stats import wilcoxon  # noqa: E402
 
+# UserWarning ripetitivi (es. nomi di feature di LightGBM su matrici sparse)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 FIG = Path("results/figures")
@@ -198,25 +224,23 @@ def build(model: str, dense: bool) -> Pipeline:
     ctor, _ = _models()[model]
     steps = [("logcpm", LogCPM()), ("hvg", HVGSelector(n_top=N_HVG))]
     if dense:
-        # Riduzione dimensionale TruncatedSVD(50) + StandardScaler denso per modelli metrici/non lineari
+        # TruncatedSVD(50) + StandardScaler denso per knn, svm_rbf e mlp (vedi docstring)
         steps += [
             ("svd", TruncatedSVD(n_components=N_SVD, random_state=SEED)),
             ("scale", StandardScaler()),
         ]
     elif model != "naive_bayes":
-        # MultinomialNB opera direttamente sulle frequenze log-normalizzate non negative
         steps += [("scale", StandardScaler(with_mean=False))]
+    # (naive_bayes: nessuno scaling, MultinomialNB lavora sui valori log-normalizzati non negativi)
     steps.append(("clf", ctor()))
     return Pipeline(steps)
 
 
-def evaluate(y_true, y_pred, classes) -> dict:
-    """Calcola Balanced Accuracy, Macro-F1 e coefficiente di correlazione di Matthews (MCC)."""
+def evaluate(y_true, y_pred, classes) -> dict:  # noqa: ARG001
+    """Balanced accuracy, macro-F1 (classi presenti nel test) e MCC."""
     return {
         "balanced_accuracy": balanced_accuracy_score(y_true, y_pred),
-        "macro_f1": f1_score(
-            y_true, y_pred, average="macro", labels=classes, zero_division=0
-        ),
+        "macro_f1": macro_f1(y_true, y_pred),
         "mcc": matthews_corrcoef(y_true, y_pred),
     }
 
@@ -239,6 +263,7 @@ def run_task(adata, sp_df, task, models, max_train, scheme_override) -> pd.DataF
     for model in models:
         _, dense = _models()[model]
         t0 = time.time()
+        model_rows = []
         try:
             for f in np.unique(folds):
                 tr, te = np.where(folds != f)[0], np.where(folds == f)[0]
@@ -248,7 +273,7 @@ def run_task(adata, sp_df, task, models, max_train, scheme_override) -> pd.DataF
                 pipe = build(model, dense)
                 pipe.fit(X[tr], y[tr])
                 pred = pipe.predict(X[te])
-                rows.append(
+                model_rows.append(
                     {
                         "task": task,
                         "scheme": scheme,
@@ -260,10 +285,14 @@ def run_task(adata, sp_df, task, models, max_train, scheme_override) -> pd.DataF
                     }
                 )
         except Exception as e:  # noqa: BLE001
-            print(f"  {model:15s} FALLITO: {type(e).__name__}: {e}")
+            # Un modello fallito in un fold viene escluso del tutto: niente medie su fold parziali
+            print(
+                f"  {model:15s} FALLITO: {type(e).__name__}: {e} "
+                f"(scartati {len(model_rows)} fold gia' calcolati)"
+            )
             continue
-        d = pd.DataFrame(rows)
-        s = d[(d.model == model) & (d.task == task)].macro_f1
+        rows += model_rows
+        s = pd.DataFrame(model_rows).macro_f1
         print(
             f"  {model:15s} macro-F1 = {s.mean():.4f} ± {s.std():.4f}   [{time.time() - t0:6.0f}s]"
         )
@@ -311,16 +340,16 @@ def compare(res: pd.DataFrame, task: str) -> None:
     pd.DataFrame(rows).to_csv(TAB / f"model_comparison_{task}.csv", index=False)
 
     print(
-        "\nNOTA METODOLOGICA: con 5 fold la potenza statistica e' limitata dai gradi di liberta' (K-1 = 4)."
+        f"\nNOTA: con {len(piv)} fold i gradi di liberta' sono {len(piv) - 1} e la potenza e' bassa."
     )
-    print(
-        "L'assenza di significativita' tra modelli lineari e non lineari documenta la separabilita' lineare."
-    )
+    print("Un p non significativo non dimostra che due modelli siano equivalenti.")
 
 
 def main() -> None:
     """Punto di ingresso principale per l'esecuzione del benchmark multi-modello."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Confronto di 13 classificatori con validazione per paziente."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--splits", type=Path, required=True)
     ap.add_argument("--tasks", nargs="*", default=["task2_hier3", "task2_v1"])
@@ -330,26 +359,73 @@ def main() -> None:
         "--scheme", default=None, help="forza fold_group_5 / fold_random_5 / fold_lopo"
     )
     ap.add_argument("--tag", default="sc")
+    ap.add_argument(
+        "--from-table",
+        action="store_true",
+        help="non addestra: rigenera riepilogo, confronti e figure da model_zoo_{tag}.csv",
+    )
+    ap.add_argument(
+        "--update",
+        action="store_true",
+        help="sostituisce nella tabella esistente solo i (task, modello) rieseguiti",
+    )
     args = ap.parse_args()
+    unknown = set(args.models) - set(_models())
+    if unknown:
+        raise SystemExit(f"[ERRORE] modelli sconosciuti: {sorted(unknown)}")
 
     FIG.mkdir(parents=True, exist_ok=True)
     TAB.mkdir(parents=True, exist_ok=True)
 
-    print("[..] carico h5ad ...")
-    adata = ad.read_h5ad(args.h5ad)
-    adata.X = sp.csr_matrix(adata.X)
-    sp_df = pd.read_csv(args.splits)
-
-    res = pd.concat(
-        [
-            run_task(adata, sp_df, t, args.models, args.max_train, args.scheme)
-            for t in args.tasks
-        ],
-        ignore_index=True,
-    )
     out = TAB / f"model_zoo_{args.tag}.csv"
+    if args.from_table:
+        # Nessun addestramento: ricalcola riepilogo, confronti e figure dai risultati per fold
+        if not out.exists():
+            raise SystemExit(f"[ERRORE] --from-table: {out} assente")
+        res = pd.read_csv(out)
+        args.tasks = [t for t in args.tasks if t in set(res.task)]
+    else:
+        print("[..] carico h5ad ...")
+        adata = ad.read_h5ad(args.h5ad)
+        adata.X = sp.csr_matrix(adata.X)
+        sp_df = pd.read_csv(args.splits)
+        missing = set(args.tasks) - set(sp_df.task.unique())
+        if missing:
+            raise SystemExit(
+                f"[ERRORE] task assenti da {args.splits}: {sorted(missing)}"
+            )
+        res = pd.concat(
+            [
+                run_task(adata, sp_df, t, args.models, args.max_train, args.scheme)
+                for t in args.tasks
+            ],
+            ignore_index=True,
+        )
+    if args.update and out.exists() and not args.from_table:
+        old = pd.read_csv(out)
+        drop = old.task.isin(args.tasks) & old.model.isin(args.models)
+        res = pd.concat([old[~drop], res], ignore_index=True)
+        print(f"[ok] --update: sostituite {int(drop.sum())} righe di {out}")
+    if res.empty:
+        raise SystemExit("[ERRORE] nessun modello completato: nessuna tabella scritta.")
     res.to_csv(out, index=False)
     print(f"\n[ok] scritto {out}")
+    summ = (
+        res.groupby(["task", "scheme", "model"])
+        .agg(
+            macro_f1_mean=("macro_f1", "mean"),
+            macro_f1_std=("macro_f1", "std"),
+            balanced_accuracy_mean=("balanced_accuracy", "mean"),
+            mcc_mean=("mcc", "mean"),
+            n_folds=("fold", "nunique"),
+            n_train_mean=("n_train", "mean"),
+        )
+        .reset_index()
+    )
+    # differenza dalla logistica L2 dello stesso task (riferimento lineare)
+    ref = summ[summ.model == "logreg_l2"].set_index("task").macro_f1_mean
+    summ["delta_vs_logreg_l2"] = summ.macro_f1_mean - summ.task.map(ref)
+    summ.to_csv(TAB / f"model_zoo_summary_{args.tag}.csv", index=False)
 
     for t in args.tasks:
         compare(res, t)

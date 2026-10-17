@@ -1,4 +1,4 @@
 ,desc,rho,p_perm,ci_lo,ci_hi,direction_attesa,coerente_con_ipotesi,p_holm
-exhaustion_score,H1: esaurimento CD8T tumorali -> piu' errore (deriva CD8->CD4/NK),-0.4666666666666666,0.17589120543972803,-0.8947540419676643,0.17758613462989153,positive,False,0.35178241087945605
-myeloid_fraction,H2: piu' contesto mieloide -> piu' errore (doppietti/ambient),-0.5393939393939393,0.11314434278286085,-0.95,0.18781249999999827,positive,False,0.3394330283485826
-caf_fraction,H3: piu' fibrosi -> qualita' peggiore -> piu' errore (speculativa),-0.1515151515151515,0.6732663366831658,-0.7532467532467532,0.5192114159918221,positive,False,0.6732663366831658
+exhaustion_score,H1: esaurimento CD8T tumorali -> piu' errore (deriva CD8->CD4/NK ipotizzata),-0.4666666666666666,0.17589120543972803,-0.9607843137254901,0.3207547169811321,positive,False,0.35178241087945605
+myeloid_fraction,H2: piu' contesto mieloide -> piu' errore (doppietti/ambient),-0.5393939393939393,0.11314434278286085,-0.987012987012987,0.38372377490588205,positive,False,0.3394330283485826
+caf_fraction,H3: piu' fibrosi -> qualita' peggiore -> piu' errore (speculativa),-0.1515151515151515,0.6732663366831658,-0.8938497832452391,0.7006467176911239,positive,False,0.6732663366831658

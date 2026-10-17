@@ -6,10 +6,13 @@ banda si corregge lo stimatore):
 1. Cluster bootstrap sui pazienti (IC 95% della media pooled), con 10 e con 11
    pazienti di numerosita' diseguale come nei dati (5-59 cloni per paziente),
    esito continuo e binario: copertura empirica dell'IC in [0.90, 0.99].
-   400 repliche per scenario.
+   400 repliche per scenario. (Fase 0: l'intervallo percentile semplice dava
+   0.877-0.892, fuori banda; lo stimatore e' stato corretto con l'intervallo
+   "expanded percentile", la banda e' rimasta invariata.)
 2. Block permutation test (permutazione dell'esito entro paziente) sotto H0 con
    confondente di paziente (x e y dipendono entrambi da un effetto di paziente,
-   nessuna associazione entro paziente): frazione di p < 0.05 in [0.02, 0.08].
+   nessuna associazione entro paziente): frazione di p < 0.05 in [0.02, 0.08],
+   sia per il p non centrato (quello usato in 17 e 18) sia per il p centrato.
    400 repliche, 2.000 permutazioni ciascuna.
 3. Holm-Bonferroni: p corretti monotoni nell'ordine dei p grezzi, >= p grezzi, <= 1
    (proprieta' esatte, nessuna banda).
@@ -17,6 +20,13 @@ banda si corregge lo stimatore):
    tutte le composizioni multinomiali) uguale a 1 - sum_k p_k^2; eccesso atteso
    esattamente 0 quando i due compartimenti hanno la stessa distribuzione
    (tolleranza numerica 1e-12, nessuna banda).
+5. t di Nadeau-Bengio (disegno ripreso da genomic-audit-mvp): sotto H0 (due
+   DummyClassifier stratificati con semi diversi, StratifiedKFold k = 5, n = 90)
+   frazione di p < 0.05 in [0.00, 0.08] (il test puo' essere conservativo, non
+   deve superare il livello); con effetto noto (logistica contro Dummy, n = 120)
+   frazione di p < 0.05 >= 0.50. 400 e 100 repliche.
+6. Regola della maggioranza, macro-F1 sulle classi presenti, livello espanso:
+   proprieta' esatte (nessuna banda).
 """
 
 from __future__ import annotations
@@ -28,6 +38,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import scpipe
 from conftest import load_script
 
 SIZES = np.array([17, 26, 47, 42, 22, 10, 30, 59, 29, 5, 40])
@@ -82,8 +93,9 @@ def test_cluster_bootstrap_coverage(k, binary):
 
 # --------------------------------------------------------------------------- #
 def block_perm(x, y, g, n_perm, seed):
-    m = load_script("17_clonal_expansion")
-    return m.block_permutation_test(x, y, g, n_perm=n_perm, seed=seed)[:2]
+    """p non centrato e centrato di `scpipe.block_permutation_test` (usato da 17 e 18)."""
+    r = scpipe.block_permutation_test(x, y, g, n_perm=n_perm, seed=seed)
+    return r["p"], r["p_centered"]
 
 
 @pytest.mark.slow
@@ -91,7 +103,7 @@ def test_block_permutation_type1_with_patient_confounder():
     rng = np.random.default_rng(2024)
     sizes = SIZES[:10]
     g = np.repeat(np.array([f"P{i:02d}" for i in range(10)]), sizes)
-    pos = 0
+    pos = pos_c = 0
     reps = 400
     for r in range(reps):
         z = rng.normal(0, 1, 10)
@@ -99,10 +111,12 @@ def test_block_permutation_type1_with_patient_confounder():
         x = z[gi] + rng.normal(0, 1, len(gi))  # log dimensione clonale
         pr = 1 / (1 + np.exp(-(-1.5 + z[gi])))  # errore: dipende solo dal paziente
         y = (rng.random(len(gi)) < pr).astype(float)
-        _, p = block_perm(x, y, g, n_perm=2000, seed=r)
+        p, p_c = block_perm(x, y, g, n_perm=2000, seed=r)
         pos += p < 0.05
-    rate = pos / reps
+        pos_c += p_c < 0.05
+    rate, rate_c = pos / reps, pos_c / reps
     assert 0.02 <= rate <= 0.08, f"falsi positivi {rate:.3f} fuori banda [0.02, 0.08]"
+    assert 0.02 <= rate_c <= 0.08, f"falsi positivi (centrato) {rate_c:.3f} fuori banda"
 
 
 # --------------------------------------------------------------------------- #
@@ -187,3 +201,60 @@ def test_d_within_08_unbiased(n):
     # il plug-in con reinserimento sarebbe distorto di un fattore (1 - 1/n)
     plug = sum(multinom_pmf(c, p) * (1 - ((c / n) ** 2).sum()) for c in compositions(n))
     assert plug == pytest.approx((1 - sum(pi**2 for pi in p)) * (1 - 1 / n), abs=1e-12)
+
+
+# --------------------------------------------------------------------------- #
+@pytest.mark.slow
+def test_nadeau_bengio_calibration_and_power():
+    sim = load_script("sim_a_calibration")
+    p0 = np.array([sim.nb_replicate(r, 55_005, 90, 5, False)[0] for r in range(400)])
+    p0 = p0[~np.isnan(p0)]
+    fpr = float(np.mean(p0 < 0.05))
+    assert 0.0 <= fpr <= 0.08, f"falsi positivi {fpr:.3f} fuori banda [0, 0.08]"
+    p1 = np.array([sim.nb_replicate(r, 51_005, 120, 5, True)[0] for r in range(100)])
+    power = float(np.mean(p1[~np.isnan(p1)] < 0.05))
+    assert power >= 0.5, f"potenza {power:.3f} < 0.50"
+
+
+def test_majority_label_ties_first_appearance():
+    assert scpipe.majority_label(["NK", "CD8T", "CD8T", "NK"]) == "NK"
+    assert scpipe.majority_label(["CD8T", "NK", "NK", "CD8T"]) == "CD8T"
+    assert scpipe.majority_label(["CD4T", "CD8T", "CD8T"]) == "CD8T"
+    # stessa regola di pandas value_counts().index[0] (versione precedente degli script)
+    rng = np.random.default_rng(0)
+    for _ in range(300):
+        lab = list(rng.choice(["CD4T", "CD8T", "NK"], rng.integers(1, 8)))
+        assert scpipe.majority_label(lab) == pd.Series(lab).value_counts().index[0]
+
+
+def test_macro_f1_uses_classes_present_in_test():
+    y_true = np.array(["A", "A", "B", "B"])
+    y_pred = np.array(["A", "B", "B", "C"])
+    # classi presenti: A (P=1, R=0.5 -> F1 2/3), B (P=0.5, R=0.5 -> F1 0.5); C esclusa
+    assert scpipe.macro_f1(y_true, y_pred) == pytest.approx((2 / 3 + 0.5) / 2)
+
+
+def test_expanded_alpha():
+    from scipy.stats import norm, t
+
+    # formula esplicita per k = 10
+    a10 = 2 * norm.cdf(np.sqrt(10 / 9) * t.ppf(0.025, 9))
+    assert scpipe.expanded_alpha(10) == pytest.approx(a10)
+    assert scpipe.expanded_alpha(10) < 0.05
+    # per k grande l'intervallo torna al percentile semplice
+    assert scpipe.expanded_alpha(10_000) == pytest.approx(0.05, abs=1e-3)
+    stats = np.arange(1001, dtype=float)
+    lo, hi = scpipe.percentile_ci(stats, 10_000)
+    assert lo == pytest.approx(25, abs=0.5) and hi == pytest.approx(975, abs=0.5)
+
+
+def test_cluster_bootstrap_edge_cases():
+    m, lo, hi = scpipe.cluster_bootstrap({"P1": np.array([1.0, 0.0])})
+    assert m == 0.5 and np.isnan(lo) and np.isnan(hi)
+    m, lo, hi = scpipe.cluster_bootstrap({})
+    assert np.isnan(m)
+    # pazienti vuoti ignorati
+    m, lo, hi = scpipe.cluster_bootstrap(
+        {"P1": np.array([1.0]), "P2": np.array([0.0]), "P3": np.array([])}, n_boot=200
+    )
+    assert m == 0.5 and 0.0 <= lo <= hi <= 1.0

@@ -1,29 +1,51 @@
 #!/usr/bin/env python3
 """
-05_baseline.py - Modelli lineari di riferimento e quantificazione dell'inflazione da leakage.
+05_baseline.py - Modelli di riferimento e divario fra split casuale e split per paziente.
 
-Questo modulo addestra i modelli di riferimento (DummyClassifier stratificato e
-LogisticRegression regolarizzata L2 con pesatura inversamente proporzionale alle
-frequenze di classe) incapsulando tutte le trasformazioni dipendenti dai dati
-(normalizzazione LogCPM, selezione dei geni ad alta variabilita' HVGSelector e
-standardizzazione StandardScaler senza centramento) all'interno di una Pipeline
-Scikit-learn. In questo modo i parametri di dispersione genica e varianza vengono
-stimati esclusivamente sul fold di training, prevenendo il data leakage da
-feature selection globale.
+Scopo
+-----
+Addestra due modelli di riferimento (DummyClassifier stratificato e LogisticRegression
+L2 con pesi di classe bilanciati) in una Pipeline che contiene tutte le
+trasformazioni dipendenti dai dati: `LogCPM` (log1p di CP10k, non CPM, nonostante il
+nome; non stima parametri), `HVGSelector` (geni piu' dispersi) e `StandardScaler`
+senza centratura, tutti da `scpipe.py`. Le trasformazioni sono stimate solo sul
+training di ciascun fold.
 
-Per ogni task, i modelli vengono valutati sia sulla partizione stratificata per
-paziente (fold_group_5 / fold_lopo, stima di generalizzazione inter-paziente) sia
-sulla partizione casuale a livello di cellula (fold_random_5, controllo negativo),
-quantificando il differenziale di performance indotto dalla correlazione
-intra-paziente.
+Ogni task e' valutato due volte: con lo split per paziente (`fold_group_5`, oppure
+`fold_lopo` per task1a_paired e rare) e con lo split casuale per cellula
+(`fold_random_5`, controllo negativo). La differenza misura quanto la correlazione
+fra cellule dello stesso paziente gonfia la stima. Il macro-F1 di ogni fold e'
+calcolato sulle sole classi presenti nel fold di test; l'F1 per classe e' NaN
+quando la classe manca dal fold di test.
 
-Uso:
-    python src/05_baseline.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad (conteggi grezzi)
+  --splits  data/interim/splits_sc.csv (da 04_splits.py)
+
+Output
+------
+  results/tables/baseline_{tag}.csv            metriche per task x schema x modello x fold (e F1 per classe)
+  results/tables/baseline_summary_{tag}.csv    media e deviazione standard sui fold di macro-F1, BA, MCC
+  results/tables/baseline_gap_{tag}.csv        macro-F1 medio per schema, divario casuale - paziente,
+                                               rapporto fra le deviazioni standard (logreg_l2)
+  results/figures/gap_{tag}_{task}.png         F1 per classe, split casuale contro split per paziente
+
+Argomenti
+---------
+  --h5ad, --splits (obbligatori), --tag (default sc), --tasks (default i 6 task del README),
+  --n-hvg (default 2000), --quick (sottocampiona il training a 20.000 cellule)
+
+Uso
+---
+    python src/05_baseline.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv \
+        --tasks task2_hier1 task2_hier3 task2_v1 task2_v2 task1a_paired task1a_all
 """
 
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -35,16 +57,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.dummy import DummyClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import HVGSelector, LogCPM, macro_f1  # noqa: E402
+
+from sklearn.dummy import DummyClassifier  # noqa: E402
+from sklearn.linear_model import LogisticRegression  # noqa: E402
+from sklearn.metrics import (  # noqa: E402
     balanced_accuracy_score,
     f1_score,
     matthews_corrcoef,
 )
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline  # noqa: E402
+from sklearn.preprocessing import StandardScaler  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -53,45 +78,14 @@ SEED = 0
 # Schema di partizionamento primario associato a ciascun task
 PRIMARY = {"task1a_paired": "fold_lopo", "rare": "fold_lopo"}
 DEFAULT_PRIMARY = "fold_group_5"
-
-
-class LogCPM(BaseEstimator, TransformerMixin):
-    """Normalizzazione per-cellula log1p(CPM/100): operatore stateless inserito nella Pipeline."""
-
-    def __init__(self, target_sum: float = 1e4):
-        self.target_sum = target_sum
-
-    def fit(self, X, y=None):  # noqa: ARG002
-        return self
-
-    def transform(self, X):
-        # Calcolo della profondita' di sequenziamento totale per cellula e riscalamento CSR in-place
-        counts = np.asarray(X.sum(axis=1)).ravel()
-        counts[counts == 0] = 1.0
-        X = sp.csr_matrix(X.multiply(self.target_sum / counts[:, None]))
-        X.data = np.log1p(X.data)
-        return X
-
-
-class HVGSelector(BaseEstimator, TransformerMixin):
-    """Selezione dei top-k geni per indice di dispersione (varianza/media) stimato sul solo training set."""
-
-    def __init__(self, n_top: int = 2000, min_mean: float = 1e-3):
-        self.n_top = n_top
-        self.min_mean = min_mean
-
-    def fit(self, X, y=None):  # noqa: ARG002
-        # Calcolo vettorizzato di media e momento secondo su matrice sparsa CSR senza densificazione
-        mean = np.asarray(X.mean(axis=0)).ravel()
-        sq = np.asarray(X.multiply(X).mean(axis=0)).ravel()
-        var = np.maximum(sq - mean**2, 0.0)
-        disp = np.where(mean > self.min_mean, var / (mean + 1e-12), -np.inf)
-        k = min(self.n_top, int(np.isfinite(disp).sum()))
-        self.idx_ = np.sort(np.argsort(-disp)[:k])
-        return self
-
-    def transform(self, X):
-        return X[:, self.idx_]
+ALL_TASKS = [
+    "task2_hier1",
+    "task2_hier3",
+    "task2_v1",
+    "task2_v2",
+    "task1a_paired",
+    "task1a_all",
+]
 
 
 def make_pipeline(model: str, n_classes: int) -> Pipeline:
@@ -105,7 +99,6 @@ def make_pipeline(model: str, n_classes: int) -> Pipeline:
             solver="lbfgs",
             max_iter=2000,
             class_weight="balanced",
-            n_jobs=-1 if n_classes == 2 else None,
             random_state=SEED,
         )
     else:
@@ -122,7 +115,7 @@ def make_pipeline(model: str, n_classes: int) -> Pipeline:
 
 
 def evaluate(y_true, y_pred, classes) -> list[dict]:
-    """Calcola le metriche globali (Balanced Accuracy, Macro-F1, MCC) e gli score F1 classe-specifici."""
+    """Balanced accuracy, macro-F1 (classi presenti nel test), MCC e F1 per classe (NaN se assente dal test)."""
     rows = [
         {
             "metric": "balanced_accuracy",
@@ -132,9 +125,7 @@ def evaluate(y_true, y_pred, classes) -> list[dict]:
         {
             "metric": "macro_f1",
             "class": "_overall",
-            "value": f1_score(
-                y_true, y_pred, average="macro", labels=classes, zero_division=0
-            ),
+            "value": macro_f1(y_true, y_pred),
         },
         {
             "metric": "mcc",
@@ -143,6 +134,8 @@ def evaluate(y_true, y_pred, classes) -> list[dict]:
         },
     ]
     per = f1_score(y_true, y_pred, average=None, labels=classes, zero_division=0)
+    present = np.isin(classes, np.unique(y_true))
+    per = np.where(present, per, np.nan)
     rows += [{"metric": "f1", "class": c, "value": v} for c, v in zip(classes, per)]
     return rows
 
@@ -154,7 +147,10 @@ def run_task(
     sub = sp_df[sp_df.task == task]
     cells = sub.cell_id.values
     idx = adata.obs_names.get_indexer(cells)
-    assert (idx >= 0).all(), "cell_id assenti dall'h5ad"
+    if len(idx) == 0 or (idx < 0).any():
+        raise SystemExit(
+            f"[ERRORE] task {task}: cell_id assenti dall'h5ad o task vuoto"
+        )
 
     # Estrazione della sottomatrice sparsa delle cellule appartenenti al task corrente
     X = adata.X[idx]
@@ -270,13 +266,13 @@ def plot_gap(res: pd.DataFrame, tag: str) -> None:
 
 def main() -> None:
     """Punto di ingresso principale per l'addestramento e la valutazione dei modelli baseline."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Modelli di riferimento: split casuale contro split per paziente."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--splits", type=Path, required=True)
     ap.add_argument("--tag", default="sc")
-    ap.add_argument(
-        "--tasks", nargs="*", default=["task2_hier1", "task2_hier3", "task2_v1"]
-    )
+    ap.add_argument("--tasks", nargs="*", default=ALL_TASKS)
     ap.add_argument("--n-hvg", type=int, default=2000)
     ap.add_argument(
         "--quick", action="store_true", help="sottocampiona il TRAIN a 20k cellule"
@@ -308,9 +304,9 @@ def main() -> None:
         res[res.metric.isin(["macro_f1", "balanced_accuracy", "mcc"])]
         .groupby(["task", "scheme", "model", "metric"])
         .value.agg(["mean", "std"])
-        .round(3)
     )
-    print("\n" + summ.to_string())
+    print("\n" + summ.round(3).to_string())
+    summ.reset_index().to_csv(TAB / f"baseline_summary_{args.tag}.csv", index=False)
 
     # Calcolo del differenziale medio di Macro-F1 tra valutazione con leakage e valutazione per paziente
     gap = (
@@ -323,6 +319,17 @@ def main() -> None:
         columns="fold_random_5"
     ).max(axis=1)
     print("\n>>> RIEPILOGO DIVARIO DI GENERALIZZAZIONE:\n" + gap.round(3).to_string())
+    # rapporto fra le deviazioni standard sui fold (split per paziente / split casuale)
+    sd = (
+        res[(res.model == "logreg_l2") & (res.metric == "macro_f1")]
+        .groupby(["task", "scheme"])
+        .value.std()
+        .unstack()
+    )
+    gap["sd_ratio_honest_over_random"] = sd.drop(columns="fold_random_5").max(
+        axis=1
+    ) / sd.get("fold_random_5")
+    gap.reset_index().to_csv(TAB / f"baseline_gap_{args.tag}.csv", index=False)
 
     plot_gap(res, args.tag)
 

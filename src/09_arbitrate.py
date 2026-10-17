@@ -1,30 +1,43 @@
 #!/usr/bin/env python3
 """
-09_arbitrate.py - Arbitrato dell'identita' clonale per compartimento e verifica fisica dei doppietti.
+09_arbitrate.py - Identita' CD4/CD8 dei cloni dai marcatori, tasso d'errore per compartimento e misure fisiche dei doppietti.
 
-Questo modulo articola due verifiche indipendenti:
+Scopo
+-----
+1. Arbitrato (sezione A). Il lignaggio CD4/CD8 di un clone T maturo non cambia fra
+   tessuti. Per ogni (clone, compartimento) con almeno 3 cellule si calcolano la
+   frazione di cellule CD8+ (CD8A > 0 o CD8B > 0) e CD4+ (CD4 > 0 senza CD8A/CD8B);
+   l'identita' del clone e' CD8T o CD4T secondo la media, a peso uguale, di queste
+   frazioni sui compartimenti in cui il clone compare (scartata se il margine
+   |f8 - f4| < 0.20). L'errore e' l'etichetta di maggioranza del compartimento diversa
+   dall'identita'. Questo schema include il compartimento giudicato nel riferimento
+   (circolare): gli schemi senza circolarita' sono in 10_loco.py. IC 95% con cluster
+   bootstrap sui pazienti (`scpipe.cluster_bootstrap`).
+   Etichetta di maggioranza: moda, pareggi risolti dalla prima comparsa
+   (`scpipe.majority_label`).
 
-1. Stima del tasso di errore dell'annotazione per compartimento anatomico (Sezione A):
-   Poiche' il lignaggio CD4/CD8 di un clone T maturo e' determinato a livello
-   timico e rimane invariante rispetto alla localizzazione tissutale, l'identita'
-   del clone viene stimata aggregando con peso uniforme le frazioni di cellule
-   CD8+ (CD8A > 0 o CD8B > 0) e CD4+ (CD4 > 0 in assenza di CD8A/CD8B) attraverso
-   i compartimenti in cui il clone e' presente. Tale identita' di consenso viene
-   quindi confrontata con l'etichetta di maggioranza assegnata in ciascun tessuto,
-   stimando gli intervalli di confidenza tramite cluster bootstrap sui pazienti.
+2. Misure fisiche dei doppietti (sezione B), che non usano il clustering: UMI totali per
+   goccia (`n_counts`; in un doppietto T+NK attesi circa n_counts(NK TCR-) + n_counts(CD8T))
+   e UMI del TCR per 1000 UMI totali (diluiti dall'mRNA della seconda cellula).
 
-2. Test biofisico di discriminazione dei doppietti eterotipici (Sezione B):
-   Poiche' gli algoritmi basati sul trascrittoma (es. Scrublet) non possono
-   distinguere un doppietto fisico T+NK da un linfocita T citotossico con
-   profilo trascrizionale convergente verso il fenotipo NK, il modulo utilizza
-   due osservabili fisiche indipendenti dal clustering:
-     - Il conteggio totale di molecole UMI per goccia (`n_counts`), che in un
-       doppietto fisico T+NK corrisponde alla somma attesa `n_counts(NK_TCR-) + n_counts(CD8T)`.
-     - La densita' relativa di trascritti recettoriali (`umi_tcr / n_counts * 1000`),
-       che in un doppietto eterotipico subisce una diluizione proporzionale alla
-       massa di mRNA apportata dalla seconda cellula priva di TCR.
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad
+  --tcrdir  cartella con i 30 file VDJ
 
-Uso:
+Output
+------
+  results/tables/arbitration.csv                 una riga per (clone, compartimento) risolto
+  results/tables/error_rate_by_compartment.csv   errore per compartimento con IC
+  results/tables/doublet_physical.csv            mediane di n_counts, n_genes, UMI TCR per 1000, per classe x TCR
+  results/figures/error_rate_by_compartment.png, results/figures/doublet_physical.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --tcrdir (default data/raw/tcr)
+
+Uso
+---
     python src/09_arbitrate.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
 """
 
@@ -32,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import anndata as ad
@@ -41,6 +55,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import cluster_bootstrap, majority_label  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -109,21 +126,8 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
 
 
 def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
-    """Calcola media e IC95% tramite cluster bootstrap sui pazienti."""
-    pats = list(by_pat)
-    rng = np.random.default_rng(SEED)
-    stats = [
-        np.concatenate(
-            [by_pat[p] for p in rng.choice(pats, len(pats), replace=True)]
-        ).mean()
-        for _ in range(n)
-    ]
-    allv = np.concatenate(list(by_pat.values()))
-    return (
-        float(allv.mean()),
-        float(np.percentile(stats, 2.5)),
-        float(np.percentile(stats, 97.5)),
-    )
+    """Media pooled e IC 95% con cluster bootstrap sui pazienti (`scpipe.cluster_bootstrap`)."""
+    return cluster_bootstrap(by_pat, n, SEED)
 
 
 def clone_identity(lym: pd.DataFrame) -> pd.DataFrame:
@@ -138,7 +142,8 @@ def clone_identity(lym: pd.DataFrame) -> pd.DataFrame:
             n=("cd8_pos", "size"),
             f8=("cd8_pos", "mean"),
             f4=("cd4_pos", "mean"),
-            lab=("all_celltype", lambda s: s.value_counts().index[0]),
+            # moda; pareggi risolti dalla prima comparsa nell'ordine delle cellule
+            lab=("all_celltype", majority_label),
         )
         .reset_index()
     )
@@ -168,10 +173,11 @@ def partA(lym: pd.DataFrame) -> None:
     per, ident = clone_identity(lym)
     conf = ident[(ident.identity != "ambiguous") & (ident.n_comp >= 2)]
     print(
-        f"cloni con >=2 compartimenti e >={MIN_CELLS} cellule ciascuno: {len(ident):,}"
+        f"cloni con >={MIN_CELLS} cellule in almeno un compartimento: {len(ident):,} "
+        f"(di cui in >=2 compartimenti: {(ident.n_comp >= 2).sum():,})"
     )
     print(
-        f"  identita' risolta (margine >= {MIN_MARGIN}): {len(conf):,} "
+        f"  in >=2 compartimenti con identita' risolta (margine >= {MIN_MARGIN}): {len(conf):,} "
         f"({conf.identity.value_counts().to_dict()})"
     )
     print(f"  ambigui (scartati): {(ident.identity == 'ambiguous').sum():,}")
@@ -222,7 +228,7 @@ def partA(lym: pd.DataFrame) -> None:
         d["diff"] = d.Tumor - d.PBMC
         by = {p: g["diff"].values for p, g in d.groupby("patient")}
         m, lo, hi = cluster_boot(by)
-        v = "significativa" if lo > 0 or hi < 0 else "NON significativa"
+        v = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
         print(f"  {m:+.3f}  IC95% [{lo:+.3f}, {hi:+.3f}]  {v}   (n={len(d)} cloni)")
 
     print("\ndirezione dell'errore (etichetta autori -> identita' clonale):")
@@ -329,8 +335,9 @@ def partB(gex: pd.DataFrame) -> None:
 
     print("\nCONTROLLO: le CD8T-TCR+ costituiscono il riferimento per i singoletti T.")
     print(
-        "Valori di n_counts confrontabili con i singoletti escludono il doppietto fisico."
+        "Valori di n_counts simili a quelli dei singoletti sono compatibili con singoletti;"
     )
+    print("valori vicini alla somma di due cellule sono compatibili con doppietti.")
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
     cls_order = [
@@ -369,7 +376,9 @@ def partB(gex: pd.DataFrame) -> None:
 
 def main() -> None:
     """Punto di ingresso principale per l'arbitrato clonale e il test biofisico dei doppietti."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Identita' clonale dai marcatori, errore per compartimento, doppietti."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
     args = ap.parse_args()

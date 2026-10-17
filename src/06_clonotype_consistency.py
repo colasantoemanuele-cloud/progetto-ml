@@ -1,36 +1,60 @@
 #!/usr/bin/env python3
 """
-06_clonotype_consistency.py - Analisi della coerenza clonale scTCR-seq attraverso i compartimenti.
+06_clonotype_consistency.py - Coerenza delle etichette dentro i cloni TCR, fra e entro compartimenti.
 
-Questo modulo utilizza la ricombinazione somatica V(D)J del recettore delle
-cellule T (sequenza nucleotidica CDR3 delle catene TRA e TRB) come invariante
-biologico ortogonale al trascrittoma per valutare la stabilita' delle etichette
-fenotipiche (CD4T, CD8T, NK) assegnate nei diversi compartimenti anatomici
-(PBMC, Adjacent_normal, Tumor) di ciascun paziente.
+Scopo
+-----
+Usa la sequenza CDR3 del TCR (TRB, oppure TRA|TRB) come marcatore clonale che non
+dipende dal trascrittoma, e misura quanto spesso le cellule dello stesso clone
+ricevono etichette fenotipiche diverse (CD4T, CD8T, NK) nei compartimenti PBMC,
+Adjacent_normal e Tumor dello stesso paziente.
 
-L'analisi articola due metriche principali:
-  1. Eccesso di discordanza inter-compartimento: differenza tra la frazione di
-     cloni la cui etichetta di maggioranza varia tra due compartimenti anatomici
-     distinti e il tasso basale di discordanza intra-compartimento (stimato
-     mediante bipartizione casuale ripetuta delle cellule appartenenti al
-     medesimo clone all'interno dello stesso tessuto).
-  2. Stima preliminare del limite superiore di contaminazione T all'interno
-     della popolazione annotata come NK: poiche' le cellule NK canoniche non
-     esprimono un recettore TCR riarrangiato, l'eccesso di sequenze CDR3 nelle
-     cellule NK rispetto al rumore di fondo non-T fornisce una misura della
-     frazione di linfociti T citotossici classificati come NK.
+  1. Eccesso di discordanza: frazione di coppie (clone, compartimento A, compartimento B)
+     con etichetta di maggioranza diversa, meno la discordanza basale entro
+     compartimento, stimata con 20 bipartizioni casuali (split-half) delle cellule
+     di ciascun clone in ciascun tessuto. IC 95% con cluster bootstrap sui pazienti
+     (si ricampionano i pazienti, non le coppie ne' le repliche; 2.000 repliche,
+     intervallo "expanded percentile", vedi `scpipe.cluster_bootstrap`).
+     E' la versione esplorativa: lo stimatore principale, non distorto, e' in
+     `07_robustness.py`.
+  2. Contaminazione da cellule T nella classe NK: c_hat = (f - q) / (pi - q), con f, pi
+     e q le frazioni di cellule con TCR fra le NK, le T e le non-T. E' un limite
+     superiore della frazione di T vere etichettate NK: `10_loco.py` mostra che le
+     NK con TCR sono soprattutto doppietti fisici T+NK, che c_hat non distingue
+     dalle cellule T mal etichettate.
 
-I cloni sono definiti in modo univoco all'interno di ciascun paziente tramite
-la sequenza nucleotidica esatta del segmento CDR3 (evitando gli identificativi
-`raw_clonotype_id` di Cell Ranger, che sono indicizzati localmente per singolo
-campione).
+Regole: i cloni sono definiti entro paziente dalla sequenza nucleotidica esatta
+della CDR3 (non da `raw_clonotype_id`, che e' locale al campione). L'etichetta di
+maggioranza e' la moda; a parita' vince l'etichetta che compare per prima
+nell'ordine delle cellule (`scpipe.majority_label`). Nello split-half un clone con
+n dispari perde una cellula a caso (le due meta' hanno n // 2 cellule ciascuna).
 
-Uso:
+Input
+-----
+  --h5ad      data/interim/sc_raw.h5ad (solo obs, letto in modalita' backed)
+  --filelist  data/raw/metadata/filelist.txt (da 00_fetch_metadata.py)
+  --outdir    cartella dei 30 file VDJ (scaricati qui se mancano)
+
+Output
+------
+  results/tables/nk_contamination.csv               (non dipende da --clone-def)
+  results/tables/tcr_rate_by_celltype.csv           frazione di cellule con TCR per etichetta (idem)
+  results/tables/clone_switching_across_{cc}.csv    una riga per (clone, coppia di compartimenti)
+  results/tables/clone_switching_within_{cc}.csv    repliche split-half (escluso da git: grande)
+  results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni e pazienti
+  ({cc} = clone_b o clone_ab)
+  results/figures/clone_label_switching.png
+
+Argomenti
+---------
+  --h5ad, --filelist (obbligatori), --outdir (default data/raw/tcr),
+  --clone-def {clone_b,clone_ab} (default clone_b), --skip-download
+
+Uso
+---
     bash src/download_tcr.sh data/raw/metadata/filelist.txt data/raw/tcr
-    python src/06_clonotype_consistency.py \
-        --h5ad data/interim/sc_raw.h5ad \
-        --filelist data/raw/metadata/filelist.txt \
-        --outdir data/raw/tcr
+    python src/06_clonotype_consistency.py --h5ad data/interim/sc_raw.h5ad \
+        --filelist data/raw/metadata/filelist.txt --outdir data/raw/tcr --skip-download
 """
 
 from __future__ import annotations
@@ -53,12 +77,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import majority_label, percentile_ci  # noqa: E402
+
 FIG = Path("results/figures")
 TAB = Path("results/tables")
 FTP = "https://ftp.ncbi.nlm.nih.gov/geo/samples"
 HOST = "ftp.ncbi.nlm.nih.gov"
 SEED = 0
 N_EXPECTED = 30
+N_BOOT = 2000
 
 TISSUE_MAP = {"Tumor": "Tumor", "Normal": "Adjacent_normal", "PBMC": "PBMC"}
 
@@ -194,8 +222,8 @@ def build_clones(contigs: pd.DataFrame) -> pd.DataFrame:
 
 
 def majority(labels: pd.Series) -> str:
-    """Restituisce l'etichetta modale per un insieme di cellule."""
-    return labels.value_counts().index[0]
+    """Etichetta modale; pareggi risolti dalla prima comparsa (`scpipe.majority_label`)."""
+    return majority_label(labels.values)
 
 
 def cross_compartment_switching(
@@ -236,7 +264,11 @@ def cross_compartment_switching(
 def within_compartment_baseline(
     df: pd.DataFrame, clone_col: str, min_cells: int = 4, n_rep: int = 20
 ) -> pd.DataFrame:
-    """Stima il tasso basale di discordanza intra-compartimento tramite split-half casuale dei cloni."""
+    """Discordanza basale entro compartimento: `n_rep` bipartizioni casuali di ogni clone.
+
+    Ogni replica divide a caso le n cellule del clone in due meta' di n // 2 cellule
+    (con n dispari una cellula resta fuori) e confronta le etichette di maggioranza.
+    """
     rng = np.random.default_rng(SEED)
     rows = []
     for (pat, clone, tis), g in df.groupby(
@@ -253,14 +285,36 @@ def within_compartment_baseline(
                     "patient": pat,
                     "clone": clone,
                     "tissue": tis,
-                    "lab_a": pd.Series(lab[perm[:h]]).value_counts().index[0],
-                    "lab_b": pd.Series(lab[perm[h : 2 * h]]).value_counts().index[0],
+                    "lab_a": majority_label(lab[perm[:h]]),
+                    "lab_b": majority_label(lab[perm[h : 2 * h]]),
                 }
             )
     out = pd.DataFrame(rows)
     if not out.empty:
         out["switch"] = out.lab_a != out.lab_b
     return out
+
+
+def cluster_excess_ci(
+    across: pd.DataFrame, within: pd.DataFrame, n_boot: int = N_BOOT, seed: int = SEED
+) -> tuple[float, float]:
+    """IC 95% dell'eccesso (across - within) con cluster bootstrap sui pazienti.
+
+    Ogni replica estrae i pazienti con reinserimento e ricalcola le due frazioni
+    sulle sole coppie e repliche split-half dei pazienti estratti: coppie e
+    repliche dello stesso paziente restano insieme. Intervallo "expanded percentile".
+    """
+    pats = sorted(set(across.patient) | set(within.patient))
+    a = {p: across.switch.values[across.patient.values == p] for p in pats}
+    w = {p: within.switch.values[within.patient.values == p] for p in pats}
+    rng = np.random.default_rng(seed)
+    stats = []
+    for _ in range(n_boot):
+        draw = rng.choice(pats, len(pats), replace=True)
+        av = np.concatenate([a[p] for p in draw])
+        wv = np.concatenate([w[p] for p in draw])
+        stats.append(av.mean() - wv.mean() if len(av) and len(wv) else np.nan)
+    return percentile_ci(np.array(stats), len(pats))
 
 
 def nk_contamination(gex: pd.DataFrame) -> pd.DataFrame:
@@ -289,7 +343,9 @@ def nk_contamination(gex: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     """Esegue l'intera pipeline di verifica dei clonotipi TCR e genera tabelle e figure."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Coerenza delle etichette entro i cloni TCR, fra e entro compartimenti."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--filelist", type=Path, required=True)
     ap.add_argument("--outdir", type=Path, default=Path("data/raw/tcr"))
@@ -355,14 +411,14 @@ def main() -> None:
         f"\n[ok] cellule GEX: {len(gex):,} | con TCR appaiato: {gex.has_tcr.sum():,} "
         f"({gex.has_tcr.mean():.1%})"
     )
-    print("\n[qc] tasso di TCR per etichetta (riferimento ortogonale VDJ):")
-    print(
+    print("\n[qc] frazione di cellule con TCR produttivo per etichetta:")
+    rate = (
         gex.groupby("all_celltype", observed=True)
-        .has_tcr.agg(["mean", "sum", "size"])
-        .sort_values("mean", ascending=False)
-        .round(4)
-        .to_string()
+        .has_tcr.agg(frac_tcr="mean", n_tcr="sum", n_cells="size")
+        .sort_values("frac_tcr", ascending=False)
     )
+    print(rate.round(4).to_string())
+    rate.to_csv(TAB / "tcr_rate_by_celltype.csv")
 
     nk = nk_contamination(gex)
     nk.to_csv(TAB / "nk_contamination.csv", index=False)
@@ -419,15 +475,25 @@ def main() -> None:
     )
     print(f"ECCESSO                        : {a_rate - w_rate:+.3f}")
 
-    # Bootstrap non parametrico sulle coppie di compartimenti
-    rng = np.random.default_rng(SEED)
-    boot = [
-        across.switch.sample(len(across), replace=True, random_state=int(s)).mean()
-        - within.switch.sample(len(within), replace=True, random_state=int(s)).mean()
-        for s in rng.integers(0, 10**6, 1000)
-    ]
-    lo, hi = np.percentile(boot, [2.5, 97.5])
-    print(f"IC 95% bootstrap               : [{lo:+.3f}, {hi:+.3f}]")
+    # Cluster bootstrap sui pazienti: coppie e repliche split-half non sono indipendenti
+    lo, hi = cluster_excess_ci(across, within)
+    n_pat = len(set(across.patient) | set(within.patient))
+    print(f"IC 95% cluster bootstrap (pazienti, n={n_pat}): [{lo:+.3f}, {hi:+.3f}]")
+    pd.DataFrame(
+        [
+            {
+                "clone_def": cc,
+                "n_pairs_across": len(across),
+                "n_reps_within": len(within),
+                "n_patients": n_pat,
+                "discord_across": a_rate,
+                "discord_within": w_rate,
+                "excess": a_rate - w_rate,
+                "lo": lo,
+                "hi": hi,
+            }
+        ]
+    ).to_csv(TAB / f"clone_switching_summary_{cc}.csv", index=False)
 
     print("\nper coppia di compartimenti:")
     print(
@@ -446,8 +512,8 @@ def main() -> None:
         .to_string()
     )
 
-    across.to_csv(TAB / "clone_switching_across.csv", index=False)
-    within.to_csv(TAB / "clone_switching_within.csv", index=False)
+    across.to_csv(TAB / f"clone_switching_across_{cc}.csv", index=False)
+    within.to_csv(TAB / f"clone_switching_within_{cc}.csv", index=False)
 
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.bar(
@@ -458,20 +524,24 @@ def main() -> None:
     )
     ax.axhline(w_rate, ls="--", c="k", lw=0.8)
     ax.set_ylabel("frazione di cloni con etichetta discordante")
-    ax.set_title(f"eccesso = {a_rate - w_rate:+.3f}   IC95% [{lo:+.3f}, {hi:+.3f}]")
+    ax.set_title(
+        f"eccesso = {a_rate - w_rate:+.3f}   IC95% cluster bootstrap [{lo:+.3f}, {hi:+.3f}]"
+    )
     fig.tight_layout()
     fig.savefig(FIG / "clone_label_switching.png", dpi=140)
     plt.close(fig)
 
     print("\n" + "=" * 74)
     if lo > 0:
-        print("ESITO STATISTICO: eccesso significativamente positivo.")
+        print("ESITO: l'IC 95% (cluster bootstrap sui pazienti) esclude lo zero.")
         print(
-            "  L'etichetta fenotipica varia sistematicamente con lo stato compartimentale."
+            "  Le etichette dei cloni condivisi cambiano fra compartimenti piu' che entro."
         )
     else:
-        print("ESITO STATISTICO: eccesso non significativamente diverso da zero.")
-        print("  L'annotazione risulta statisticamente coerente all'interno dei cloni.")
+        print("ESITO: l'IC 95% (cluster bootstrap sui pazienti) include lo zero.")
+        print(
+            "  Nessuna evidenza di discordanza fra compartimenti oltre quella basale."
+        )
     print("=" * 74)
 
 

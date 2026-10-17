@@ -1,38 +1,43 @@
 #!/usr/bin/env python3
 """
-18_loyo_check.py: Analisi di sensibilita' Leave-One-Patient-Out (LOYO) sull'espansione clonale.
+18_loyo_check.py - Sensibilita' leave-one-patient-out dell'associazione fra espansione clonale ed errore.
 
-Razionale Metodologico
-----------------------
-Nel modulo 17 (`17_clonal_expansion.py`), l'analisi stratificata per blocchi ha
-evidenziato una correlazione positiva tra la dimensione clonale T e sia il tasso di
-errore di annotazione nel tumore (rho = +0.177, p = 0.0009) sia l'eccesso continuo di
-discordanza (rho = +0.281, p < 0.0001) su 287 cloni distribuiti in 10 pazienti.
-Tuttavia, quando il numero di cluster e' ridotto (n = 10 pazienti) e la distribuzione
-del numero di cloni per paziente e' asimmetrica, anche un test di permutazione a
-blocchi puo' risultare influenzato in modo sproporzionato da un singolo paziente con
-elevata numerosita' clonale.
+Scopo
+-----
+In 17_clonal_expansion.py l'associazione fra dimensione clonale ed errore (o eccesso
+di discordanza) e' stimata su 287 cloni di 10 pazienti (versione pubblicata), con un
+numero di cloni per paziente molto diseguale. Questo script verifica che il
+risultato non dipenda da un solo paziente: per ciascun paziente rimuove tutti i suoi
+cloni e ricalcola sui restanti il rho di Spearman pooled e il p del block
+permutation test (permutazione Monte Carlo entro paziente, 10.000 permutazioni,
+`scpipe.block_permutation_test`). Riporta segno, variazione di rho e p < 0.05 per
+ogni esclusione. (I nomi dei file contengono "loyo" per ragioni storiche: lo schema
+e' leave-one-patient-out.)
 
-Protocollo di Validazione Leave-One-Patient-Out
------------------------------------------------
-Per accertare che l'associazione osservata costituisca una proprieta' riproducibile
-inter-paziente e non un artefatto guidato da un singolo individuo influente, questo
-script esegue una procedura di sensibilita' Leave-One-Patient-Out completa:
-  - Per ciascuno dei 10 pazienti della coorte, vengono rimossi tutti i cloni
-    appartenenti a quel paziente;
-  - Sul sottoinsieme dei 9 pazienti residui viene ricalcolata la correlazione di
-    Spearman pooled e il relativo p-value tramite Block Permutation Test (10.000
-    permutazioni intra-paziente);
-  - Viene verificata la stabilita' del segno, della magnitudine dell'effetto (`delta_rho`)
-    e della significativita' statistica (`p < 0.05`) lungo tutte le 10 iterazioni.
+Input
+-----
+  --input  results/tables/clonal_expansion_joined.csv (da 17_clonal_expansion.py)
 
-Esecuzione:
+Output
+------
+  results/tables/loyo_clonal_expansion_error.csv    una riga per paziente escluso (esito errore 0/1),
+                                                    con rho e p sul campione completo come riferimento
+  results/tables/loyo_clonal_expansion_excess.csv   idem per l'eccesso di discordanza
+  results/figures/loyo_clonal_expansion_error.png, results/figures/loyo_clonal_expansion_excess.png
+
+Argomenti
+---------
+  --input (default results/tables/clonal_expansion_joined.csv)
+
+Uso
+---
     python src/18_loyo_check.py --input results/tables/clonal_expansion_joined.csv
 """
 
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -42,6 +47,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import block_permutation_test as _bpt  # noqa: E402
 
 # Percorsi di output e parametri del test di permutazione a blocchi
 FIG = Path("results/figures")
@@ -57,48 +65,17 @@ def block_permutation_test(
     n_perm: int = N_PERM,
     seed: int = SEED,
 ):
-    """Calcola la correlazione di Spearman pooled e il p-value a due code tramite
-    permutazione ristretta ai blocchi paziente (identico a 17_clonal_expansion.py)."""
-    rng = np.random.default_rng(seed)
-    # Ordinamento per gruppo paziente per identificare i limiti di ciascun blocco
-    order = np.argsort(group, kind="stable")
-    x_s, g_s = x[order], group[order]
-    ry_s = pd.Series(y[order]).rank().values
-    rx_s = pd.Series(x_s).rank().values
-    rho_obs = float(np.corrcoef(rx_s, ry_s)[0, 1])
-
-    # Generazione delle permutazioni indipendenti all'interno di ciascun paziente
-    n = len(x_s)
-    perm_idx = np.tile(np.arange(n), (n_perm, 1))
-    uniq, starts = np.unique(g_s, return_index=True)
-    bounds = list(starts) + [n]
-    for i in range(len(uniq)):
-        s, e = bounds[i], bounds[i + 1]
-        size = e - s
-        if size <= 1:
-            continue
-        keys = rng.random((n_perm, size))
-        local = np.argsort(keys, axis=1)
-        perm_idx[:, s:e] = s + local
-
-    # Calcolo vettorizzato della statistica di correlazione sulle repliche permutate
-    ry_perm = ry_s[perm_idx]
-    rx_c = rx_s - rx_s.mean()
-    ry_c = ry_perm - ry_perm.mean(axis=1, keepdims=True)
-    num = (ry_c * rx_c).sum(axis=1)
-    den = np.sqrt((rx_c**2).sum()) * np.sqrt((ry_c**2).sum(axis=1))
-    rhos = num / np.maximum(den, 1e-12)
-    p = (np.sum(np.abs(rhos) >= abs(rho_obs) - 1e-12) + 1) / (n_perm + 1)
-    return rho_obs, float(p)
+    """Spearman pooled e p del block permutation test (`scpipe.block_permutation_test`)."""
+    r = _bpt(x, y, group, n_perm=n_perm, seed=seed)
+    return r["rho"], r["p"]
 
 
 def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
-    """Esegue il ciclo Leave-One-Patient-Out rimuovendo iterativamente un paziente
-    alla volta e ricalcolando correlazione e significativita' sui pazienti residui."""
+    """Rimuove un paziente alla volta e ricalcola rho pooled e p sui pazienti restanti."""
     print(f"\n{'=' * 78}\n{label}\n{'=' * 78}")
     pats = sorted(df.patient.unique())
 
-    # Calcolo del valore di riferimento sull'intera coorte di 10 pazienti
+    # Valore di riferimento su tutti i pazienti
     rho_full, p_full = block_permutation_test(
         df.log_size.values, df[outcome_col].values, df.patient.values
     )
@@ -122,6 +99,8 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
                 "p_without": p,
                 "delta_rho": rho - rho_full,
                 "still_significant": p < 0.05,
+                "rho_full": rho_full,
+                "p_full": p_full,
             }
         )
         flag = "" if p < 0.05 else "  [non piu' significativo senza questo paziente]"
@@ -129,16 +108,14 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
             f"  senza {held_out} ({n_clones_removed:3d} cloni): rho={rho:+.3f}  p={p:.4f}{flag}"
         )
 
-    # Sintesi della stabilita' inferenziale attraverso le 10 iterazioni leave-one-out
+    # Sintesi su tutte le esclusioni
     out = pd.DataFrame(rows)
     n_robust = out.still_significant.sum()
     print(
         f"\nrisultato resta significativo (p<0.05) in {n_robust}/{len(pats)} versioni leave-one-out."
     )
     if n_robust == len(pats):
-        print(
-            "VERDETTO: nessun singolo paziente e' indispensabile. Il segnale e' cross-patient."
-        )
+        print("VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.")
     elif n_robust >= len(pats) - 1:
         print(
             "VERDETTO: robusto tranne che rimuovendo un paziente specifico (da ispezionare),"
@@ -187,7 +164,9 @@ def plot_loyo(out: pd.DataFrame, rho_full: float, fname: str, title: str) -> Non
 def main() -> None:
     """Orchestra il test di sensibilita' Leave-One-Patient-Out per entrambi gli
     indicatori di discordanza clonale (errore binario ed eccesso continuo)."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Sensibilita' leave-one-patient-out dell'associazione espansione-errore."
+    )
     ap.add_argument(
         "--input", type=Path, default=Path("results/tables/clonal_expansion_joined.csv")
     )
@@ -201,14 +180,23 @@ def main() -> None:
             f"[ERRORE] {args.input} assente. Esegui prima 17_clonal_expansion.py."
         )
     df = pd.read_csv(args.input)
+    if df.patient.nunique() < 3:
+        raise SystemExit(
+            "[ERRORE] servono almeno 3 pazienti per il leave-one-patient-out."
+        )
+    df["error"] = df.error.astype(float)
     print(
         f"[ok] {len(df):,} cloni, {df.patient.nunique()} pazienti, da {args.input.name}"
     )
 
     # Iterazione sui due outcome: errore binario (riferimento PBMC) ed eccesso di discordanza
     for outcome_col, label, fname_suffix in [
-        ("error", "LOYO: errore di annotazione (0/1)", "error"),
-        ("excess", "LOYO: eccesso di discordanza (continuo)", "excess"),
+        ("error", "leave-one-patient-out: errore di annotazione (0/1)", "error"),
+        (
+            "excess",
+            "leave-one-patient-out: eccesso di discordanza (continuo)",
+            "excess",
+        ),
     ]:
         rho_full, _ = block_permutation_test(
             df.log_size.values, df[outcome_col].values, df.patient.values
@@ -219,7 +207,7 @@ def main() -> None:
             out,
             rho_full,
             f"loyo_clonal_expansion_{fname_suffix}.png",
-            f"Leave-one-patient-out: {label}",
+            label,
         )
 
     print("\n" + "=" * 78)

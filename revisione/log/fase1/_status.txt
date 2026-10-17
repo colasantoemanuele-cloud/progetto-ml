@@ -1,0 +1,46 @@
+[22:14:45] START 06_clonotype
+[22:14:45] START 13_infercnv
+[22:14:45] START 05_baseline
+[22:15:53] END 06_clonotype rc=0 peakKB=499392 wall=1:07.59
+[22:15:53] START 07_robustness_clone_ab
+[22:15:55] END 13_infercnv rc=0 peakKB=5948408 wall=1:09.49
+[22:15:55] START 14_cnv_loci
+[22:16:16] END 14_cnv_loci rc=0 peakKB=8584304 wall=0:21.44
+[22:16:39] END 07_robustness_clone_ab rc=0 peakKB=3312956 wall=0:46.00
+[22:16:39] START 07_robustness_clone_b
+[22:17:26] END 07_robustness_clone_b rc=0 peakKB=3314500 wall=0:47.58
+[22:17:26] START 08_disambiguate
+[22:18:12] END 08_disambiguate rc=0 peakKB=3465552 wall=0:45.40
+[22:18:12] START 09_arbitrate
+[22:18:55] END 09_arbitrate rc=0 peakKB=3380660 wall=0:43.48
+[22:18:55] START 10_loco
+[22:24:00] END 10_loco rc=0 peakKB=3394460 wall=5:05.11
+[22:24:00] START 21_fig_blood_scheme
+[22:24:03] END 21_fig_blood_scheme rc=0 peakKB=252108 wall=0:02.33
+[22:24:03] START 15_inventory
+[22:24:05] END 15_inventory rc=0 peakKB=276592 wall=0:02.27
+[22:24:05] START 16_pseudobulk
+[22:24:27] END 16_pseudobulk rc=0 peakKB=3548980 wall=0:21.62
+[22:24:27] START 17_clonal_expansion
+[22:24:40] END 17_clonal_expansion rc=0 peakKB=1190732 wall=0:13.80
+[22:24:40] START 18_loyo_check
+[22:24:46] END 18_loyo_check rc=0 peakKB=307416 wall=0:05.73
+[22:24:46] START 19_ni_score
+[22:24:52] END 19_ni_score rc=0 peakKB=226040 wall=0:05.56
+[22:25:09] START sim_a_calibration
+[22:29:49] END sim_a_calibration rc=0 peakKB=192720 wall=4:39.19
+[22:29:49] START sim_b_reference_schemes
+[22:31:34] END sim_b_reference_schemes rc=0 peakKB=254904 wall=1:45.23
+[22:31:34] START sim_c_block_permutation
+[22:32:26] END 05_baseline rc=0 peakKB=9734252 wall=17:41.42
+[22:32:26] START 20_xai
+[22:32:28] END sim_c_block_permutation rc=0 peakKB=198416 wall=0:54.61
+[22:32:28] START sim_d_xai_stability
+[22:32:38] END sim_d_xai_stability rc=0 peakKB=287608 wall=0:09.30
+[22:34:06] END 20_xai rc=0 peakKB=5973568 wall=1:39.48
+[22:34:06] START 12_fs_task1a_paired
+[22:35:16] START 05_baseline_bis
+[22:52:16] END 12_fs_task1a_paired rc=0 peakKB=5795800 wall=18:09.58
+[22:52:16] START 12_fs_task2_v1
+[22:54:58] END 05_baseline_bis rc=0 peakKB=9739660 wall=19:41.99
+[00:06:02] END 12_fs_task2_v1 rc=0 peakKB=6131272 wall=1:13:45

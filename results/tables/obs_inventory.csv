@@ -1,0 +1,10 @@
+column,dtype,n_unique,already_used,confound_patient,top_values
+tissue,category,3,True,0.0,PBMC=89506; Tumor=71414; Adjacent_normal=38264
+patients,category,14,True,1.0,PA08=25548; PA06=22894; PA11=18664; PA09=18618; PA04=17662; PA13=15765; PA12=15002; PA07=12843
+all_celltype,category,14,True,0.0,CD8T=58939; CD4T=56757; NK=28199; B=26360; Myeloid=9102; Ductal=8713; Stellate=2791; CAF=2656
+library,category,29,True,1.0,PDAC08-PBMC-GEX_out=11016; PDAC04-Normal-GEX_out=10816; PDAC11-PBMC-GEX_out=9976; PDAC06-PBMC-GEX_out=9308; PDAC12-PBMC-GEX_out=8880; PDAC14-PBMC-GEX_out=8871; PDAC11-Tumor-GEX_out=8688; PDAC13-PBMC-GEX_out=8467
+barcode,category,175385,True,,175385 valori distinti (alta cardinalita')
+probe,category,1,True,0.0,=199184
+n_counts,float32,15152,True,,"range [325, 2.5e+04], median 3.38e+03"
+n_genes,int64,5221,True,,"range [201, 5.99e+03], median 1.66e+03"
+pct_mt,float32,151523,True,,"range [0, 41.5], median 3.08"

@@ -1,32 +1,60 @@
 #!/usr/bin/env python3
 """
-13_infercnv.py - Inferenza delle variazioni del numero di copie (CNV) e classificazione LOPO delle cellule duttali.
+13_infercnv.py - Score CNV (inferCNV), etichetta di malignita' e classificazione LOPO delle duttali.
 
-Poiche' l'annotazione originale del dataset GSE278694 raggruppa tutte le cellule
-epiteliali duttali in un'unica classe (`Ductal`) senza distinguere l'epitelio
-neoplastico da quello residuo non trasformato, questo modulo implementa un
-protocollo in tre stadi:
+Scopo
+-----
+L'annotazione di GSE278694 riunisce tutte le cellule epiteliali duttali nella classe
+`Ductal`. Lo script costruisce un'etichetta di malignita' derivata dal profilo CNV
+inferito dal trascrittoma e misura quanto un classificatore la predice dal
+trascrittoma stesso, in tre stadi:
 
-1. Stima del profilo di aberrazione cromosomica tramite `infercnvpy` (o `copykat`):
-   Calcola lo scostamento di espressione lungo finestre genomiche di 100 geni
-   utilizzando come riferimento diploide interno le popolazioni immunitarie
-   (`CD8T`, `CD4T`, `NK`, `B`, `Myeloid`, `Plasma`) del medesimo paziente.
-   La soglia individuale di aneuploidia e' definita come:
-       soglia(paziente) = mediana(CNV_immuni) + 3 * MAD_normalizzata(CNV_immuni)
+1. Score CNV con `infercnvpy` (o `copykat` come ripiego): finestre genomiche di 100
+   geni, UNA sola esecuzione con `reference_key="ref_group"`. Il riferimento
+   diploide sono le cellule immunitarie (`CD8T`, `CD4T`, `NK`, `B`, `Myeloid`,
+   `Plasma`) di TUTTI i pazienti insieme, non dello stesso paziente. Solo la soglia
+   e' calcolata per paziente:
+       soglia(paziente) = mediana(score_immuni) + 3 * MAD_normalizzata(score_immuni)
+   La soglia e' stimata sulle stesse cellule immunitarie su cui inferCNV centra lo
+   score: un programma trascrizionale epiteliale qualsiasi (non solo
+   un'aneuploidia) sposta lo score delle duttali sopra quello degli immuni e tende a
+   superarla. In `malignancy_labels.csv` risultano "maligne" anche il 45-62% delle
+   duttali di `Adjacent_normal` nei pazienti con almeno 20 duttali adiacenti.
 
-2. Classificazione supervisionata Leave-One-Patient-Out (LOPO):
-   Addestra un classificatore Random Forest bilanciato sulle cellule duttali
-   del tessuto tumorale dei pazienti con almeno 150 cellule duttali, valutando
-   la predizione dello stato di aneuploidia sui pazienti esclusi dal training.
+2. Classificazione Leave-One-Patient-Out: Random Forest bilanciato sulle duttali del
+   tessuto `Tumor` dei pazienti con almeno 150 duttali. Normalizzazione (log1p CP10k)
+   e selezione dei geni piu' dispersi (`HVGSelector`, default 2.000) stanno dentro
+   una `Pipeline` stimata sui soli pazienti di training di ciascun fold.
 
-3. Validazione ortogonale sul tessuto adiacente normale (`Adjacent_normal`):
-   Applica il modello addestrato esclusivamente sul compartimento tumorale alle
-   cellule duttali del tessuto adiacente non neoplastico per verificare il tasso
-   di specificita' su un compartimento anatomico indipendente da inferCNV.
+3. Applicazione alle duttali di `Adjacent_normal`: un modello finale stimato su tutte
+   le duttali tumorali di training (geni scelti solo su di esse) viene applicato alle
+   duttali adiacenti, mai viste in training. Non e' una validazione indipendente da
+   inferCNV: le duttali adiacenti sono nella stessa esecuzione di inferCNV, con lo
+   stesso riferimento e la stessa regola di soglia che definisce l'etichetta.
 
-Uso:
-    python src/13_infercnv.py --h5ad data/interim/sc_raw.h5ad \
-        --splits data/interim/splits_sc.csv
+Input
+-----
+  --h5ad       data/interim/sc_raw.h5ad (conteggi grezzi; obs: tissue, patients, all_celltype)
+  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste, altrimenti calcolato e scritto)
+
+Output
+------
+  data/interim/cnv_scores.csv                   score CNV per cellula (cache)
+  results/tables/malignancy_labels.csv          duttali maligne per paziente x tessuto
+  results/tables/malignancy_lopo.csv            metriche LOPO per paziente (BA, F1, AUC)
+  results/tables/malignancy_lopo_summary.csv    media e deviazione standard delle metriche LOPO
+  results/tables/external_test_predictions.csv  predizione per ogni duttale adiacente
+  results/tables/external_test_summary.csv      frazione di duttali adiacenti predette maligne
+  results/figures/malignancy.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto),
+  --cnv-cache, --n-hvg (default 2000)
+
+Uso
+---
+    python src/13_infercnv.py --h5ad data/interim/sc_raw.h5ad
 """
 
 from __future__ import annotations
@@ -45,8 +73,13 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 import scipy.sparse as sp
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import balanced_accuracy_score, f1_score, roc_auc_score
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import HVGSelector, LogCPM  # noqa: E402
+
+from sklearn.ensemble import RandomForestClassifier  # noqa: E402
+from sklearn.metrics import balanced_accuracy_score, f1_score, roc_auc_score  # noqa: E402
+from sklearn.pipeline import Pipeline  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -55,6 +88,7 @@ SEED = 0
 IMMUNE_REF = ["CD8T", "CD4T", "NK", "B", "Myeloid", "Plasma"]
 # Supporto minimo di cellule duttali tumorali per l'inclusione del paziente nella validazione LOPO
 MIN_DUCTAL = 150
+N_HVG = 2000
 
 
 def add_positions(adata: ad.AnnData) -> bool:
@@ -81,7 +115,11 @@ def add_positions(adata: ad.AnnData) -> bool:
 
 
 def run_infercnv(adata: ad.AnnData) -> np.ndarray:
-    """Esegue infercnvpy su dati log-normalizzati e restituisce lo score medio |X_cnv| per cellula."""
+    """Esegue infercnvpy su dati log-normalizzati e restituisce lo score medio |X_cnv| per cellula.
+
+    Una sola esecuzione su tutte le cellule: il riferimento sono le immunitarie di
+    tutti i pazienti insieme (categorie di `ref_group` in IMMUNE_REF).
+    """
     import infercnvpy as cnv
 
     a = adata.copy()
@@ -91,7 +129,7 @@ def run_infercnv(adata: ad.AnnData) -> np.ndarray:
     a = a[:, a.var["chromosome"].notna()].copy()
 
     ref = [c for c in IMMUNE_REF if c in a.obs["ref_group"].unique()]
-    print(f"[..] infercnv: riferimento = {ref}")
+    print(f"[..] infercnv: riferimento = {ref} (tutti i pazienti)")
     cnv.tl.infercnv(a, reference_key="ref_group", reference_cat=ref, window_size=100)
     score = np.asarray(np.abs(a.obsm["X_cnv"]).mean(axis=1)).ravel()
     return score
@@ -108,56 +146,84 @@ def run_copykat(adata: ad.AnnData) -> np.ndarray:
     return score
 
 
-def classify_lopo(X, y, groups) -> pd.DataFrame:
-    """Esegue la cross-validation Leave-One-Patient-Out con RandomForestClassifier bilanciato."""
-    rows, preds = [], []
+def make_pipeline(n_hvg: int = N_HVG) -> Pipeline:
+    """Pipeline log1p(CP10k) -> geni piu' dispersi -> Random Forest bilanciato.
+
+    Normalizzazione e selezione dei geni sono stimate dentro `fit()`, quindi solo
+    sulle cellule di training su cui la pipeline viene addestrata.
+    """
+    return Pipeline(
+        [
+            ("logcpm", LogCPM()),
+            ("hvg", HVGSelector(n_top=n_hvg)),
+            (
+                "clf",
+                RandomForestClassifier(
+                    n_estimators=300,
+                    max_features="sqrt",
+                    class_weight="balanced_subsample",
+                    n_jobs=-1,
+                    random_state=SEED,
+                ),
+            ),
+        ]
+    )
+
+
+def classify_lopo(X, y, groups, n_hvg: int = N_HVG, return_models: bool = False):
+    """Cross-validation Leave-One-Patient-Out sui conteggi grezzi `X`.
+
+    Per ogni paziente escluso, la pipeline (normalizzazione, HVG, Random Forest) e'
+    stimata sui soli pazienti di training. Restituisce (metriche per paziente,
+    predizioni) e, con `return_models=True`, anche il dizionario paziente -> pipeline.
+    I fold il cui training ha una sola classe sono saltati; l'AUC e la balanced
+    accuracy sono NaN se il paziente escluso ha una sola classe.
+    """
+    rows, preds, models = [], [], {}
     for g in np.unique(groups):
         tr, te = groups != g, groups == g
-        if len(np.unique(y[tr])) < 2 or len(np.unique(y[te])) < 1:
+        if len(np.unique(y[tr])) < 2 or te.sum() == 0:
+            print(f"  [!] fold {g} saltato: training con una sola classe o test vuoto")
             continue
-        clf = RandomForestClassifier(
-            n_estimators=300,
-            max_features="sqrt",
-            class_weight="balanced_subsample",
-            n_jobs=-1,
-            random_state=SEED,
-        )
-        clf.fit(X[tr], y[tr])
-        p = clf.predict(X[te])
-        proba = (
-            clf.predict_proba(X[te])[:, 1]
-            if len(clf.classes_) == 2
-            else np.zeros(te.sum())
-        )
+        pipe = make_pipeline(n_hvg)
+        pipe.fit(X[tr], y[tr])
+        models[g] = pipe
+        p = pipe.predict(X[te])
+        proba = pipe.predict_proba(X[te])[:, list(pipe.classes_).index(1)]
         preds.append(
             pd.DataFrame({"patient": g, "y_true": y[te], "y_pred": p, "proba": proba})
         )
-        row = {
-            "patient": g,
-            "n_test": int(te.sum()),
-            "balanced_acc": balanced_accuracy_score(y[te], p)
-            if len(np.unique(y[te])) > 1
-            else np.nan,
-            "f1_malig": f1_score(y[te], p, pos_label=1, zero_division=0),
-        }
-        if len(np.unique(y[te])) > 1:
-            try:
-                row["auc"] = roc_auc_score(y[te], proba)
-            except ValueError:
-                row["auc"] = np.nan
-        rows.append(row)
-    return pd.DataFrame(rows), pd.concat(preds) if preds else pd.DataFrame()
+        two = len(np.unique(y[te])) > 1
+        rows.append(
+            {
+                "patient": g,
+                "n_test": int(te.sum()),
+                "balanced_acc": balanced_accuracy_score(y[te], p) if two else np.nan,
+                "f1_malig": f1_score(y[te], p, pos_label=1, zero_division=0),
+                "auc": roc_auc_score(y[te], proba) if two else np.nan,
+            }
+        )
+    res = pd.DataFrame(rows)
+    pr = pd.concat(preds) if preds else pd.DataFrame()
+    return (res, pr, models) if return_models else (res, pr)
+
+
+def fit_final(X, y, n_hvg: int = N_HVG) -> Pipeline:
+    """Modello finale su tutte le duttali tumorali di training (geni scelti solo su di esse)."""
+    return make_pipeline(n_hvg).fit(X, y)
 
 
 def main() -> None:
-    """Punto di ingresso principale per l'inferenza CNV, la sogliatura robusta e il test LOPO."""
-    ap = argparse.ArgumentParser()
+    """Punto di ingresso principale per l'inferenza CNV, la sogliatura per paziente e il test LOPO."""
+    ap = argparse.ArgumentParser(
+        description="Score CNV, etichetta di malignita' e classificazione LOPO delle duttali."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--splits", type=Path, required=True)
     ap.add_argument("--method", choices=["infercnv", "copykat", "auto"], default="auto")
     ap.add_argument(
         "--cnv-cache", type=Path, default=Path("data/interim/cnv_scores.csv")
     )
+    ap.add_argument("--n-hvg", type=int, default=N_HVG)
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)
@@ -168,7 +234,7 @@ def main() -> None:
     for c in ("tissue", "patients", "all_celltype"):
         adata.obs[c] = adata.obs[c].astype(str)
 
-    # Selezione delle cellule duttali (Tumor + Adjacent_normal) e del riferimento immunitario diploide
+    # Selezione delle cellule duttali (Tumor + Adjacent_normal) e del riferimento immunitario
     is_duct = adata.obs.all_celltype == "Ductal"
     is_imm = adata.obs.all_celltype.isin(IMMUNE_REF)
     keep = (is_duct | is_imm) & adata.obs.tissue.isin(["Tumor", "Adjacent_normal"])
@@ -181,12 +247,14 @@ def main() -> None:
         f"({(sub.obs.all_celltype == 'Ductal').sum():,} duttali, "
         f"{is_imm[keep].sum():,} immuni di riferimento)"
     )
+    if (sub.obs.all_celltype == "Ductal").sum() == 0:
+        raise SystemExit("[ERRORE] nessuna cellula duttale in Tumor/Adjacent_normal.")
 
     duct = sub.obs[sub.obs.all_celltype == "Ductal"]
     print("\nduttali per paziente x tessuto:")
     print(pd.crosstab(duct.patients, duct.tissue, margins=True).to_string())
 
-    # Calcolo o caricamento da cache dello score CNV globale per cellula
+    # Calcolo o caricamento da cache dello score CNV per cellula
     if args.cnv_cache.exists():
         print(f"\n[ok] CNV score da cache {args.cnv_cache}")
         cs = pd.read_csv(args.cnv_cache, index_col=0)
@@ -205,7 +273,9 @@ def main() -> None:
         print(f"[ok] CNV in {time.time() - t0:.0f}s")
         sub.obs[["cnv_score"]].to_csv(args.cnv_cache)
 
-    # Sogliatura statistica intra-paziente: mediana + 3 * MAD normalizzata sugli immuni del donatore
+    # Soglia per paziente: mediana + 3 * MAD normalizzata sulle immunitarie del paziente.
+    # Le immunitarie sono anche il riferimento su cui inferCNV centra lo score: le duttali
+    # con un qualsiasi programma epiteliale tendono a superarla (vedi docstring, punto 1).
     print("\n" + "=" * 74)
     print("ETICHETTA DI MALIGNITA' (soglia per paziente sugli immuni di riferimento)")
     print("=" * 74)
@@ -214,6 +284,7 @@ def main() -> None:
     for pat, g in sub.obs.groupby("patients"):
         imm = g[g.all_celltype.isin(IMMUNE_REF)].cnv_score
         if len(imm) < 20:
+            print(f"  [!] {pat}: {len(imm)} immuni (< 20), nessuna soglia")
             continue
         thr = imm.median() + 3 * (imm - imm.median()).abs().median() * 1.4826
         dmask = (sub.obs.patients == pat) & (sub.obs.all_celltype == "Ductal")
@@ -237,7 +308,7 @@ def main() -> None:
     print(lab.round(3).to_string(index=False))
     lab.to_csv(TAB / "malignancy_labels.csv", index=False)
 
-    # Identificazione di eventuali pazienti privi di contrasto binario interno
+    # Pazienti privi di contrasto binario interno
     tum = lab[lab.tissue == "Tumor"]
     degenerate = tum[(tum.frac_malig == 0) | (tum.frac_malig == 1)]
     if len(degenerate):
@@ -247,76 +318,78 @@ def main() -> None:
         )
         print("     non forniscono contrasto binario intra-paziente.")
 
-    # Addestramento e valutazione Leave-One-Patient-Out sulle cellule duttali del tessuto tumorale
+    # Classificazione LOPO sulle duttali del tessuto tumorale (conteggi grezzi: la
+    # normalizzazione e la selezione dei geni avvengono dentro la pipeline di ogni fold)
     print("\n" + "=" * 74)
     print("CLASSIFICATORE LOPO: predire la malignita' dal trascrittoma")
     print("=" * 74)
-    train = sub[(sub.obs.all_celltype == "Ductal") & (sub.obs.tissue == "Tumor")].copy()
+    train = sub[(sub.obs.all_celltype == "Ductal") & (sub.obs.tissue == "Tumor")]
     counts = train.obs.patients.value_counts()
     good = counts[counts >= MIN_DUCTAL].index
-    train = train[train.obs.patients.isin(good)].copy()
+    train = train[train.obs.patients.isin(good)]
     print(
         f"pazienti con >={MIN_DUCTAL} duttali tumorali: {len(good)} -> {sorted(good)}"
     )
+    if train.n_obs == 0 or train.obs.malignant.nunique() < 2:
+        raise SystemExit("[ERRORE] training LOPO vuoto o con una sola classe.")
     print(
         f"cellule di training: {train.n_obs:,} | maligne: {train.obs.malignant.mean():.1%}"
     )
-
-    # Normalizzazione e selezione dei 2.000 geni ad alta variabilita' (Seurat flavor)
-    sc.pp.normalize_total(train, target_sum=1e4)
-    sc.pp.log1p(train)
-    sc.pp.highly_variable_genes(train, n_top_genes=2000, flavor="seurat")
-    Xtr = sp.csr_matrix(train[:, train.var.highly_variable].X)
+    Xtr = sp.csr_matrix(train.X)
     ytr = train.obs.malignant.values
     gtr = train.obs.patients.values
 
-    res, preds = classify_lopo(Xtr, ytr, gtr)
+    res, preds = classify_lopo(Xtr, ytr, gtr, n_hvg=args.n_hvg)
     print("\nper paziente (leave-one-patient-out):")
     print(res.round(3).to_string(index=False))
-    if not res.empty:
-        print(
-            f"\nbalanced accuracy media: {res.balanced_acc.mean():.3f} ± {res.balanced_acc.std():.3f}"
-        )
-        if "auc" in res:
-            print(f"AUC media: {res.auc.mean():.3f} ± {res.auc.std():.3f}")
     res.to_csv(TAB / "malignancy_lopo.csv", index=False)
+    if not res.empty:
+        summ = res[["balanced_acc", "f1_malig", "auc"]].agg(["mean", "std", "count"])
+        print(f"\nAUC media: {res.auc.mean():.3f} ± {res.auc.std():.3f}")
+        print(
+            f"balanced accuracy media: {res.balanced_acc.mean():.3f} ± {res.balanced_acc.std():.3f}"
+        )
+        summ.T.rename_axis("metric").to_csv(TAB / "malignancy_lopo_summary.csv")
 
-    # Validazione esterna sulle cellule duttali del tessuto adiacente non neoplastico
+    # Applicazione alle duttali del tessuto adiacente: modello finale stimato sulle sole
+    # duttali tumorali di training, compresa la scelta dei geni
     print("\n" + "=" * 74)
-    print("TEST ESTERNO: duttali del tessuto ADIACENTE NORMALE (mai in training)")
+    print("DUTTALI DEL TESSUTO ADIACENTE (mai in training; stessa esecuzione inferCNV)")
     print("=" * 74)
     ext = sub[
         (sub.obs.all_celltype == "Ductal") & (sub.obs.tissue == "Adjacent_normal")
-    ].copy()
+    ]
     if ext.n_obs > 20:
-        clf = RandomForestClassifier(
-            n_estimators=300,
-            max_features="sqrt",
-            class_weight="balanced_subsample",
-            n_jobs=-1,
-            random_state=SEED,
-        )
-        clf.fit(Xtr, ytr)
-        sc.pp.normalize_total(ext, target_sum=1e4)
-        sc.pp.log1p(ext)
-        Xext = sp.csr_matrix(ext[:, train.var.highly_variable].X)
-        pred = clf.predict(Xext)
+        final = fit_final(Xtr, ytr, n_hvg=args.n_hvg)
+        pred = final.predict(sp.csr_matrix(ext.X))
         print(f"duttali normali adiacenti: {ext.n_obs:,}")
         print(
-            f"predette MALIGNE (atteso ~0 in assenza di campo di cancerizzazione): {pred.mean():.1%}"
+            f"predette maligne: {pred.mean():.1%} | non maligne: {1 - pred.mean():.1%}"
         )
-        print(f"predette non-maligne: {(1 - pred.mean()):.1%}")
         print(
-            "\nIl tasso di predizione sul tessuto adiacente normale misura la separabilita'"
+            "La frazione predetta maligna misura quanto il classificatore separa le duttali"
         )
-        print("tra epitelio duttale tumorale ed epitelio duttale peri-tumorale.")
+        print("tumorali dalle duttali peri-tumorali; non e' un tasso di falsi positivi")
+        print("rispetto a una verita' indipendente (vedi docstring, punto 3).")
         pd.DataFrame({"pred": pred}, index=ext.obs_names).to_csv(
             TAB / "external_test_predictions.csv"
         )
+        ext_rows = [
+            {
+                "patient": "_all",
+                "n": int(ext.n_obs),
+                "frac_pred_malignant": float(pred.mean()),
+            }
+        ]
+        for p_, m_ in pd.Series(pred, index=ext.obs.patients.values).groupby(level=0):
+            ext_rows.append(
+                {"patient": p_, "n": len(m_), "frac_pred_malignant": float(m_.mean())}
+            )
+        pd.DataFrame(ext_rows).to_csv(TAB / "external_test_summary.csv", index=False)
     else:
-        print("numero insufficiente di duttali normali per il test esterno.")
+        print("numero insufficiente di duttali normali (<= 20): passo saltato.")
 
-    # Generazione della figura diagnostica (distribuzione CNV score e AUC per paziente)
+    # Figura diagnostica (distribuzione CNV score e AUC per paziente)
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
     for tis, c in [("Tumor", "#d95f02"), ("Adjacent_normal", "#1b9e77")]:
         d = sub.obs[(sub.obs.all_celltype == "Ductal") & (sub.obs.tissue == tis)]
@@ -341,7 +414,7 @@ def main() -> None:
     axes[0].set_ylabel("densità")
     axes[0].legend(fontsize=8)
     axes[0].set_title("distribuzione dello score CNV")
-    if not res.empty and "auc" in res:
+    if not res.empty:
         axes[1].bar(res.patient, res.auc, color="#7570b3", alpha=0.85)
         axes[1].axhline(0.5, ls="--", c="k", lw=0.8)
         axes[1].set_ylabel("AUC (LOPO)")
@@ -350,7 +423,7 @@ def main() -> None:
     fig.tight_layout()
     fig.savefig(FIG / "malignancy.png", dpi=140)
     plt.close(fig)
-    print(f"\n[ok] figura: results/figures/malignancy.png")  # noqa: F541
+    print("\n[ok] figura: results/figures/malignancy.png")
 
 
 if __name__ == "__main__":

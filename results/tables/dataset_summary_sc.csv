@@ -1,0 +1,2 @@
+n_cells,n_genes,n_libraries,n_patients,n_cells_PBMC,n_patients_PBMC,n_cells_Tumor,n_patients_Tumor,n_cells_Adjacent_normal,n_patients_Adjacent_normal
+199184,30543,29,14,89506,11,71414,13,38264,5

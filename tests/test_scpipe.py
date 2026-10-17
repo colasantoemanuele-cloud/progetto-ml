@@ -88,9 +88,9 @@ def test_mean_pairwise_jaccard():
 
 def test_logcpm_row_sums_before_log():
     rng = np.random.default_rng(0)
-    X = sp.csr_matrix(rng.poisson(1.0, size=(30, 50)).astype(np.float32))
-    X[3] = 0  # cellula vuota: deve restare vuota, senza divisioni per zero
-    X.eliminate_zeros()
+    D = rng.poisson(1.0, size=(30, 50)).astype(np.float32)
+    D[3] = 0  # cellula vuota: deve restare vuota, senza divisioni per zero
+    X = sp.csr_matrix(D)
     Y = scpipe.LogCPM().fit(X).transform(X)
     raw = Y.copy()
     raw.data = np.expm1(raw.data)  # inverte log1p -> CP10k

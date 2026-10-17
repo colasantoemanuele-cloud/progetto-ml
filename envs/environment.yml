@@ -1,35 +1,41 @@
+# Ambiente della pipeline (conda/mamba). Versioni = quelle con cui sono state prodotte
+# le tabelle in results/. Lock esatto con checksum: envs/conda-lock.yml.
 name: pdac
 channels: [conda-forge, bioconda]
 dependencies:
-  - python=3.11
+  - python=3.11.15
   - pip
-  - numpy
-  - scipy
-  - pandas
-  - polars
-  - pyarrow
-  - h5py
-  - scanpy
-  - anndata
-  - leidenalg
-  - python-igraph
-  - scikit-misc
-  - scrublet
-  - scikit-learn
-  - imbalanced-learn
-  - lightgbm
-  - xgboost
-  - shap
-  - matplotlib
-  - seaborn
-  - jupyterlab
-  - ipykernel
-  - snakemake-minimal
-  - ruff
-  - pre-commit
-  - nbstripout
+  - numpy=2.4.6
+  - scipy=1.17.1
+  - pandas=2.3.3
+  - polars=1.42.1
+  - pyarrow=24.0.0
+  - h5py=3.16.0
+  - scanpy=1.11.5
+  - anndata=0.12.19
+  - leidenalg=0.12.0
+  - python-igraph=1.0.0
+  - scikit-misc=0.5.2
+  - scrublet=0.2.3
+  - scikit-learn=1.9.0
+  - imbalanced-learn=0.14.2
+  - lightgbm=4.6.0
+  - xgboost=3.2.0
+  - shap=0.51.0
+  - matplotlib=3.11.0
+  - seaborn=0.13.2
+  - jupyterlab=4.6.1
+  - ipykernel=7.3.0
+  - snakemake-minimal=9.23.1
+  - ruff=0.15.20
+  - pre-commit=4.6.0
+  - nbstripout=0.9.1
+  - conda-lock=4.0.2
   - pip:
-      - infercnvpy
-      - decoupler
-      - scirpy          # <-- per il TCR, ci serve
-      - session-info
+      - infercnvpy==0.6.1
+      - decoupler==2.1.6
+      - scirpy==0.22.5
+      - session-info==1.0.1
+      - openpyxl==3.1.5  # lettura di mmc2.xlsx (19_ni_score.py)
+      - pybiomart==0.2.0  # coordinate dei geni per inferCNV (13, 14)
+      - pytest==9.1.1  # tests/

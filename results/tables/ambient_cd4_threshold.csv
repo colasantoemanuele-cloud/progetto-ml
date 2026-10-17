@@ -1,0 +1,4 @@
+tissue,threshold_p95,n_cells
+Adjacent_normal,0.0,742
+PBMC,1.3319145441055298,11
+Tumor,0.0,10381

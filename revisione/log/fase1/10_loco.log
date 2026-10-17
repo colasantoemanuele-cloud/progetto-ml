@@ -1,0 +1,134 @@
+[..] carico h5ad ...
+[ok] 199,184 cellule | TCR: 105,809
+
+==============================================================================
+(2) AMBIENT: CD4 nelle cellule che NON possono esprimerlo
+==============================================================================
+                                 n    mean  frac_pos     p95
+tissue          all_celltype                                
+Adjacent_normal Ductal         334  0.0124    0.0090  0.0000
+                Endothelial    408  0.0343    0.0368  0.0000
+PBMC            Ductal           9  0.2960    0.1111  1.5983
+                Endothelial      2  0.0000    0.0000  0.0000
+Tumor           Ductal        8370  0.0032    0.0035  0.0000
+                Endothelial   2011  0.0132    0.0139  0.0000
+
+soglia CD4 per compartimento (95o pct dell'ambient) e cellule usate:
+                 threshold_p95  n_cells
+tissue                                 
+Adjacent_normal         0.0000      742
+PBMC                    1.3319       11
+Tumor                   0.0000    10381
+  [!] PBMC: soglia stimata su 11 cellule, instabile
+
+CD4 medio nelle CD8T (tutte), per compartimento (verifica rispetto alla soglia):
+tissue
+Adjacent_normal    0.0613
+PBMC               0.0667
+Tumor              0.0860
+
+Le popolazioni mieloidi esprimono CD4 endogeno e sono escluse dal proxy ambientale.
+
+==============================================================================
+(1) SCHEMI DI RIFERIMENTO: naive, leave-one-compartment-out, solo sangue
+==============================================================================
+
+--- NAIVE (riferimento include il target, circolare) ---
+  PBMC             errore = 0.043  IC95% [0.025, 0.067]  (n=862, 11 pz)
+  Adjacent_normal  errore = 0.076  IC95% [0.051, 0.162]  (n=646, 5 pz)
+  Tumor            errore = 0.092  IC95% [0.062, 0.129]  (n=1519, 13 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.035  IC95% [+0.005, +0.138]  IC esclude 0  (n=259 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.156  IC95% [+0.046, +0.253]  IC esclude 0  (n=282 cloni, 10 pz)
+
+--- LOCO (riferimento = gli altri compartimenti) ---
+  PBMC             errore = 0.036  IC95% [0.013, 0.063]  (n=309, 10 pz)
+  Adjacent_normal  errore = 0.061  IC95% [0.030, 0.093]  (n=295, 5 pz)
+  Tumor            errore = 0.147  IC95% [0.084, 0.244]  (n=464, 11 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.027  IC95% [-0.010, +0.124]  IC include 0  (n=255 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.146  IC95% [+0.041, +0.238]  IC esclude 0  (n=274 cloni, 10 pz)
+
+--- BLOOD (riferimento = solo PBMC) ---
+  Adjacent_normal  errore = 0.059  IC95% [0.000, 0.093]  (n=118, 4 pz)
+  Tumor            errore = 0.195  IC95% [0.110, 0.290]  (n=287, 10 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.192]  IC include 0  (n=88 cloni, 4 pz)
+
+==============================================================================
+(2b) RIPETUTO con soglia CD4 sopra l'ambient del compartimento
+==============================================================================
+
+--- LOCO + soglia CD4 corretta per ambient ---
+  PBMC             errore = 0.036  IC95% [0.013, 0.063]  (n=309, 10 pz)
+  Adjacent_normal  errore = 0.058  IC95% [0.031, 0.087]  (n=291, 5 pz)
+  Tumor            errore = 0.130  IC95% [0.075, 0.222]  (n=453, 11 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.028  IC95% [-0.010, +0.125]  IC include 0  (n=252 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.124  IC95% [+0.034, +0.211]  IC esclude 0  (n=267 cloni, 10 pz)
+
+==============================================================================
+(3) RIPETUTO escludendo i possibili doppietti (n_counts > 90o pct per libreria x classe)
+==============================================================================
+  cellule escluse: 20,017 / 199,184
+
+--- LOCO senza doppietti ---
+  PBMC             errore = 0.038  IC95% [0.014, 0.068]  (n=289, 10 pz)
+  Adjacent_normal  errore = 0.049  IC95% [0.004, 0.080]  (n=268, 5 pz)
+  Tumor            errore = 0.143  IC95% [0.074, 0.249]  (n=428, 11 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.035  IC95% [+0.000, +0.134]  IC include 0  (n=230 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.140  IC95% [+0.042, +0.230]  IC esclude 0  (n=258 cloni, 10 pz)
+
+==============================================================================
+(5) SENSIBILITA' dello schema BLOOD
+==============================================================================
+scomposizione dell'errore nel Tumor:
+                      category  n_errors  rate_over_all_clones  n_clones  n_patients     lo     hi
+    CD4_in_blood_labelled_CD8T        38                0.1324       287          10    NaN    NaN
+                   labelled_NK        18                0.0627       287          10    NaN    NaN
+    CD8_in_blood_labelled_CD4T         0                0.0000       287          10    NaN    NaN
+                         other         0                0.0000       287          10    NaN    NaN
+       transition_CD4T_to_CD8T        38                0.1324       287          10    NaN    NaN
+         transition_CD4T_to_NK         6                0.0209       287          10    NaN    NaN
+         transition_CD8T_to_NK        12                0.0418       287          10    NaN    NaN
+error_rate_excluding_NK_labels        38                0.1413       269          10 0.0582 0.2614
+
+--- BLOOD con regola CD8+: CD8A > 0 oppure CD8B > 0 (principale) ---
+  Adjacent_normal  errore = 0.059  IC95% [0.000, 0.093]  (n=118, 4 pz)
+  Tumor            errore = 0.195  IC95% [0.110, 0.290]  (n=287, 10 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.192]  IC include 0  (n=88 cloni, 4 pz)
+
+--- BLOOD con regola CD8+: CD8B > 0 ---
+  Adjacent_normal  errore = 0.051  IC95% [0.000, 0.070]  (n=117, 4 pz)
+  Tumor            errore = 0.206  IC95% [0.114, 0.310]  (n=282, 10 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.200]  IC include 0  (n=87 cloni, 4 pz)
+
+--- BLOOD con regola CD8+: CD8A >= 2 UMI ---
+  Adjacent_normal  errore = 0.052  IC95% [0.000, 0.070]  (n=116, 4 pz)
+  Tumor            errore = 0.206  IC95% [0.113, 0.307]  (n=287, 10 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.200]  IC include 0  (n=87 cloni, 4 pz)
+
+--- BLOOD con regola CD8+: CD8B > 0 oppure CD8A >= 2 UMI ---
+  Adjacent_normal  errore = 0.051  IC95% [0.000, 0.070]  (n=117, 4 pz)
+  Tumor            errore = 0.203  IC95% [0.113, 0.304]  (n=286, 10 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.200]  IC include 0  (n=87 cloni, 4 pz)
+
+==============================================================================
+(4) FRAZIONE DI DOPPIETTI NELLE NK-TCR+  (due stime, non indipendenti)
+==============================================================================
+  median all              d1 = 0.723 [0.556, 0.848]  d2 = 0.790 [0.660, 0.876]
+  median PBMC             d1 = 0.842 [0.656, 1.000]  d2 = 0.935 [0.748, 1.000]
+  median Adjacent_normal  d1 = 0.690 [0.233, 1.000]  d2 = 0.929 [0.104, 1.000]
+  median Tumor            d1 = 0.510 [0.186, 0.658]  d2 = 0.581 [0.410, 1.000]
+  mean   all              d1 = 0.682 [0.582, 0.775]  d2 = 0.840 [0.687, 0.938]
+  mean   PBMC             d1 = 0.800 [0.690, 1.000]  d2 = 0.971 [0.756, 1.000]
+  mean   Adjacent_normal  d1 = 0.559 [0.299, 0.862]  d2 = 0.735 [0.243, 1.000]
+  mean   Tumor            d1 = 0.381 [0.170, 0.473]  d2 = 0.822 [0.521, 1.000]
+
+Stima principale (mediane, tutti i tessuti): d1 = 0.723, d2 = 0.790.
+d1 e d2 usano le stesse mediane di n_counts: il loro accordo non e' una
+conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati).
+
+==============================================================================
+  naive  Tumor - Adjacent_normal = +0.035 [+0.005, +0.138]  IC esclude 0
+  loco   Tumor - Adjacent_normal = +0.027 [-0.010, +0.124]  IC include 0
+  blood  Tumor - Adjacent_normal = +0.080 [+0.000, +0.192]  IC include 0
+La differenza Tumor - Adjacent_normal non e' positiva con IC che esclude 0
+in tutti gli schemi: l'asimmetria dipende dallo schema di riferimento.
+==============================================================================

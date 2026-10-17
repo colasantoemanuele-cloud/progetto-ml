@@ -1,34 +1,71 @@
 #!/usr/bin/env python3
 """
-10_loco.py - Arbitrato Leave-One-Compartment-Out (LOCO), riferimento ematico e deconvoluzione dei doppietti.
+10_loco.py - Tasso d'errore delle etichette T con tre schemi di riferimento clonale e frazione di doppietti NK-TCR+.
 
-Questo modulo elimina ogni circolarita' residua tra la stima dell'identita'
-clonale di riferimento e la valutazione dell'etichetta compartimentale mediante
-quattro protocolli di validazione:
+Scopo
+-----
+1. Arbitrato con tre schemi di riferimento per l'identita' CD4/CD8 del clone (vedi
+   09_arbitrate.py per le frazioni f8/f4 e il margine minimo 0.20):
+   - `naive`: il riferimento include il compartimento giudicato (circolare);
+   - `loco` (leave-one-compartment-out): il riferimento sono gli altri compartimenti
+     del clone. Con cloni presenti in due soli compartimenti, giudicare il sangue
+     usa il tumore come riferimento (in simulazione questo gonfia l'errore del sangue,
+     vedi src/sim/sim_b_reference_schemes.py);
+   - `blood` (schema primario): il riferimento e' solo il PBMC, e si giudicano solo
+     Adjacent_normal e Tumor.
+   Per ogni schema: errore per compartimento e differenze appaiate sugli stessi cloni
+   (Tumor - Adjacent_normal, Tumor - PBMC), con IC 95% da cluster bootstrap sui pazienti
+   (`scpipe.cluster_bootstrap`, "expanded percentile"). Con 4-5 pazienti l'intervallo
+   non e' calibrato: si riportano anche il numero di ricampionature distinte e la
+   frazione di repliche con differenza > 0.
+   Etichetta di maggioranza del compartimento: moda, pareggi risolti dalla prima
+   comparsa (`scpipe.majority_label`).
 
-1. Arbitrato disgiunto (Leave-One-Compartment-Out e Riferimento Ematico 'blood'):
-   - Nello schema `loco`, il fenotipo CD4/CD8 del clone viene inferito usando
-     esclusivamente i compartimenti diversi da quello sottoposto a verifica.
-   - Nello schema `blood`, il sangue periferico (PBMC, esente da dissociazione
-     enzimatica e rimodellamento stromale) funge da riferimento unico ed esterno
-     per arbitrare simultaneamente i tessuti solidi (`Adjacent_normal` e `Tumor`).
+2. Soglia di CD4 sopra l'RNA ambientale: 95-esimo percentile di CD4 nelle cellule
+   Ductal ed Endothelial di ciascun compartimento. Nel PBMC queste cellule sono
+   pochissime (11 nella versione pubblicata): la soglia del PBMC e' stimata su pochi
+   punti ed e' instabile. Il numero di cellule e' stampato e salvato.
 
-2. Calibrazione della soglia di positivita' di CD4 rispetto all'RNA ambientale:
-   Poiche' il trascritto CD4 e' espresso fisiologicamente anche dalla componente
-   mieloide/macrofagica abbondante nel microambiente tumorale, la soglia di
-   chiamata per CD4 viene ricalibrata al 95-esimo percentile dell'espressione
-   osservata in popolazioni non linfoidi e non mieloidi (`Ductal`, `Endothelial`).
+3. Robustezza: LOCO ripetuto escludendo le cellule con n_counts sopra il 90-esimo
+   percentile della propria (libreria, classe).
 
-3. Analisi di robustezza previa esclusione dei potenziali doppietti:
-   Ripete la valutazione LOCO escludendo il decile superiore di conteggio UMI
-   (`n_counts > 90-esimo percentile` stratificato per libreria e tipo cellulare).
+4. Frazione di doppietti fisici nelle NK con TCR, da due stime:
+       d1 = (n_counts(NK TCR+) - n_counts(NK TCR-)) / n_counts(CD8T TCR+)
+       d2 = (r_CD8 - r_NK) / (r_CD8 - r_dbl),  r = UMI_TCR per 1000 UMI totali,
+            r_dbl = r_CD8 * n_counts(CD8T) / n_counts(NK TCR+)
+   d2 non e' indipendente da d1: usa le stesse n_counts di CD8T e NK TCR+. Le stime
+   principali usano le mediane pooled su tutti i tessuti; come sensibilita' si
+   riportano le medie e le stime per compartimento. IC con bootstrap sui pazienti
+   (500 repliche, "expanded percentile").
 
-4. Deconvoluzione quantitativa della miscela doppietto/singoletto nelle NK-TCR+:
-   Stima la frazione di doppietti fisici mediante due stimatori indipendenti
-   basati rispettivamente sull'incremento di massa UMI totale (`d1`) e sulla
-   diluizione del rapporto UMI_TCR / n_counts (`d2`).
+5. Sensibilita' (blood): scomposizione dell'errore nel Tumor (cloni CD4 nel sangue
+   etichettati CD8T, cloni etichettati NK, altri), tasso escludendo le etichette NK,
+   e regole d'identita' piu' severe per CD8+ (solo CD8B > 0; CD8A >= 2 UMI;
+   CD8B > 0 oppure CD8A >= 2 UMI).
 
-Uso:
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad
+  --tcrdir  cartella con i 30 file VDJ
+
+Output
+------
+  results/tables/arbitration_{naive,loco,blood}.csv   una riga per (clone, compartimento giudicato)
+  results/tables/error_rate_schemes.csv               errore per schema x compartimento (+ varianti)
+  results/tables/error_rate_paired_diff.csv           differenze appaiate per schema, con cloni e pazienti
+  results/tables/error_decomposition_blood.csv        scomposizione dell'errore nel Tumor (blood)
+  results/tables/error_rate_identity_rules.csv        errore (blood) con regole CD8+ alternative
+  results/tables/ambient_cd4_threshold.csv            soglia CD4 per compartimento e numero di cellule
+  results/tables/doublet_mixture.csv                  d1, d2 con IC: mediane/medie, pooled/per compartimento
+  results/tables/doublet_mixture_boot.csv             repliche bootstrap di d1, d2 (mediane, pooled)
+  results/figures/error_rate_loco.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --tcrdir (default data/raw/tcr)
+
+Uso
+---
     python src/10_loco.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
 """
 
@@ -36,6 +73,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import anndata as ad
@@ -46,10 +84,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import (  # noqa: E402
+    cluster_bootstrap,
+    cluster_bootstrap_replicates,
+    majority_label,
+    percentile_ci,
+)
+
 FIG = Path("results/figures")
 TAB = Path("results/tables")
 SEED = 0
 N_BOOT = 2000
+N_BOOT_MIX = 500
+# Sotto questo numero di pazienti l'IC del cluster bootstrap non e' calibrato
+SMALL_K = 5
 
 TISSUE_MAP = {"Tumor": "Tumor", "Normal": "Adjacent_normal", "PBMC": "PBMC"}
 COMPS = ["PBMC", "Adjacent_normal", "Tumor"]
@@ -60,6 +109,13 @@ FNAME_RE = re.compile(r"GSM\d+_PA_(\d+)-(\w+)-VDJ_filtered_contig_annotations\.c
 
 MIN_CELLS = 3
 MIN_MARGIN = 0.20
+# Regole per chiamare una cellula CD8+ (la prima e' quella principale)
+CD8_RULES = {
+    "cd8a_or_cd8b": "CD8A > 0 oppure CD8B > 0 (principale)",
+    "cd8b_only": "CD8B > 0",
+    "cd8a_ge2": "CD8A >= 2 UMI",
+    "cd8b_or_cd8a_ge2": "CD8B > 0 oppure CD8A >= 2 UMI",
+}
 
 
 def load_tcr(tcrdir: Path) -> pd.DataFrame:
@@ -84,6 +140,8 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
         frames.append(
             df[["patient", "tissue", "barcode16", "chain", "cdr3_nt", "umis"]]
         )
+    if not frames:
+        raise SystemExit(f"[ERRORE] nessun file VDJ riconosciuto in {tcrdir}")
     c = pd.concat(frames, ignore_index=True).dropna(subset=["barcode16"])
     c = c.sort_values("umis", ascending=False).drop_duplicates(
         ["patient", "tissue", "barcode16", "chain"]
@@ -113,27 +171,28 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
 
 
 def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
-    """Calcola media e intervallo di confidenza al 95% tramite cluster bootstrap sui pazienti."""
-    pats = [p for p, v in by_pat.items() if len(v)]
-    if len(pats) < 2:
-        return np.nan, np.nan, np.nan
-    rng = np.random.default_rng(SEED)
-    stats = [
-        np.concatenate(
-            [by_pat[p] for p in rng.choice(pats, len(pats), replace=True)]
-        ).mean()
-        for _ in range(n)
-    ]
-    allv = np.concatenate([by_pat[p] for p in pats])
-    return (
-        float(allv.mean()),
-        float(np.percentile(stats, 2.5)),
-        float(np.percentile(stats, 97.5)),
-    )
+    """Media pooled e IC 95% con cluster bootstrap sui pazienti (pazienti vuoti esclusi)."""
+    return cluster_bootstrap({p: v for p, v in by_pat.items() if len(v)}, n, SEED)
 
 
-def ambient_cd4(gex: pd.DataFrame) -> pd.Series:
-    """Stima la soglia di fondo di CD4 per tessuto come 95-esimo percentile su cellule Ductal ed Endothelial."""
+def small_k_diagnostics(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> dict:
+    """Con pochi pazienti: ricampionature distinte (come multiinsiemi) e frazione di repliche > 0.
+
+    Usa lo stesso seme e la stessa sequenza di estrazioni di `cluster_boot`.
+    """
+    by_pat = {p: np.asarray(v, dtype=float) for p, v in by_pat.items() if len(v)}
+    if len(by_pat) < 2:
+        return {"n_distinct_resamples": np.nan, "frac_boot_gt0": np.nan}
+    stats, draws = cluster_bootstrap_replicates(by_pat, n, SEED)
+    distinct = {tuple(sorted(d)) for d in draws}
+    return {
+        "n_distinct_resamples": len(distinct),
+        "frac_boot_gt0": float(np.mean(stats > 0)),
+    }
+
+
+def ambient_cd4(gex: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame]:
+    """Soglia di fondo di CD4 per tessuto: 95-esimo percentile su cellule Ductal ed Endothelial."""
     print("\n" + "=" * 78)
     print("(2) AMBIENT: CD4 nelle cellule che NON possono esprimerlo")
     print("=" * 78)
@@ -146,9 +205,16 @@ def ambient_cd4(gex: pd.DataFrame) -> pd.Series:
     )
     print(tab.round(4).to_string())
 
-    thr = amb.groupby("tissue", observed=True).g_CD4.quantile(0.95)
-    print("\nsoglia CD4 per compartimento (95o pct dell'ambient):")
-    print(thr.round(4).to_string())
+    # La soglia e' un quantile empirico: con poche cellule proxy (nel PBMC sono una
+    # decina) e' stimata male; il numero di cellule usato viene riportato accanto.
+    g = amb.groupby("tissue", observed=True).g_CD4
+    thr = g.quantile(0.95)
+    out = pd.DataFrame({"threshold_p95": thr, "n_cells": g.size()})
+    print("\nsoglia CD4 per compartimento (95o pct dell'ambient) e cellule usate:")
+    print(out.round(4).to_string())
+    for tis, n in out.n_cells.items():
+        if n < 30:
+            print(f"  [!] {tis}: soglia stimata su {n} cellule, instabile")
 
     print(
         "\nCD4 medio nelle CD8T (tutte), per compartimento (verifica rispetto alla soglia):"
@@ -161,15 +227,30 @@ def ambient_cd4(gex: pd.DataFrame) -> pd.Series:
         .to_string()
     )
     print(
-        "\nLe popolazioni mieloidi esprimono CD4 endogeno e sono pertanto escluse dal proxy ambientale."
+        "\nLe popolazioni mieloidi esprimono CD4 endogeno e sono escluse dal proxy ambientale."
     )
-    return thr
+    return thr, out
 
 
-def per_comp_stats(lym: pd.DataFrame, cd4_thr: pd.Series | None) -> pd.DataFrame:
-    """Aggrega per ciascuna tripla (paziente, clone, tessuto) le frazioni di positivita' CD8+ e CD4+."""
+def cd8_positive(x: pd.DataFrame, rule: str) -> pd.Series:
+    """Cellule CD8+ secondo la regola `rule` (chiavi di CD8_RULES)."""
+    if rule == "cd8a_or_cd8b":
+        return (x.g_CD8A > 0) | (x.g_CD8B > 0)
+    if rule == "cd8b_only":
+        return x.g_CD8B > 0
+    if rule == "cd8a_ge2":
+        return x.u_CD8A >= 2
+    if rule == "cd8b_or_cd8a_ge2":
+        return (x.g_CD8B > 0) | (x.u_CD8A >= 2)
+    raise ValueError(rule)
+
+
+def per_comp_stats(
+    lym: pd.DataFrame, cd4_thr: pd.Series | None, rule: str = "cd8a_or_cd8b"
+) -> pd.DataFrame:
+    """Per ogni (paziente, clone, tessuto) con >= MIN_CELLS cellule: frazioni CD8+ e CD4+ ed etichetta di maggioranza."""
     x = lym.copy()
-    x["cd8_pos"] = (x.g_CD8A > 0) | (x.g_CD8B > 0)
+    x["cd8_pos"] = cd8_positive(x, rule)
     if cd4_thr is None:
         x["cd4_pos"] = (x.g_CD4 > 0) & ~x.cd8_pos
     else:
@@ -180,7 +261,8 @@ def per_comp_stats(lym: pd.DataFrame, cd4_thr: pd.Series | None) -> pd.DataFrame
             n=("cd8_pos", "size"),
             f8=("cd8_pos", "mean"),
             f4=("cd4_pos", "mean"),
-            lab=("all_celltype", lambda s: s.value_counts().index[0]),
+            # moda; pareggi risolti dalla prima comparsa nell'ordine delle cellule
+            lab=("all_celltype", majority_label),
         )
         .reset_index()
     )
@@ -188,7 +270,7 @@ def per_comp_stats(lym: pd.DataFrame, cd4_thr: pd.Series | None) -> pd.DataFrame
 
 
 def arbitrate(per: pd.DataFrame, scheme: str) -> pd.DataFrame:
-    """Valuta la concordanza tra etichetta compartimentale e riferimento clonale ('naive', 'loco', 'blood')."""
+    """Confronta l'etichetta di ciascun compartimento con l'identita' del clone ('naive', 'loco', 'blood')."""
     rows = []
     for (pat, clone), g in per.groupby(["patient", "clone_b"], observed=True):
         for _, r in g.iterrows():
@@ -223,15 +305,26 @@ def arbitrate(per: pd.DataFrame, scheme: str) -> pd.DataFrame:
                     "n_ref_comp": ref.tissue.nunique(),
                 }
             )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "patient",
+            "clone",
+            "tissue",
+            "lab",
+            "identity",
+            "error",
+            "n_ref_comp",
+        ],
+    )
 
 
 def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
-    """Stampa e restituisce il riepilogo dei tassi di errore per compartimento e i contrasti appaiati."""
+    """Errore per compartimento con IC (cluster bootstrap); stampa anche le differenze appaiate."""
     print(f"\n--- {title} ---")
     if j.empty:
         print("  nessun clone risolvibile.")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=["tissue", "n", "n_pat", "error", "lo", "hi"])
     rows = []
     for tis in COMPS:
         g = j[j.tissue == tis]
@@ -239,21 +332,30 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
             continue
         by = {p: gg.error.values.astype(float) for p, gg in g.groupby("patient")}
         m, lo, hi = cluster_boot(by)
-        rows.append(
-            {
-                "tissue": tis,
-                "n": len(g),
-                "n_pat": g.patient.nunique(),
-                "error": m,
-                "lo": lo,
-                "hi": hi,
-            }
-        )
+        row = {
+            "tissue": tis,
+            "n": len(g),
+            "n_pat": g.patient.nunique(),
+            "error": m,
+            "lo": lo,
+            "hi": hi,
+        }
+        if row["n_pat"] <= SMALL_K:
+            row.update(small_k_diagnostics(by))
+        rows.append(row)
         print(
             f"  {tis:16s} errore = {m:.3f}  IC95% [{lo:.3f}, {hi:.3f}]  "
             f"(n={len(g)}, {g.patient.nunique()} pz)"
         )
+    paired_diffs(j, verbose=True)
+    return pd.DataFrame(rows)
 
+
+def paired_diffs(j: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
+    """Differenze appaiate dell'errore sugli stessi cloni (Tumor - Adjacent_normal, Tumor - PBMC)."""
+    rows = []
+    if j.empty:
+        return pd.DataFrame(rows)
     piv = j.pivot_table(
         index=["patient", "clone"], columns="tissue", values="error", aggfunc="max"
     )
@@ -262,80 +364,184 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
             continue
         d = piv.dropna(subset=[a, b]).reset_index()
         if len(d) < 20 or d.patient.nunique() < 3:
-            print(
-                f"  {a} - {b}: n insufficiente ({len(d)} cloni, {d.patient.nunique()} pz)"
-            )
+            if verbose:
+                print(
+                    f"  {a} - {b}: n insufficiente ({len(d)} cloni, {d.patient.nunique()} pz)"
+                )
             continue
         d["diff"] = d[a].astype(float) - d[b].astype(float)
         by = {p: g["diff"].values for p, g in d.groupby("patient")}
         m, lo, hi = cluster_boot(by)
-        v = "significativa" if lo > 0 or hi < 0 else "NON significativa"
-        print(
-            f"  {a} - {b} (stessi cloni): {m:+.3f}  IC95% [{lo:+.3f}, {hi:+.3f}]  {v}  (n={len(d)})"
+        row = {
+            "contrast": f"{a} - {b}",
+            "n_clones": len(d),
+            "n_patients": d.patient.nunique(),
+            "diff": m,
+            "lo": lo,
+            "hi": hi,
+        }
+        if row["n_patients"] <= SMALL_K:
+            row.update(small_k_diagnostics(by))
+        rows.append(row)
+        if verbose:
+            v = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
+            print(
+                f"  {a} - {b} (stessi cloni): {m:+.3f}  IC95% [{lo:+.3f}, {hi:+.3f}]  {v}"
+                f"  (n={len(d)} cloni, {d.patient.nunique()} pz)"
+            )
+    return pd.DataFrame(rows)
+
+
+def decompose_tumor_error(j: pd.DataFrame) -> pd.DataFrame:
+    """Scompone l'errore nel Tumor (schema blood) per tipo di etichetta sbagliata."""
+    t = j[j.tissue == "Tumor"]
+    if t.empty:
+        return pd.DataFrame()
+    n = len(t)
+    cats = {
+        "CD4_in_blood_labelled_CD8T": (t.identity == "CD4T") & (t.lab == "CD8T"),
+        "labelled_NK": (t.lab == "NK"),
+        "CD8_in_blood_labelled_CD4T": (t.identity == "CD8T") & (t.lab == "CD4T"),
+    }
+    rows = [
+        {
+            "category": k,
+            "n_errors": int(v.sum()),
+            "rate_over_all_clones": v.sum() / n,
+            "n_clones": n,
+            "n_patients": t.patient.nunique(),
+        }
+        for k, v in cats.items()
+    ]
+    other = t.error & ~np.logical_or.reduce(list(cats.values()))
+    rows.append(
+        {
+            "category": "other",
+            "n_errors": int(other.sum()),
+            "rate_over_all_clones": other.sum() / n,
+            "n_clones": n,
+            "n_patients": t.patient.nunique(),
+        }
+    )
+    # Transizioni identita' (dal sangue) -> etichetta nel tumore, per tutti gli errori
+    for (ident, lab), v in t[t.error].groupby(["identity", "lab"]).size().items():
+        rows.append(
+            {
+                "category": f"transition_{ident}_to_{lab}",
+                "n_errors": int(v),
+                "rate_over_all_clones": v / n,
+                "n_clones": n,
+                "n_patients": t.patient.nunique(),
+            }
         )
+    # Tasso escludendo i cloni etichettati NK, con IC sui pazienti
+    nn = t[t.lab != "NK"]
+    by = {p: g.error.values.astype(float) for p, g in nn.groupby("patient")}
+    m, lo, hi = cluster_boot(by)
+    rows.append(
+        {
+            "category": "error_rate_excluding_NK_labels",
+            "n_errors": int(nn.error.sum()),
+            "rate_over_all_clones": m,
+            "lo": lo,
+            "hi": hi,
+            "n_clones": len(nn),
+            "n_patients": nn.patient.nunique(),
+        }
+    )
     return pd.DataFrame(rows)
 
 
 def mixture(gex: pd.DataFrame) -> None:
-    """Stima la frazione di doppietti nelle cellule NK-TCR+ tramite gli stimatori fisici d1 e d2."""
+    """Frazione di doppietti nelle NK-TCR+ con le stime d1 e d2 (non indipendenti)."""
     print("\n" + "=" * 78)
-    print("(4) FRAZIONE DI DOPPIETTI NELLE NK-TCR+  (due stime indipendenti)")
+    print("(4) FRAZIONE DI DOPPIETTI NELLE NK-TCR+  (due stime, non indipendenti)")
     print("=" * 78)
-    g = gex.copy()
+    # Solo NK e CD8T entrano nelle stime: si restringe la tabella per velocizzare il bootstrap
+    g = gex[gex.all_celltype.isin(["NK", "CD8T"])].copy()
     g["ratio"] = g.umi_tcr / np.maximum(g.n_counts, 1) * 1000
 
-    def est(sub: pd.DataFrame) -> tuple[float, float]:
+    def est(sub: pd.DataFrame, stat: str = "median") -> tuple[float, float]:
         nk_pos = sub[(sub.all_celltype == "NK") & sub.has_tcr]
         nk_neg = sub[(sub.all_celltype == "NK") & ~sub.has_tcr]
         cd8 = sub[(sub.all_celltype == "CD8T") & sub.has_tcr]
         if min(len(nk_pos), len(nk_neg), len(cd8)) < 10:
             return np.nan, np.nan
-        s, c, o = (
-            nk_neg.n_counts.median(),
-            cd8.n_counts.median(),
-            nk_pos.n_counts.median(),
-        )
-        # Stimatore d1 basato sull'eccesso di conteggio UMI totale rispetto al singoletto NK
+        f = (lambda s: s.median()) if stat == "median" else (lambda s: s.mean())
+        s, c, o = f(nk_neg.n_counts), f(cd8.n_counts), f(nk_pos.n_counts)
+        # d1: eccesso di UMI totali delle NK-TCR+ rispetto al singoletto NK, in unita' di CD8T
         d1 = (o - s) / max(c, 1)
-        r_cd8, r_nk = cd8.ratio.median(), nk_pos.ratio.median()
+        r_cd8, r_nk = f(cd8.ratio), f(nk_pos.ratio)
         r_dbl = r_cd8 * c / max(o, 1)
-        # Stimatore d2 basato sulla diluizione della densita' di UMI TCR
+        # d2: diluizione del rapporto UMI_TCR / n_counts (usa le stesse c e o di d1)
         d2 = (r_cd8 - r_nk) / max(r_cd8 - r_dbl, 1e-9)
         return float(np.clip(d1, 0, 1)), float(np.clip(d2, 0, 1))
 
-    d1, d2 = est(g)
-    pats = g.patients.unique()
-    rng = np.random.default_rng(SEED)
-    b1, b2 = [], []
-    for _ in range(500):
-        draw = rng.choice(pats, len(pats), replace=True)
-        sub = pd.concat([g[g.patients == p] for p in draw])
-        a, b = est(sub)
-        if not np.isnan(a):
-            b1.append(a)
-            b2.append(b)
-    print(
-        f"  d1 (da n_counts)      = {d1:.3f}  IC95% "
-        f"[{np.percentile(b1, 2.5):.3f}, {np.percentile(b1, 97.5):.3f}]"
-    )
-    print(
-        f"  d2 (da UMI TCR/conte) = {d2:.3f}  IC95% "
-        f"[{np.percentile(b2, 2.5):.3f}, {np.percentile(b2, 97.5):.3f}]"
-    )
-    print("\nLa convergenza tra le due grandezze fisiche conferma la stima di miscela:")
-    print(f"  -> circa il {100 * np.mean([d1, d2]):.0f}% delle NK-TCR+ sono doppietti;")
-    print(
-        f"     il restante {100 * (1 - np.mean([d1, d2])):.0f}% ha il contenuto di UNA cellula"
-    )
-    print("     (linfociti T citotossici o cellule NKT invarianti).")
-    pd.DataFrame({"d1": b1, "d2": b2}).to_csv(
-        TAB / "doublet_mixture_boot.csv", index=False
-    )
+    def boot(sub: pd.DataFrame, stat: str) -> tuple[list, list, int]:
+        pats = sub.patients.unique()
+        parts = {p: sub[sub.patients == p] for p in pats}
+        rng = np.random.default_rng(SEED)
+        b1, b2 = [], []
+        for _ in range(N_BOOT_MIX):
+            draw = rng.choice(pats, len(pats), replace=True)
+            a, b = est(pd.concat([parts[p] for p in draw]), stat)
+            if not np.isnan(a):
+                b1.append(a)
+                b2.append(b)
+        return b1, b2, len(pats)
+
+    rows = []
+    strata = [("all", g)] + [(t, g[g.tissue == t]) for t in COMPS]
+    for stat in ("median", "mean"):
+        for name, sub in strata:
+            d1, d2 = est(sub, stat)
+            if np.isnan(d1):
+                print(f"  {stat:6s} {name:16s} cellule insufficienti (<10 per gruppo)")
+                continue
+            b1, b2, k = boot(sub, stat)
+            lo1, hi1 = percentile_ci(np.array(b1), k)
+            lo2, hi2 = percentile_ci(np.array(b2), k)
+            rows.append(
+                {
+                    "statistic": stat,
+                    "stratum": name,
+                    "n_patients": k,
+                    "n_boot_valid": len(b1),
+                    "d1": d1,
+                    "d1_lo": lo1,
+                    "d1_hi": hi1,
+                    "d2": d2,
+                    "d2_lo": lo2,
+                    "d2_hi": hi2,
+                }
+            )
+            print(
+                f"  {stat:6s} {name:16s} d1 = {d1:.3f} [{lo1:.3f}, {hi1:.3f}]  "
+                f"d2 = {d2:.3f} [{lo2:.3f}, {hi2:.3f}]"
+            )
+            if stat == "median" and name == "all":
+                pd.DataFrame({"d1": b1, "d2": b2}).to_csv(
+                    TAB / "doublet_mixture_boot.csv", index=False
+                )
+    out = pd.DataFrame(rows)
+    out.to_csv(TAB / "doublet_mixture.csv", index=False)
+    main_row = out[(out.statistic == "median") & (out.stratum == "all")]
+    if len(main_row):
+        r = main_row.iloc[0]
+        print(
+            f"\nStima principale (mediane, tutti i tessuti): d1 = {r.d1:.3f}, d2 = {r.d2:.3f}."
+        )
+        print("d1 e d2 usano le stesse mediane di n_counts: il loro accordo non e' una")
+        print(
+            "conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati)."
+        )
 
 
 def main() -> None:
-    """Punto di ingresso principale per l'arbitrato LOCO/Blood e i controlli di robustezza."""
-    ap = argparse.ArgumentParser()
+    """Punto di ingresso principale per l'arbitrato naive/LOCO/blood e i controlli di robustezza."""
+    ap = argparse.ArgumentParser(
+        description="Errore delle etichette T con tre schemi di riferimento e doppietti NK-TCR+."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
     args = ap.parse_args()
@@ -355,6 +561,11 @@ def main() -> None:
         if len(i):
             x = np.asarray(adata.X[:, i[0]].todense()).ravel()
             obs[f"g_{gname}"] = np.log1p(x / np.maximum(obs.n_counts.values, 1) * 1e4)
+            if gname == "CD8A":
+                obs["u_CD8A"] = x  # UMI grezzi, per la regola CD8A >= 2 UMI
+    missing = [g for g in ("CD4", "CD8A", "CD8B") if f"g_{g}" not in obs]
+    if missing:
+        raise SystemExit(f"[ERRORE] marcatori assenti dall'h5ad: {missing}")
 
     tcr = load_tcr(args.tcrdir)
     gex = obs.merge(
@@ -366,33 +577,42 @@ def main() -> None:
     gex["has_tcr"] = gex.clone_b.notna()
     print(f"[ok] {len(gex):,} cellule | TCR: {gex.has_tcr.sum():,}")
 
-    thr = ambient_cd4(gex)
+    thr, thr_tab = ambient_cd4(gex)
+    thr_tab.rename_axis("tissue").to_csv(TAB / "ambient_cd4_threshold.csv")
 
     lym = gex[gex.has_tcr & gex.all_celltype.isin(["CD4T", "CD8T", "NK"])].copy()
+    if lym.empty:
+        raise SystemExit("[ERRORE] nessuna cellula linfoide con TCR.")
 
     print("\n" + "=" * 78)
-    print("(1) LEAVE-ONE-COMPARTMENT-OUT: riferimento disgiunto dal test")
+    print("(1) SCHEMI DI RIFERIMENTO: naive, leave-one-compartment-out, solo sangue")
     print("=" * 78)
     per = per_comp_stats(lym, None)
-    res = {}
+    res, diffs, js = [], [], {}
     for scheme, title in [
         ("naive", "NAIVE (riferimento include il target, circolare)"),
         ("loco", "LOCO (riferimento = gli altri compartimenti)"),
         ("blood", "BLOOD (riferimento = solo PBMC)"),
     ]:
         j = arbitrate(per, scheme)
-        res[scheme] = report(j, title)
+        js[scheme] = j
+        res.append(report(j, title).assign(scheme=scheme, variant="main"))
+        diffs.append(paired_diffs(j).assign(scheme=scheme, variant="main"))
         j.to_csv(TAB / f"arbitration_{scheme}.csv", index=False)
 
     print("\n" + "=" * 78)
     print("(2b) RIPETUTO con soglia CD4 sopra l'ambient del compartimento")
     print("=" * 78)
-    per_amb = per_comp_stats(lym, thr)
-    report(arbitrate(per_amb, "loco"), "LOCO + soglia CD4 corretta per ambient")
+    j = arbitrate(per_comp_stats(lym, thr), "loco")
+    res.append(
+        report(j, "LOCO + soglia CD4 corretta per ambient").assign(
+            scheme="loco", variant="cd4_ambient_threshold"
+        )
+    )
 
     print("\n" + "=" * 78)
     print(
-        "(3) RIPETUTO escludendo i doppietti (n_counts > 90o pct per libreria x classe)"
+        "(3) RIPETUTO escludendo i possibili doppietti (n_counts > 90o pct per libreria x classe)"
     )
     print("=" * 78)
     cut = gex.groupby(["library", "all_celltype"], observed=True).n_counts.transform(
@@ -403,12 +623,37 @@ def main() -> None:
     lym_s = gex[
         keep & gex.has_tcr & gex.all_celltype.isin(["CD4T", "CD8T", "NK"])
     ].copy()
-    report(arbitrate(per_comp_stats(lym_s, None), "loco"), "LOCO senza doppietti")
+    j = arbitrate(per_comp_stats(lym_s, None), "loco")
+    res.append(
+        report(j, "LOCO senza doppietti").assign(scheme="loco", variant="no_top_decile")
+    )
+
+    print("\n" + "=" * 78)
+    print("(5) SENSIBILITA' dello schema BLOOD")
+    print("=" * 78)
+    dec = decompose_tumor_error(js["blood"])
+    print("scomposizione dell'errore nel Tumor:")
+    print(dec.round(4).to_string(index=False))
+    dec.to_csv(TAB / "error_decomposition_blood.csv", index=False)
+
+    rule_rows = []
+    for rule, desc in CD8_RULES.items():
+        jr = arbitrate(per_comp_stats(lym, None, rule=rule), "blood")
+        r = report(jr, f"BLOOD con regola CD8+: {desc}")
+        for row in r.to_dict("records"):
+            rule_rows.append({"rule": rule, "description": desc, **row})
+    pd.DataFrame(rule_rows).to_csv(TAB / "error_rate_identity_rules.csv", index=False)
+
+    pd.concat(res, ignore_index=True).to_csv(
+        TAB / "error_rate_schemes.csv", index=False
+    )
+    diffs = pd.concat(diffs, ignore_index=True)
+    diffs.to_csv(TAB / "error_rate_paired_diff.csv", index=False)
 
     mixture(gex)
 
-    if "loco" in res and not res["loco"].empty:
-        r = res["loco"]
+    r = res[1]
+    if not r.empty:
         fig, ax = plt.subplots(figsize=(6.5, 4))
         ax.bar(
             r.tissue,
@@ -424,9 +669,24 @@ def main() -> None:
         fig.savefig(FIG / "error_rate_loco.png", dpi=140)
         plt.close(fig)
 
+    # Lettura condizionata: la differenza Tumor - Adjacent_normal regge in tutti gli schemi?
     print("\n" + "=" * 78)
-    print("La persistenza del differenziale tra NAIVE, LOCO e BLOOD conferma la natura")
-    print("non circolare dell'asimmetria di errore tra compartimenti.")
+    ta = diffs[diffs.contrast == "Tumor - Adjacent_normal"]
+    for row in ta.itertuples():
+        v = "IC esclude 0" if row.lo > 0 or row.hi < 0 else "IC include 0"
+        print(
+            f"  {row.scheme:6s} Tumor - Adjacent_normal = {row.diff:+.3f} "
+            f"[{row.lo:+.3f}, {row.hi:+.3f}]  {v}"
+        )
+    if len(ta) and (ta.lo > 0).all():
+        print(
+            "La differenza Tumor - Adjacent_normal resta positiva in tutti gli schemi."
+        )
+    elif len(ta):
+        print(
+            "La differenza Tumor - Adjacent_normal non e' positiva con IC che esclude 0"
+        )
+        print("in tutti gli schemi: l'asimmetria dipende dallo schema di riferimento.")
     print("=" * 78)
 
 

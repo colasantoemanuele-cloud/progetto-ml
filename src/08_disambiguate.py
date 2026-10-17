@@ -1,40 +1,58 @@
 #!/usr/bin/env python3
 """
-08_disambiguate.py - Disambiguazione intra-clonale, controllo dei marcatori e analisi dei doppietti.
+08_disambiguate.py - Cloni presenti in tre compartimenti, marcatori nei cloni discordanti e doppietti (Scrublet).
 
-Questo modulo risolve tre potenziali fattori di confondimento nell'analisi della
-discordanza fenotipica dei cloni T:
+Scopo
+-----
+Tre controlli sulla discordanza fenotipica dei cloni T misurata in 07:
 
-1. Contrasto appaiato sui cloni tri-compartimentali (PBMC, Adjacent_normal, Tumor):
-   Poiche' la biopsia di tessuto adiacente normale e' disponibile solo per un
-   sottoinsieme di pazienti (PA04, PA06, PA08, PA09, PA10), il confronto non
-   appaiato tra coppie di compartimenti confonde l'effetto tissutale con l'effetto
-   del donatore. Restringendo l'analisi ai soli cloni condivisi contemporaneamente
-   in tutti e tre i compartimenti del medesimo paziente, ogni variabilita'
-   inter-paziente e inter-clone viene eliminata per costruzione.
+1. Contrasto appaiato sui cloni presenti (>= 2 cellule) in PBMC, Adjacent_normal e
+   Tumor dello stesso paziente (solo i pazienti con tessuto adiacente: PA04, PA06,
+   PA08, PA09, PA10). Confrontare gli eccessi di discordanza sugli stessi cloni
+   riduce il confondimento fra paziente e coppia di compartimenti, ma non lo
+   elimina: restano le differenze di numerosita' e di campionamento fra
+   compartimenti e la selezione dei cloni abbastanza espansi da comparire in tutti
+   e tre. IC 95% con cluster bootstrap sui pazienti (`scpipe.cluster_bootstrap`).
 
-2. Controllo di espressione dei marcatori sui cloni concordanti:
-   Per distinguere l'errore di assegnazione dell'etichetta dal fenomeno biologico
-   di dropout trascrizionale o down-regulation tessuto-specifica, il profilo dei
-   co-recettori (CD4, CD8A, CD8B, CD3D, NKG7, GNLY) delle cellule appartenenti a
-   cloni discordanti viene confrontato direttamente con quello dei cloni
-   concordanti all'interno dello stesso compartimento anatomico.
+2. Marcatori nei cloni discordanti (eccesso > 0.5 in 07) e concordanti (eccesso < 0.05),
+   espressi in log1p(CP10k). Per le cellule etichettate CD8T, per tessuto: CD8A medio,
+   frazione con CD8A > 0, test di Mann-Whitney, CD4 medio e rapporto fra le medie di CD4
+   (discordanti / concordanti). Il rapporto e' fra medie di log1p(CP10k), non un
+   fold-change dell'espressione.
 
-3. Separazione tra doppietti trascrizionali e cellule singole mal classificate:
-   Integra i punteggi Scrublet calcolati per singola libreria di sequenziamento
-   e confronta le distribuzioni di `doublet_score` tra cellule TCR-positive e
-   TCR-negative all'interno della medesima classe fenotipica.
+3. Doppietti: punteggio Scrublet per libreria, confrontato fra cellule con e senza TCR
+   della stessa classe.
 
-Uso:
-    python src/08_disambiguate.py \
-        --h5ad data/interim/sc_raw.h5ad \
-        --tcrdir data/raw/tcr
+Input
+-----
+  --h5ad      data/interim/sc_raw.h5ad (serve X per marcatori e Scrublet)
+  --tcrdir    cartella con i 30 file VDJ
+  --pairwise  results/tables/pairwise_discordance_clone_b.csv (da 07_robustness.py)
+
+Output
+------
+  results/tables/triple_clones.csv              eccessi per clone presente nei tre compartimenti
+  results/tables/triple_clones_summary.csv      medie, IC e differenze appaiate (cluster bootstrap)
+  results/tables/markers_disc_vs_conc.csv       marcatori medi per gruppo x tessuto x etichetta
+  results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, p, CD4, rapporto CD4
+  results/tables/doublet_scores.csv             punteggio Scrublet per cellula (cache, escluso da git)
+  results/tables/doublet_tcr_pos_vs_neg.csv     Scrublet TCR+ vs TCR- per classe
+  results/figures/doublet_by_tcr_status.png
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --tcrdir (default data/raw/tcr), --pairwise, --skip-scrublet
+
+Uso
+---
+    python src/08_disambiguate.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import anndata as ad
@@ -46,6 +64,9 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy.stats import mannwhitneyu
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import cluster_bootstrap  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -120,19 +141,8 @@ def d_within(A: np.ndarray) -> float:
 
 
 def cluster_boot(vals_by_patient: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
-    """Esegue il cluster bootstrap ricampionando con reinserimento i pazienti."""
-    pats = list(vals_by_patient)
-    rng = np.random.default_rng(SEED)
-    stats = []
-    for _ in range(n):
-        draw = rng.choice(pats, len(pats), replace=True)
-        stats.append(np.concatenate([vals_by_patient[p] for p in draw]).mean())
-    allv = np.concatenate(list(vals_by_patient.values()))
-    return (
-        float(allv.mean()),
-        float(np.percentile(stats, 2.5)),
-        float(np.percentile(stats, 97.5)),
-    )
+    """Media pooled e IC 95% con cluster bootstrap sui pazienti (`scpipe.cluster_bootstrap`)."""
+    return cluster_bootstrap(vals_by_patient, n, SEED)
 
 
 def triple_clones(lym: pd.DataFrame, min_cells: int = 2) -> pd.DataFrame:
@@ -178,11 +188,13 @@ def part1(lym: pd.DataFrame) -> None:
     print(f"cellule: {tri[[f'n_{t}' for t in COMPS]].values.sum():,}\n")
 
     cols = [c for c in tri.columns if c.startswith("exc_")]
+    summary = []
     for c in cols:
         by = {p: g[c].values for p, g in tri.groupby("patient")}
         m, lo, hi = cluster_boot(by)
         star = "*" if lo > 0 else " "
         print(f"  {c:22s} {m:+.4f}  IC95% [{lo:+.4f}, {hi:+.4f}] {star}")
+        summary.append({"contrast": c, "mean": m, "lo": lo, "hi": hi})
 
     print("\nDIFFERENZE APPAIATE (stesso clone, stesso paziente):")
     for a, b in [("exc_PBM_Tum", "exc_Adj_Tum"), ("exc_PBM_Tum", "exc_PBM_Adj")]:
@@ -190,15 +202,19 @@ def part1(lym: pd.DataFrame) -> None:
             tri["_d"] = tri[a] - tri[b]
             by = {p: g["_d"].values for p, g in tri.groupby("patient")}
             m, lo, hi = cluster_boot(by)
-            verdict = "significativa" if lo > 0 or hi < 0 else "NON significativa"
+            verdict = "IC esclude 0" if lo > 0 or hi < 0 else "IC include 0"
             print(f"  {a} - {b} = {m:+.4f}  IC95% [{lo:+.4f}, {hi:+.4f}]  {verdict}")
+            summary.append({"contrast": f"{a} - {b}", "mean": m, "lo": lo, "hi": hi})
+    pd.DataFrame(summary).assign(
+        n_clones=len(tri), n_patients=tri.patient.nunique()
+    ).to_csv(TAB / "triple_clones_summary.csv", index=False)
 
     print("\nper paziente:")
     print(tri.groupby("patient")[cols].agg(["mean", "size"]).round(4).to_string())
     print(
-        "\nIl confronto intra-clone su tre compartimenti isola l'effetto del microambiente"
+        "\nIl confronto sugli stessi cloni riduce il confondimento fra paziente e coppia"
     )
-    print("eliminando il confondimento legato al sottoinsieme di donatori.")
+    print("di compartimenti; restano le differenze di campionamento fra compartimenti.")
 
 
 def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
@@ -252,10 +268,11 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
     print(
         "\n>>> TEST DI MANN-WHITNEY: cellule chiamate CD8T, per tessuto, CD8A discordanti vs concordanti"
     )
+    rows = []
     for tis in COMPS:
         d = sel[(sel.tissue == tis) & (sel.all_celltype == "CD8T")]
-        a = d.loc[d.group == "discordant", "g_CD8A"].values
-        b = d.loc[d.group == "concordant", "g_CD8A"].values
+        dd, dc = d[d.group == "discordant"], d[d.group == "concordant"]
+        a, b = dd.g_CD8A.values, dc.g_CD8A.values
         if len(a) < 20 or len(b) < 20:
             print(f"  {tis:16s} n insufficiente (disc={len(a)}, conc={len(b)})")
             continue
@@ -265,12 +282,58 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
             f"conc={b.mean():6.2f} (n={len(b):5d})  "
             f"frac CD8A>0: {(a > 0).mean():.2f} vs {(b > 0).mean():.2f}  p={p:.2e}"
         )
-    print(
-        "\nLa conservazione di CD8A nei cloni concordanti del tessuto tumorale dimostra che"
-    )
-    print(
-        "l'assenza di CD8A nei cloni discordanti deriva da misclassificazione e non da dropout."
-    )
+        row = {
+            "tissue": tis,
+            "label": "CD8T",
+            "n_disc": len(a),
+            "n_conc": len(b),
+            "mean_CD8A_disc": a.mean(),
+            "mean_CD8A_conc": b.mean(),
+            "frac_CD8A_pos_disc": (a > 0).mean(),
+            "frac_CD8A_pos_conc": (b > 0).mean(),
+            "p_mannwhitney_CD8A": p,
+            "mean_CD4_disc": dd.g_CD4.mean(),
+            "mean_CD4_conc": dc.g_CD4.mean(),
+            # rapporto fra medie di log1p(CP10k), non un fold-change dell'espressione
+            "ratio_mean_CD4_disc_over_conc": dd.g_CD4.mean()
+            / max(dc.g_CD4.mean(), 1e-12),
+        }
+        if "g_GNLY" in d:
+            row["mean_GNLY_disc"] = dd.g_GNLY.mean()
+            row["mean_GNLY_conc"] = dc.g_GNLY.mean()
+        rows.append(row)
+    res = pd.DataFrame(rows)
+    res.to_csv(TAB / "marker_test_disc_vs_conc.csv", index=False)
+    tum = res[res.tissue == "Tumor"] if not res.empty else res
+    if len(tum):
+        t = tum.iloc[0]
+        print(
+            f"\nTumor, cellule CD8T: CD4 medio disc/conc = {t.ratio_mean_CD4_disc_over_conc:.1f}x "
+            "(rapporto fra medie di log1p(CP10k), non fold-change)"
+        )
+        if t.frac_CD8A_pos_disc < 0.5 * t.frac_CD8A_pos_conc:
+            print(
+                "Le CD8T dei cloni concordanti del tumore esprimono CD8A, quelle dei cloni"
+            )
+            print(
+                "discordanti molto meno: il dropout tissutale di CD8A da solo non lo spiega."
+            )
+            print(
+                "Il dato e' compatibile con un'etichetta CD8T sbagliata (cellule CD4); resta"
+            )
+            print("aperta l'alternativa di un fenotipo CD4 citotossico", end="")
+            if "mean_GNLY_disc" in t:
+                print(
+                    f" (GNLY {t.mean_GNLY_disc:.2f} nei discordanti contro "
+                    f"{t.mean_GNLY_conc:.2f} nei concordanti)."
+                )
+            else:
+                print(".")
+        else:
+            print(
+                "CD8A simile fra discordanti e concordanti: nessuna evidenza di etichetta"
+            )
+            print("sbagliata da questo controllo.")
 
 
 def run_scrublet(adata: ad.AnnData, cache: Path) -> pd.Series:
@@ -352,7 +415,9 @@ def part3(gex: pd.DataFrame) -> None:
 
 def main() -> None:
     """Punto di ingresso principale per le tre verifiche di disambiguazione."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Cloni in tre compartimenti, marcatori nei cloni discordanti e doppietti."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
     ap.add_argument(

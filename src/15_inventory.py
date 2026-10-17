@@ -1,19 +1,36 @@
 #!/usr/bin/env python3
 """
-15_inventory.py - Censimento strutturato dei metadati osservazionali e verifica di confondimento.
+15_inventory.py - Inventario delle colonne di obs e dei file VDJ, con confondimento rispetto al paziente.
 
-Questo modulo ispeziona sistematicamente tutte le colonne presenti nella tabella
-`adata.obs` e nelle annotazioni dei contig scTCR-seq con tre obiettivi:
-  1. Documentare tipo di dato, cardinalita' e valori modali di ciascun attributo.
-  2. Distinguere le variabili gia' impiegate nei task supervisionati da quelle
-     disponibili per analisi secondarie.
-  3. Quantificare per ogni variabile categoriale il grado di collinearita' con
-     l'identita' del donatore (`confounding_with_patient`), definito come la
-     frazione di livelli della variabile che compaiono in un unico paziente
-     (dove un valore pari a 1.0 indica confondimento perfetto con il blocco
-     paziente e conseguente non identificabilita' cross-patient).
+Scopo
+-----
+Documenta, prima di qualsiasi analisi secondaria, tutte le variabili disponibili:
+  1. per ogni colonna di `adata.obs`: tipo, cardinalita', valori piu' frequenti (o
+     intervallo per le numeriche) e se e' gia' usata nella pipeline;
+  2. per le colonne categoriali con <= 30 livelli, il confondimento con il paziente:
+     frazione dei livelli osservati in un solo paziente (1.0 = la variabile coincide
+     con il paziente e non e' confrontabile fra pazienti);
+  3. le colonne dei file di contig VDJ, usate e non usate.
+Le colonne categoriali (dtype `category`) sono gestite con
+`pd.api.types.is_float_dtype` / `is_numeric_dtype` (prima `np.issubdtype` andava in
+errore su di esse).
 
-Uso:
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad (solo obs, modalita' backed)
+  --tcrdir  cartella con i file VDJ (si legge l'intestazione del primo)
+
+Output
+------
+  results/tables/obs_inventory.csv
+  results/tables/vdj_inventory.csv   un file VDJ per riga: GSM, paziente, tessuto, numero di contig
+
+Argomenti
+---------
+  --h5ad (obbligatorio), --tcrdir (default data/raw/tcr)
+
+Uso
+---
     python src/15_inventory.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
 """
 
@@ -21,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import re
 from pathlib import Path
 
 import anndata as ad
@@ -53,7 +71,9 @@ def confounding_with_patient(obs: pd.DataFrame, col: str) -> float:
 
 def main() -> None:
     """Esegue la ricognizione delle colonne di `obs` e dei file VDJ e salva `obs_inventory.csv`."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Inventario delle colonne di obs e dei file VDJ."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
     args = ap.parse_args()
@@ -61,6 +81,8 @@ def main() -> None:
     TAB.mkdir(parents=True, exist_ok=True)
     adata = ad.read_h5ad(args.h5ad, backed="r")
     obs = adata.obs
+    if obs.shape[0] == 0 or obs.shape[1] == 0:
+        raise SystemExit(f"[ERRORE] obs vuoto in {args.h5ad}")
 
     print("=" * 78)
     print(f"INVENTARIO obs: {obs.shape[0]:,} cellule x {obs.shape[1]} colonne")
@@ -73,7 +95,7 @@ def main() -> None:
         dtype = str(s.dtype)
         used = col in KNOWN_USED
         info = {"column": col, "dtype": dtype, "n_unique": card, "already_used": used}
-        if card <= 30 and not np.issubdtype(s.dtype, np.floating):
+        if card <= 30 and not pd.api.types.is_float_dtype(s.dtype):
             info["confound_patient"] = (
                 confounding_with_patient(obs, col) if "patients" in obs else np.nan
             )
@@ -81,7 +103,7 @@ def main() -> None:
             info["top_values"] = "; ".join(f"{k}={v}" for k, v in vals.items())
         else:
             info["confound_patient"] = np.nan
-            if np.issubdtype(s.dtype, np.number):
+            if pd.api.types.is_numeric_dtype(s.dtype) and card > 0:
                 info["top_values"] = (
                     f"range [{s.min():.3g}, {s.max():.3g}], median {s.median():.3g}"
                 )
@@ -103,7 +125,7 @@ def main() -> None:
         for _, r in unused.iterrows():
             print(f"\n  [{r.column}]  ({r.dtype}, {r.n_unique} valori)")
             print(f"    {r.top_values}")
-            if not np.isnan(r.confound_patient):
+            if pd.notna(r.confound_patient):
                 c = r.confound_patient
                 verdict = (
                     "CONFUSA col paziente: inutilizzabile per associazioni"
@@ -148,6 +170,26 @@ def main() -> None:
         )
     else:
         print("nessun file TCR trovato.")
+
+    # Elenco dei file VDJ: paziente, tessuto e numero di contig per file
+    vdj = []
+    for p in sorted(args.tcrdir.glob("*_filtered_contig_annotations.csv.gz")):
+        m = re.match(r"(GSM\d+)_PA_(\d+)-(\w+)-VDJ", p.name)
+        with gzip.open(p, "rt") as fh:
+            n_contigs = sum(1 for _ in fh) - 1
+        vdj.append(
+            {
+                "file": p.name,
+                "gsm": m.group(1) if m else "",
+                "patient": f"PA{int(m.group(2)):02d}" if m else "",
+                "tissue": m.group(3) if m else "",
+                "n_contigs": n_contigs,
+            }
+        )
+    pd.DataFrame(vdj, columns=["file", "gsm", "patient", "tissue", "n_contigs"]).to_csv(
+        TAB / "vdj_inventory.csv", index=False
+    )
+    print(f"\n[ok] file VDJ: {len(vdj)} -> {TAB / 'vdj_inventory.csv'}")
 
     print("\n" + "=" * 78)
     print("CRITERI DI VALIDAZIONE METODOLOGICA")

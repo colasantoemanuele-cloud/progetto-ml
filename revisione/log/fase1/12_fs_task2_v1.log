@@ -1,0 +1,86 @@
+[..] carico h5ad ...
+[ok] task2_v1: 70,547 cellule | 9 classi | fold_group_5
+
+fold 0: train 20,000 | test 13,436
+  random      [   11s] non nulli 20,571
+  hvg         [    4s] non nulli 20,378
+  anova       [   21s] non nulli 20,571
+  chi2        [   11s] non nulli 20,571
+  l1_logreg   [  807s] non nulli 583 | iter 400 | convergenza False  [!] solo 583 geni con punteggio > 0
+  rf_import   [   57s] non nulli 17,913
+
+fold 1: train 20,000 | test 11,654
+  random      [   12s] non nulli 20,634
+  hvg         [    4s] non nulli 20,426
+  anova       [   16s] non nulli 20,634
+  chi2        [   10s] non nulli 20,634
+  l1_logreg   [  787s] non nulli 524 | iter 400 | convergenza False  [!] solo 524 geni con punteggio > 0
+  rf_import   [   57s] non nulli 18,064
+
+fold 2: train 20,000 | test 17,012
+  random      [    9s] non nulli 20,491
+  hvg         [    4s] non nulli 20,339
+  anova       [   17s] non nulli 20,491
+  chi2        [    9s] non nulli 20,491
+  l1_logreg   [  805s] non nulli 570 | iter 400 | convergenza False  [!] solo 570 geni con punteggio > 0
+  rf_import   [   55s] non nulli 17,892
+
+fold 3: train 20,000 | test 13,308
+  random      [   10s] non nulli 19,737
+  hvg         [    3s] non nulli 19,603
+  anova       [   12s] non nulli 19,737
+  chi2        [    7s] non nulli 19,737
+  l1_logreg   [  757s] non nulli 526 | iter 400 | convergenza False  [!] solo 526 geni con punteggio > 0
+  rf_import   [   50s] non nulli 17,316
+
+fold 4: train 20,000 | test 15,137
+  random      [   10s] non nulli 20,432
+  hvg         [    3s] non nulli 20,244
+  anova       [   18s] non nulli 20,432
+  chi2        [    6s] non nulli 20,432
+  l1_logreg   [  770s] non nulli 536 | iter 400 | convergenza False  [!] solo 536 geni con punteggio > 0
+  rf_import   [   60s] non nulli 17,994
+
+==============================================================================
+(a) PRESTAZIONE: macro-F1 (media ± sd sui fold)
+==============================================================================
+             mean                     std                
+k            50      200     1000    50      200     1000
+method                                                   
+anova      0.9083  0.9381  0.9488  0.0112  0.0102  0.0120
+chi2       0.9083  0.9438  0.9503  0.0108  0.0101  0.0102
+hvg        0.6586  0.8795  0.9456  0.0167  0.0230  0.0107
+l1_logreg  0.9362  0.9553  0.9527  0.0099  0.0115  0.0092
+random     0.3669  0.6476  0.8742  0.0810  0.0527  0.0088
+rf_import  0.9259  0.9500  0.9531  0.0133  0.0135  0.0108
+
+[!] (metodo, k, fold) con meno di k geni a punteggio > 0:
+   method    k  fold  n_nonzero
+l1_logreg 1000     0        583
+l1_logreg 1000     1        524
+l1_logreg 1000     2        570
+l1_logreg 1000     3        526
+l1_logreg 1000     4        536
+
+==============================================================================
+(b) STABILITA': Jaccard medio a coppie fra i fold di fold_group_5
+==============================================================================
+            50     200    1000
+random     0.001  0.003  0.025
+hvg        0.528  0.793  0.780
+anova      0.816  0.794  0.846
+chi2       0.787  0.842  0.851
+l1_logreg  0.514  0.480  0.568
+rf_import  0.534  0.595  0.662
+
+Jaccard 1.0 = stessi geni in tutti i fold; 0.0 = insiemi disgiunti.
+
+[ok] figura: results/figures/feature_selection_task2_v1.png
+
+>>> geni scelti in tutti i fold (k=50), per metodo:
+  random       0/50 stabili: 
+  hvg         21/50 stabili: APOD, APOE, C1QB, CCL19, CGA, CPA3, CST1, FP236383.3, GNLY, IGFBP7, IGKV1-6, IGLV2-14
+  anova       37/50 stabili: A2M, ADGRL4, BANK1, BGN, C11orf96, CALCRL, CALD1, CCL5, CD3E, CD79A, CDH5, CLEC14A
+  chi2        38/50 stabili: A2M, AEBP1, APOD, BANK1, BGN, C11orf96, C19orf33, CALCRL, CALD1, CCL5, CD79A, COL1A1
+  l1_logreg   23/50 stabili: APOD, BANK1, C11orf96, CALCRL, CALD1, CD3E, CD74, CD79A, CD8A, EGFL7, ELF3, HSPG2
+  rf_import   23/50 stabili: C19orf33, CCL5, CD37, CD3D, CD3E, CD74, CD79A, CD8A, CST3, CST7, CTSW, DCN

@@ -1,0 +1,22 @@
+
+[ok] scritto results/tables/model_zoo_task1.csv
+
+--- task1a_paired: confronto col migliore (svm_rbf, 0.7249) ---
+p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
+
+  lightgbm        0.7224  Δ=-0.0025  p_NB=0.933  p_W=0.812
+  logreg_l2       0.7224  Δ=-0.0026  p_NB=0.920  p_W=0.625
+  mlp             0.7211  Δ=-0.0039  p_NB=0.612  p_W=0.312
+  svm_linear      0.7207  Δ=-0.0042  p_NB=0.852  p_W=0.625
+  random_forest   0.7161  Δ=-0.0088  p_NB=0.801  p_W=0.812
+  logreg_l1       0.7125  Δ=-0.0124  p_NB=0.684  p_W=0.438
+  knn             0.7103  Δ=-0.0146  p_NB=0.864  p_W=1.000
+  elasticnet      0.7077  Δ=-0.0172  p_NB=0.275  p_W=0.125
+  bagging         0.6814  Δ=-0.0436  p_NB=0.280  p_W=0.125
+  decision_tree   0.6659  Δ=-0.0590  p_NB=0.080  p_W=0.062
+  naive_bayes     0.6453  Δ=-0.0796  p_NB=0.316  p_W=0.062
+  dummy           0.4962  Δ=-0.2287  p_NB=0.072  p_W=0.062
+
+NOTA: con 5 fold i gradi di liberta' sono 4 e la potenza e' bassa.
+Un p non significativo non dimostra che due modelli siano equivalenti.
+[ok] figura: results/figures/model_zoo_task1a_paired.png

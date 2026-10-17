@@ -1,0 +1,8 @@
+
+--- BLOOD (riferimento = solo PBMC) ---
+  Adjacent_normal  errore = 0.059  IC95% [0.000, 0.093]  (n=118, 4 pz)
+  Tumor            errore = 0.195  IC95% [0.110, 0.290]  (n=287, 10 pz)
+  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.192]  IC include 0  (n=88 cloni, 4 pz)
+
+[ok] figura: results/figures/error_rate_blood.png
+[ok] tabella: results/tables/error_rate_blood.csv

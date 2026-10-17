@@ -1,0 +1,4 @@
+scenario,n,k,reps,frac_p_lt_005_nadeau_bengio,frac_p_lt_005_uncorrected
+H0,90,3,1000,0.027,0.047
+H0,90,5,1000,0.018,0.061
+effect,120,5,300,0.9933333333333333,1.0

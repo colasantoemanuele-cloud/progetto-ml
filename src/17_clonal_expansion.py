@@ -1,42 +1,50 @@
 #!/usr/bin/env python3
 """
-17_clonal_expansion.py: Associazione tra espansione clonale T e discordanza fenotipica intratumorale.
+17_clonal_expansion.py - Espansione clonale T contro errore di etichetta nel tumore.
 
-Razionale Biologico e Formulazione dell'Ipotesi
------------------------------------------------
-I cloni T maggiormente espansi (caratterizzati da un numero superiore di cellule che
-condividono il medesimo recettore TCR alpha/beta) rappresentano popolazioni effettrici
-sottoposte a stimolazione antigenica prolungata e differenziamento terminale. Poiche'
-la transizione verso stati effettori/esausti attenua il profilo trascrizionale canonico
-del lignaggio (convergenza CD8T -> CD4T/NK documentata nei moduli 08 e 09), si formula
-l'ipotesi a priori che la dimensione clonale complessiva (sangue + tumore) correli
-positivamente con la probabilita' di errore dell'annotazione trascrizionale nel
-compartimento tumorale rispetto all'identita' di riferimento nel sangue periferico.
+Scopo
+-----
+Ipotesi dell'espansione clonale (qui "ipotesi E", distinta da H1-H4 di 16 e 19),
+formulata prima di calcolare l'associazione: i cloni T piu' espansi (sangue + tumore)
+hanno piu' probabilita' che l'etichetta nel tumore sia sbagliata rispetto all'identita'
+stimata dal sangue. Due esiti per clone:
+  - `error`  : errore 0/1 nel Tumor (schema `blood`, da `arbitration_blood.csv` di 10);
+  - `excess` : eccesso di discordanza PBMC-Tumor (da `pairwise_discordance_clone_b.csv` di 07).
+La covariata e' log1p(n_PBMC + n_Tumor) del clone.
 
-Integrazione dei Dati e Disegno Gerarchico dell'Inferenza
----------------------------------------------------------
-Lo script effettua il join relazionale su `(patient, clone)` tra due tabelle gia'
-validate nei moduli precedenti:
-  - `arbitration_blood.csv` (da `10_loco.py`): esito binario di errore nel tumore
-    rispetto al riferimento imparziale del sangue periferico (PBMC);
-  - `pairwise_discordance_clone_b.csv` (da `07_robustness.py`): abbondanza clonale nei
-    due compartimenti (`n_a` in PBMC, `n_b` in Tumor) ed eccesso continuo di discordanza.
+I cloni sono annidati nei pazienti, quindi l'analisi ha due livelli:
+  1. livello paziente: Spearman fra medie per paziente (pazienti con >= 5 cloni),
+     permutazione Monte Carlo (20.000 permutazioni casuali, non esatta), IC bootstrap
+     sui pazienti;
+  2. livello clone: Spearman pooled su tutti i cloni con block permutation test
+     (l'esito e' permutato solo entro paziente) e IC con cluster bootstrap sui pazienti.
+     Il p e' condizionato al paziente (la distribuzione nulla conserva le differenze
+     fra pazienti), ma il rho riportato e' pooled: contiene anche la parte di
+     associazione fra pazienti. Per questo si riportano anche la media della
+     distribuzione nulla e il p sulla statistica centrata su quella media.
+Come confronto, una permutazione che ignora i pazienti (unita' sbagliata).
 
-Poiche' i cloni sono annidati all'interno dei pazienti, una correlazione calcolata sul
-pool complessivo dei cloni assumendo indipendenza osservazionale sarebbe vulnerabile a
-confondimento da livello paziente (ad esempio, variazioni sistematiche nella profondita'
-di sequenziamento o nella cellularita' del campione). Per isolare rigorosamente
-l'effetto clone-specifico dal confondente inter-paziente, l'analisi viene condotta su
-due livelli complementari:
-  1. Livello paziente (aggregato pseudobulk): correlazione di Spearman tra dimensione
-     clonale media e tasso d'errore medio per paziente, valutata tramite test di
-     permutazione esatto (immune da confondimento di cluster ma a potenza limitata da n=10);
-  2. Livello clone (pooled stratificato): correlazione sul pool dei cloni valutata
-     mediante Block Permutation Test (permutazione del vettore di esito esclusivamente
-     all'interno dei confini di ciascun paziente, preservando i margini individuali) e
-     intervalli di confidenza tramite Cluster Bootstrap sui pazienti interi.
+Analisi di sensibilita' del block permutation test sull'errore binario: 5 semi
+diversi (20.000 permutazioni) e un seme con 100.000 permutazioni.
 
-Esecuzione:
+Input
+-----
+  --arbitration  results/tables/arbitration_blood.csv (da 10_loco.py)
+  --pairwise     results/tables/pairwise_discordance_clone_b.csv (da 07_robustness.py)
+
+Output
+------
+  results/tables/clonal_expansion_joined.csv            cloni con dimensione ed esiti
+  results/tables/clonal_expansion_tests.csv             rho, p, p centrato, media nulla, IC per esito x livello
+  results/tables/clonal_expansion_perm_sensitivity.csv  p del block permutation per seme e numero di permutazioni
+  results/figures/clonal_expansion_vs_error.png, results/figures/clonal_expansion_vs_excess.png
+
+Argomenti
+---------
+  --arbitration, --pairwise (default nei percorsi sopra)
+
+Uso
+---
     python src/17_clonal_expansion.py \
         --arbitration results/tables/arbitration_blood.csv \
         --pairwise results/tables/pairwise_discordance_clone_b.csv
@@ -45,55 +53,37 @@ Esecuzione:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib
 
-# Configurazione del backend grafico non interattivo per esecuzione batch
+# Backend grafico non interattivo per esecuzione batch
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Percorsi di output e costanti per i test di permutazione e filtro per paziente
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import (  # noqa: E402
+    block_permutation_test,
+    percentile_ci,
+    permutation_corr_test,
+)
+
 FIG = Path("results/figures")
 TAB = Path("results/tables")
 SEED = 0
 N_PERM = 20000
 MIN_CLONES_PER_PATIENT = 5
-
-
-# --------------------------------------------------------------------------- #
-# Stimatori a livello di paziente (aggregazione pseudobulk per unita' clinica)
-# --------------------------------------------------------------------------- #
-def permutation_corr_test(
-    x: np.ndarray, y: np.ndarray, n_perm: int = N_PERM, seed: int = SEED
-):
-    """Calcola la correlazione di Spearman e il p-value esatto a due code tramite
-    permutazione vettorizzata dei ranghi sulle medie per paziente."""
-    rng = np.random.default_rng(seed)
-    n = len(x)
-    # Conversione in ranghi e calcolo della statistica osservata
-    rx = pd.Series(x).rank().values
-    ry = pd.Series(y).rank().values
-    rho_obs = float(np.corrcoef(rx, ry)[0, 1])
-    # Generazione della distribuzione nulla di permutazione mediante argsort matriciale
-    perm_idx = np.argsort(rng.random((n_perm, n)), axis=1)
-    ry_perm = ry[perm_idx]
-    rx_c = rx - rx.mean()
-    ry_c = ry_perm - ry_perm.mean(axis=1, keepdims=True)
-    num = (ry_c * rx_c).sum(axis=1)
-    den = np.sqrt((rx_c**2).sum()) * np.sqrt((ry_c**2).sum(axis=1))
-    rhos = num / np.maximum(den, 1e-12)
-    p = (np.sum(np.abs(rhos) >= abs(rho_obs) - 1e-12) + 1) / (n_perm + 1)
-    return rho_obs, float(p)
+SENS_SEEDS = (0, 1, 2, 3, 4)
+SENS_N_PERM_LARGE = 100_000
 
 
 def bootstrap_ci_corr(
     x: np.ndarray, y: np.ndarray, n_boot: int = 2000, seed: int = SEED
 ):
-    """Costruisce l'intervallo di confidenza al 95% per la correlazione di Spearman
-    a livello di paziente mediante ricampionamento bootstrap con reinserimento."""
+    """IC 95% di Spearman fra medie per paziente, bootstrap sui pazienti ("expanded percentile")."""
     rng = np.random.default_rng(seed)
     n = len(x)
     vals = []
@@ -106,56 +96,7 @@ def bootstrap_ci_corr(
             vals.append(r)
     if len(vals) < 20:
         return np.nan, np.nan
-    return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
-
-
-# --------------------------------------------------------------------------- #
-# Stimatori a livello di clone (pooled con struttura a blocchi per paziente)
-# --------------------------------------------------------------------------- #
-def block_permutation_test(
-    x: np.ndarray,
-    y: np.ndarray,
-    group: np.ndarray,
-    n_perm: int = N_PERM,
-    seed: int = SEED,
-):
-    """Esegue un test di permutazione vincolato a blocchi (Block Permutation Test)
-    per la correlazione di Spearman sul pool complessivo dei cloni.
-    Permutando i valori dell'esito y esclusivamente all'interno di ciascun paziente
-    (blocco), la distribuzione marginale di ogni paziente rimane invariata sotto
-    l'ipotesi nulla, eliminando qualsiasi confondimento inter-paziente."""
-    rng = np.random.default_rng(seed)
-    # Ordinamento stabile delle osservazioni per paziente per indicizzare i blocchi contigui
-    order = np.argsort(group, kind="stable")
-    x_s, g_s = x[order], group[order]
-    ry_s = pd.Series(y[order]).rank().values
-    rx_s = pd.Series(x_s).rank().values
-    rho_obs = float(np.corrcoef(rx_s, ry_s)[0, 1])
-
-    # Costruzione della matrice di indici permutati blocco per blocco (intra-paziente)
-    n = len(x_s)
-    perm_idx = np.tile(np.arange(n), (n_perm, 1))
-    uniq, starts = np.unique(g_s, return_index=True)
-    bounds = list(starts) + [n]
-    for i in range(len(uniq)):
-        s, e = bounds[i], bounds[i + 1]
-        size = e - s
-        if size <= 1:
-            continue
-        # Permutazione indipendente ristretta all'intervallo [s, e) del singolo paziente
-        keys = rng.random((n_perm, size))
-        local = np.argsort(keys, axis=1)
-        perm_idx[:, s:e] = s + local
-
-    # Valutazione vettorizzata del coefficiente di correlazione sulle n_perm repliche a blocchi
-    ry_perm = ry_s[perm_idx]
-    rx_c = rx_s - rx_s.mean()
-    ry_c = ry_perm - ry_perm.mean(axis=1, keepdims=True)
-    num = (ry_c * rx_c).sum(axis=1)
-    den = np.sqrt((rx_c**2).sum()) * np.sqrt((ry_c**2).sum(axis=1))
-    rhos = num / np.maximum(den, 1e-12)
-    p = (np.sum(np.abs(rhos) >= abs(rho_obs) - 1e-12) + 1) / (n_perm + 1)
-    return rho_obs, float(p)
+    return percentile_ci(np.array(vals), n)
 
 
 def cluster_bootstrap_corr(
@@ -166,16 +107,14 @@ def cluster_bootstrap_corr(
     n_boot: int = 2000,
     seed: int = SEED,
 ):
-    """Calcola l'intervallo di confidenza al 95% della correlazione di Spearman
-    pooled mediante Cluster Bootstrap, ricampionando con reinserimento interi
-    pazienti anziche' singoli cloni per rispettare la dipendenza intra-cluster."""
+    """IC 95% di Spearman pooled ricampionando interi pazienti ("expanded percentile")."""
     rng = np.random.default_rng(seed)
     pats = df[group_col].unique()
+    parts = {p: df[df[group_col] == p] for p in pats}
     vals = []
     for _ in range(n_boot):
-        # Estrazione con reinserimento dei cluster paziente e concatenazione dei rispettivi cloni
         draw = rng.choice(pats, len(pats), replace=True)
-        sub = pd.concat([df[df[group_col] == p] for p in draw])
+        sub = pd.concat([parts[p] for p in draw])
         if sub[x_col].nunique() < 2 or sub[y_col].nunique() < 2:
             continue
         r = np.corrcoef(sub[x_col].rank(), sub[y_col].rank())[0, 1]
@@ -183,21 +122,18 @@ def cluster_bootstrap_corr(
             vals.append(r)
     if len(vals) < 20:
         return np.nan, np.nan
-    return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
+    return percentile_ci(np.array(vals), len(pats))
 
 
 # --------------------------------------------------------------------------- #
-def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> None:
-    """Esegue e confronta l'inferenza a livello paziente, a livello clone con
-    permutazione a blocchi e mediante test ingenuo non stratificato."""
+def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> list:
+    """Analisi a livello paziente, a livello clone (block permutation) e permutazione ingenua."""
     print(
-        f"\n{'=' * 78}\nOUTCOME: {outcome_label}  (n_cloni={len(df)}, n_pazienti={df.patient.nunique()})\n{'=' * 78}"
+        f"\n{'=' * 78}\nESITO: {outcome_label}  (n_cloni={len(df)}, n_pazienti={df.patient.nunique()})\n{'=' * 78}"
     )
+    rows = []
 
-    # Analisi (1): aggregazione delle medie per paziente e test di permutazione esatto
-    print(
-        "\n--- (1) LIVELLO PAZIENTE: immune da confondimento di cluster, minore potenza ---"
-    )
+    print("\n--- (1) LIVELLO PAZIENTE: medie per paziente, potenza bassa ---")
     agg = df.groupby("patient").agg(
         log_size=("log_size", "mean"),
         outcome=(outcome_col, "mean"),
@@ -209,61 +145,103 @@ def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> None
             f"  solo {len(agg)} pazienti con >={MIN_CLONES_PER_PATIENT} cloni: salto."
         )
     else:
-        rho, p = permutation_corr_test(agg.log_size.values, agg.outcome.values)
+        rho, p = permutation_corr_test(
+            agg.log_size.values, agg.outcome.values, N_PERM, SEED
+        )
         lo, hi = bootstrap_ci_corr(agg.log_size.values, agg.outcome.values)
         print(
             f"  n={len(agg)} pazienti | rho={rho:+.3f}  p_perm={p:.4f}  IC95% boot=[{lo:+.3f}, {hi:+.3f}]"
         )
-        print(f"  {'COERENTE con H1 (rho>0)' if rho > 0 else 'direzione OPPOSTA a H1'}")
+        print(f"  {'direzione attesa (rho>0)' if rho > 0 else 'direzione opposta'}")
+        rows.append(
+            {
+                "outcome": outcome_col,
+                "level": "patient_means",
+                "n": len(agg),
+                "n_patients": len(agg),
+                "rho": rho,
+                "p": p,
+                "ci_lo": lo,
+                "ci_hi": hi,
+            }
+        )
 
-    # Analisi (2): livello clone pooled con permutazione vincolata ai blocchi paziente
-    print(
-        "\n--- (2) LIVELLO CLONE, POOLED: maggiore potenza, corretto per paziente ---"
-    )
+    print("\n--- (2) LIVELLO CLONE, POOLED: permutazione entro paziente ---")
     x, y, g = df.log_size.values, df[outcome_col].values, df.patient.values
-    rho_p, p_p = block_permutation_test(x, y, g)
+    bp = block_permutation_test(x, y, g, n_perm=N_PERM, seed=SEED)
     lo_p, hi_p = cluster_bootstrap_corr(df, "log_size", outcome_col, "patient")
     print(
-        f"  n={len(df)} cloni | rho={rho_p:+.3f}  p_block_perm={p_p:.4f}  "
-        f"IC95% cluster-boot={[round(lo_p, 3), round(hi_p, 3)]}"
+        f"  n={len(df)} cloni | rho pooled={bp['rho']:+.3f}  p_block_perm={bp['p']:.4f}  "
+        f"IC95% cluster-boot=[{lo_p:+.3f}, {hi_p:+.3f}]"
     )
-    print(f"  {'COERENTE con H1 (rho>0)' if rho_p > 0 else 'direzione OPPOSTA a H1'}")
-
-    # Confronto diagnostico con il test di permutazione non stratificato (che ignora i blocchi paziente)
-    rng = np.random.default_rng(SEED)
-    rx = pd.Series(x).rank().values
-    ry = pd.Series(y).rank().values
-    rho_naive = float(np.corrcoef(rx, ry)[0, 1])
-    perm_idx = np.argsort(rng.random((N_PERM, len(x))), axis=1)
-    ry_perm = ry[perm_idx]
-    rx_c = rx - rx.mean()
-    ry_c = ry_perm - ry_perm.mean(axis=1, keepdims=True)
-    rhos_naive = (ry_c * rx_c).sum(axis=1) / np.maximum(
-        np.sqrt((rx_c**2).sum()) * np.sqrt((ry_c**2).sum(axis=1)), 1e-12
-    )
-    p_naive = (np.sum(np.abs(rhos_naive) >= abs(rho_naive) - 1e-12) + 1) / (N_PERM + 1)
     print(
-        f"\n  [confronto] permutation NAIVE (ignora i pazienti): rho={rho_naive:+.3f} p={p_naive:.4f}"
+        f"  media della distribuzione nulla = {bp['null_mean']:+.3f} | "
+        f"p sulla statistica centrata = {bp['p_centered']:.4f}"
     )
-    if p_naive < 0.05 <= p_p:
-        print("  -> il naive trova un effetto che il block-permutation NON conferma:")
-        print("     probabile CONFONDENTE DI PAZIENTE. Non fidarsi del naive.")
-    elif p_p < 0.05:
+    print(f"  {'direzione attesa (rho>0)' if bp['rho'] > 0 else 'direzione opposta'}")
+    rows.append(
+        {
+            "outcome": outcome_col,
+            "level": "clone_block_permutation",
+            "n": len(df),
+            "n_patients": df.patient.nunique(),
+            "rho": bp["rho"],
+            "p": bp["p"],
+            "null_mean": bp["null_mean"],
+            "p_centered": bp["p_centered"],
+            "ci_lo": lo_p,
+            "ci_hi": hi_p,
+        }
+    )
+
+    # Confronto: permutazione che ignora i pazienti (unita' sbagliata)
+    rho_naive, p_naive = permutation_corr_test(x, y, N_PERM, SEED)
+    print(
+        f"\n  [confronto] permutazione che ignora i pazienti: rho={rho_naive:+.3f} p={p_naive:.4f}"
+    )
+    rows.append(
+        {
+            "outcome": outcome_col,
+            "level": "clone_naive_permutation",
+            "n": len(df),
+            "n_patients": df.patient.nunique(),
+            "rho": rho_naive,
+            "p": p_naive,
+        }
+    )
+    if p_naive < 0.05 <= bp["p"]:
+        print("  -> l'effetto trovato ignorando i pazienti non regge alla permutazione")
+        print("     entro paziente: probabile confondente di paziente.")
+    elif bp["p"] < 0.05:
+        print("  -> l'associazione regge anche permutando solo entro paziente.")
+    return rows
+
+
+def perm_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
+    """Block permutation sull'errore binario con semi diversi e con piu' permutazioni."""
+    x, y, g = df.log_size.values, df["error"].values, df.patient.values
+    rows = []
+    settings = [(s, N_PERM) for s in SENS_SEEDS] + [(SEED, SENS_N_PERM_LARGE)]
+    print("\n--- sensibilita' del block permutation (errore binario) ---")
+    for seed, n_perm in settings:
+        bp = block_permutation_test(x, y, g, n_perm=n_perm, seed=seed)
+        rows.append({"outcome": "error", "seed": seed, "n_perm": n_perm, **bp})
         print(
-            "  -> l'effetto sopravvive anche correggendo per paziente: piu' credibile."
+            f"  seme {seed} | {n_perm:>7,} permutazioni | p={bp['p']:.4f} "
+            f"| p centrato={bp['p_centered']:.4f} | media nulla={bp['null_mean']:+.4f}"
         )
+    return pd.DataFrame(rows)
 
 
 def make_figure(
     df: pd.DataFrame, outcome_col: str, outcome_label: str, fname: str
 ) -> None:
-    """Genera il diagramma a dispersione dell'esito di discordanza in funzione
-    della dimensione clonale log-trasformata, sovrapponendo i centroidi per paziente."""
+    """Dispersione dell'esito contro log(dimensione clonale) con le medie per paziente."""
     fig, ax = plt.subplots(figsize=(7.5, 5.5))
-    # Visualizzazione dei singoli cloni (punti semitrasparenti raggruppati per paziente)
+    # Singoli cloni (punti semitrasparenti, un colore per paziente)
     for pat, g in df.groupby("patient"):
         ax.scatter(g.log_size, g[outcome_col], alpha=0.35, s=22, label=None)
-    # Calcolo e sovrapposizione dei valori medi aggregati per ciascun paziente
+    # Medie per paziente
     agg = df.groupby("patient").agg(
         log_size=("log_size", "mean"), outcome=(outcome_col, "mean")
     )
@@ -299,9 +277,10 @@ def make_figure(
 
 # --------------------------------------------------------------------------- #
 def main() -> None:
-    """Punto di ingresso dello script: unisce le tabelle di arbitrato ed espansione
-    clonale ed esegue i test stratificati sia sull'errore binario sia sull'eccesso continuo."""
-    ap = argparse.ArgumentParser()
+    """Unisce arbitrato ed espansione clonale ed esegue i test su errore ed eccesso."""
+    ap = argparse.ArgumentParser(
+        description="Espansione clonale T contro errore di etichetta nel tumore."
+    )
     ap.add_argument(
         "--arbitration", type=Path, default=Path("results/tables/arbitration_blood.csv")
     )
@@ -321,7 +300,7 @@ def main() -> None:
                 f"[ERRORE] {p} assente. Esegui prima 07_robustness.py e 10_loco.py."
             )
 
-    # Estrazione degli esiti di errore nel tumore e delle abbondanze clonali appaiate PBMC-Tumor
+    # Esiti nel tumore e abbondanze clonali appaiate PBMC-Tumor
     arb = pd.read_csv(args.arbitration)
     arb = arb[arb.tissue == "Tumor"][["patient", "clone", "error"]]
     pw = pd.read_csv(args.pairwise)
@@ -329,8 +308,13 @@ def main() -> None:
         ["patient", "clone", "n_a", "n_b", "excess"]
     ]
 
-    # Inner join su (patient, clone) e calcolo della dimensione clonale totale log1p-trasformata
+    # Inner join su (patient, clone) e dimensione clonale totale log1p-trasformata
     df = arb.merge(pw, on=["patient", "clone"], how="inner")
+    if df.empty or df.patient.nunique() < 2:
+        raise SystemExit(
+            "[ERRORE] join vuoto o con un solo paziente: nulla da testare."
+        )
+    df["error"] = df.error.astype(float)
     df["total_size"] = df.n_a + df.n_b
     df["log_size"] = np.log1p(df.total_size)
     print(
@@ -343,28 +327,32 @@ def main() -> None:
     df.to_csv(TAB / "clonal_expansion_joined.csv", index=False)
 
     print("\n" + "#" * 78)
-    print("# IPOTESI H1 (unica, dichiarata prima di guardare i risultati):")
-    print("# cloni T piu' espansi (sangue+tumore) -> piu' probabile che l'etichetta")
     print(
-        "# nel tumore sia sbagliata rispetto all'identita' di riferimento dal sangue."
+        "# IPOTESI E (espansione clonale), formulata prima di calcolare l'associazione:"
     )
+    print("# cloni piu' espansi (sangue+tumore) -> etichetta nel tumore piu' spesso")
+    print("# diversa dall'identita' stimata dal sangue.")
     print("#" * 78)
 
-    # Valutazione dell'ipotesi primaria (errore binario) e di robustezza (eccesso di discordanza)
-    run_analysis(
+    rows = run_analysis(
         df, "error", "errore di annotazione nel tumore (0/1, riferimento sangue)"
     )
     make_figure(df, "error", "errore (0/1)", "clonal_expansion_vs_error.png")
-
-    run_analysis(df, "excess", "eccesso di discordanza sangue-tumore (continuo, da 07)")
+    rows += run_analysis(
+        df, "excess", "eccesso di discordanza sangue-tumore (continuo, da 07)"
+    )
     make_figure(
         df, "excess", "eccesso di discordanza", "clonal_expansion_vs_excess.png"
     )
+    pd.DataFrame(rows).to_csv(TAB / "clonal_expansion_tests.csv", index=False)
+    perm_sensitivity(df).to_csv(
+        TAB / "clonal_expansion_perm_sensitivity.csv", index=False
+    )
 
     print("\n" + "=" * 78)
-    print("CRITERIO INTERPRETATIVO: esaminare prioritariamente la coerenza direzionale")
-    print("al livello paziente (immune da confondimento ma a bassa potenza) insieme")
-    print("al test pooled con permutazione a blocchi intra-paziente.")
+    print("Lettura: guardare insieme la direzione a livello paziente (bassa potenza) e")
+    print("il test pooled con permutazione entro paziente (p condizionato al paziente,")
+    print("rho pooled: confrontarlo con la media della distribuzione nulla).")
     print("=" * 78)
 
 

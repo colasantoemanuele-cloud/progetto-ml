@@ -1,20 +1,38 @@
 #!/usr/bin/env python3
 """
-00_fetch_metadata.py: Ispezione preliminare e inventario dei metadati NCBI GEO per la serie GSE278694.
+00_fetch_metadata.py - Metadati GEO della SuperSeries GSE278694 e verifica di fattibilita' del disegno.
 
-Scarica esclusivamente gli archivi descrittivi leggeri da NCBI GEO:
-  - GSE278694_family.xml.tgz  (archivio XML MINiML: titoli, caratteristiche sperimentali e file supplementari per campione)
-  - filelist.txt              (elenco completo dei file supplementari associati alla SuperSeries)
+Scopo
+-----
+Scarica solo gli archivi descrittivi leggeri della SuperSeries GSE278694:
+  - GSE278694_family.xml.tgz  archivio MINiML (titolo, caratteristiche e file
+                              supplementari di ogni campione GSM);
+  - filelist.txt              elenco dei file supplementari della serie (serve a
+                              download_tcr.sh e 06 per i 30 file VDJ).
+Classifica ogni campione per modalita' (TCR, Visium, snRNA, scRNA) e paziente con
+regole lessicali sul titolo (es. "PA#01, Tumor, scRNA-seq" -> PA01; riconosce anche
+le forme PDAC01, PA_01, PA01) e risponde a tre domande:
+  Q1  scRNA-seq e snRNA-seq sono sugli stessi pazienti?
+  Q2  le librerie scTCR-seq V(D)J sono appaiate a librerie GEX dello stesso paziente?
+  Q3  i file supplementari contengono annotazioni di tipo cellulare?
 
-Valuta tre requisiti strutturali del disegno sperimentale:
-  Q1  Presenza simultanea di profili scRNA-seq e snRNA-seq per i medesimi pazienti (valutazione di appaiamento inter-modalita).
-  Q2  Disponibilita di librerie scTCR-seq V(D)J appaiate alle librerie trascrittomiche GEX per soggetto.
-  Q3  Disponibilita delle annotazioni citologiche di riferimento nei file supplementari della serie.
+Input
+-----
+  rete: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE278nnn/GSE278694/ (i file gia'
+  presenti in --outdir non vengono riscaricati)
 
-Uso:
+Output
+------
+  {outdir}/GSE278694_family.xml.tgz, {outdir}/filelist.txt (cache dei download)
+  {outdir}/samples.tsv   un campione per riga: gsm, titolo, modalita', paziente, file
+
+Argomenti
+---------
+  --outdir (default data/raw/metadata)
+
+Uso
+---
     python src/00_fetch_metadata.py --outdir data/raw/metadata
-
-Requisiti: pandas e libreria standard Python.
 """
 
 from __future__ import annotations
@@ -150,10 +168,13 @@ def infer_patient(row: pd.Series) -> str:
             v = str(v).strip()
             if v:
                 return v
+    # Forme riconosciute: "PA#01", "PDAC01", "PA_01", "PA01", "Patient 1" -> PA01
     m = re.search(
-        r"\b(?:PA|PT|P|Pt|Patient)[\s_-]*0*(\d{1,3})\b", str(row.get("title", "")), re.I
+        r"(?<![A-Za-z])(?:PDAC|PA|PT|Patient|P)[\s#_-]*0*(\d{1,3})(?!\d)",
+        str(row.get("title", "")),
+        re.I,
     )
-    return f"P{int(m.group(1)):02d}" if m else "UNKNOWN"
+    return f"PA{int(m.group(1)):02d}" if m else "UNKNOWN"
 
 
 def load_filelist(outdir: Path) -> pd.DataFrame | None:
@@ -175,7 +196,9 @@ def load_filelist(outdir: Path) -> pd.DataFrame | None:
 
 def main() -> None:
     """Esegue la pipeline di acquisizione metadati, classificazione dei campioni GSM e verifica di fattibilita."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Metadati GEO di GSE278694 e verifica di fattibilita' del disegno."
+    )
     ap.add_argument("--outdir", type=Path, default=Path("data/raw/metadata"))
     args = ap.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)

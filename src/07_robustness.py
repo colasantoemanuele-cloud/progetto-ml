@@ -1,48 +1,63 @@
 #!/usr/bin/env python3
 """
-07_robustness.py - Stimatori non distorti di discordanza clonale, cluster bootstrap e analisi di sensibilita'.
+07_robustness.py - Discordanza clonale con stimatore a coppie non distorto, cluster bootstrap e controlli.
 
-Questo modulo formalizza la validazione statistica della coerenza clonale
-inter-compartimento attraverso quattro componenti metodologiche:
+Scopo
+-----
+1. Stimatore a coppie della discordanza (sostituisce lo split-half di 06). Per ogni
+   clone presente con almeno 2 cellule in due compartimenti A e B:
+       D_AxB    = 1 - sum_k p_A(k) * p_B(k)                     (una cellula da A, una da B)
+       D_A      = 1 - sum_k n_k (n_k - 1) / [n_A (n_A - 1)]     (due cellule da A, senza reinserimento)
+       D_within = (n_A * D_A + n_B * D_B) / (n_A + n_B)
+       eccesso  = D_AxB - D_within
+   D_A e' non distorto per 1 - sum_k p_k^2 (verificato in tests/test_stats.py), quindi
+   l'eccesso ha valore atteso zero se le etichette hanno la stessa distribuzione nei
+   due compartimenti. Analisi di sensibilita': eccesso a pesi uguali
+   1/2 * ||p_A - p_B||^2 = D_AxB - (G_A + G_B) / 2, con G l'indice di Gini con
+   reinserimento (plug-in, distorto per cloni piccoli).
+2. IC 95% con cluster bootstrap sui pazienti (`scpipe.cluster_bootstrap`, 2.000
+   repliche, intervallo "expanded percentile"): le coppie dello stesso paziente non
+   sono indipendenti. Per confronto si riporta anche il bootstrap ingenuo sulle
+   coppie (unita' = coppia di compartimenti), che sottostima l'incertezza.
+3. RNA ambientale e stima c_hat della contaminazione T nelle NK: confronto di
+   UMI(TRB) e frazione TRA+TRB appaiate fra classi; sensibilita' di c_hat alla classe
+   non-T usata come fondo q, con tutti i TCR e con quelli ad alta confidenza
+   (TRA+TRB appaiate e UMI_TRB >= --umi-min).
+4. Marcatori (CD4, CD8A, CD8B, CD3D, NKG7, GNLY, in CP10k senza log) nelle cellule dei
+   cloni fortemente discordanti (eccesso > 0.5).
 
-1. Stimatore analitico non distorto della discordanza a coppie (Pairwise Discordance):
-   Sostituisce il campionamento split-half con il calcolo esatto della probabilita'
-   che due cellule estratte dal medesimo clone presentino etichette discordanti
-   tra due compartimenti distinti (D_AxB) rispetto al valore atteso entro il
-   medesimo compartimento (D_within, media ponderata senza reinserimento):
-       D_AxB    = 1 - sum_k p_A(k) * p_B(k)
-       D_A      = 1 - sum_k [n_k * (n_k - 1)] / [n_A * (n_A - 1)]
-       eccesso  = D_AxB - (n_A * D_A + n_B * D_B) / (n_A + n_B)
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad (X necessaria per i marcatori, salvo --no-markers)
+  --tcrdir  cartella con i 30 file *_filtered_contig_annotations.csv.gz
 
-2. Cluster Bootstrap a livello di paziente:
-   Poiche' i cloni T sono annidati nei pazienti, le osservazioni intra-donatore
-   non sono statisticamente indipendenti. L'intervallo di confidenza al 95% viene
-   pertanto calcolato ricampionando con reinserimento i blocchi-paziente.
+Output ({cc} = definizione di clone, clone_b o clone_ab)
+------
+  results/tables/pairwise_discordance_{cc}.csv      una riga per (clone, coppia di compartimenti)
+  results/tables/excess_summary_{cc}.csv            D_across, D_within, eccesso e versione a pesi
+                                                    uguali, con IC cluster e IC ingenuo
+  results/tables/excess_by_compartment_pair_{cc}.csv eccesso per coppia di compartimenti
+  results/tables/discordant_clone_markers_{cc}.csv  marcatori nei cloni con eccesso > 0.5
+  results/tables/ambient_discriminant.csv           UMI TRB e appaiamento per classe (non dipende da {cc})
+  results/tables/chat_sensitivity_raw.csv, chat_sensitivity_hc.csv (non dipendono da {cc})
+  results/figures/ambient_vs_real_tcr.png, results/figures/excess_by_pair_{cc}.png
 
-3. Analisi di identificabilita' e discriminazione dell'RNA ambientale per c_hat:
-   Distintamente dai trascritti VDJ liberi nel surnatante (caratterizzati da
-   basso conteggio UMI e singola catena), i linfociti T reali presentano catene
-   TRA+TRB appaiate ed elevato numero di UMI per catena beta. Il modulo valuta
-   la sensibilita' dello stimatore di contaminazione NK al variare della
-   popolazione non-T di riferimento (q) sia su tutti i contig sia sul sottoinsieme
-   ad alta confidenza (TRA+TRB appaiate e UMI_TRB >= soglia).
+Argomenti
+---------
+  --h5ad (obbligatorio), --tcrdir (default data/raw/tcr),
+  --clone-def {clone_b,clone_ab} (default clone_b), --umi-min (default 3), --no-markers
 
-4. Verifica di espressione dei marcatori canonici (CD4, CD8A, CD8B, CD3D, NKG7, GNLY):
-   Ispeziona direttamente i profili trascrizionali delle cellule appartenenti ai
-   cloni con elevata discordanza CD4T/CD8T per accertare la concordanza tra
-   etichetta assegnata ed espressione dei co-recettori di membrana.
-
-Uso:
-    python src/07_robustness.py \
-        --h5ad data/interim/sc_raw.h5ad \
-        --tcrdir data/raw/tcr \
-        --clone-def clone_b
+Uso
+---
+    python src/07_robustness.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr
+    python src/07_robustness.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr --clone-def clone_ab
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import anndata as ad
@@ -53,6 +68,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scpipe import cluster_bootstrap as _cluster_bootstrap  # noqa: E402
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -124,7 +142,7 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
 
 
 def load_gex(h5ad: Path, with_markers: bool) -> pd.DataFrame:
-    """Carica i metadati GEX e, se richiesto, normalizza in CPM l'espressione dei marcatori canonici."""
+    """Carica i metadati GEX e, se richiesto, l'espressione dei marcatori in CP10k (senza log)."""
     adata = ad.read_h5ad(h5ad, backed=None if with_markers else "r")
     obs = adata.obs.copy()
     for c in ("tissue", "patients", "all_celltype", "barcode"):
@@ -139,7 +157,7 @@ def load_gex(h5ad: Path, with_markers: bool) -> pd.DataFrame:
                 print(f"[!] marcatore assente: {g}")
                 continue
             x = np.asarray(adata.X[:, idx[0]].todense()).ravel()
-            # Normalizzazione CPM per-cellula rispetto al totale UMI (n_counts)
+            # CP10k per cellula (conteggi / n_counts * 1e4), senza log1p: non e' CPM
             obs[f"g_{g}"] = x / np.maximum(obs.n_counts.values, 1) * 1e4
     return obs
 
@@ -176,6 +194,8 @@ def pairwise_discordance(
                 d_A = 1.0 - float((cA * (cA - 1)).sum() / (nA * (nA - 1)))
                 d_B = 1.0 - float((cB * (cB - 1)).sum() / (nB * (nB - 1)))
                 d_within = (nA * d_A + nB * d_B) / (nA + nB)
+                # Sensibilita': pesi uguali, 1/2 ||pA - pB||^2 (Gini plug-in con reinserimento)
+                excess_eq = 0.5 * float(((pA - pB) ** 2).sum())
 
                 rows.append(
                     {
@@ -188,31 +208,24 @@ def pairwise_discordance(
                         "d_across": d_across,
                         "d_within": d_within,
                         "excess": d_across - d_within,
+                        "excess_eq": excess_eq,
                     }
                 )
     return pd.DataFrame(rows)
 
 
 def cluster_bootstrap(df: pd.DataFrame, col: str = "excess", n: int = N_BOOT) -> tuple:
-    """Stima l'IC al 95% tramite ricampionamento clusterizzato sui pazienti (unita' indipendenti)."""
-    pats = df.patient.unique()
-    by_pat = {p: df.loc[df.patient == p, col].values for p in pats}
-    rng = np.random.default_rng(SEED)
-    stats = []
-    for _ in range(n):
-        draw = rng.choice(pats, len(pats), replace=True)
-        vals = np.concatenate([by_pat[p] for p in draw])
-        stats.append(vals.mean())
-    stats = np.array(stats)
-    return (
-        float(df[col].mean()),
-        float(np.percentile(stats, 2.5)),
-        float(np.percentile(stats, 97.5)),
-    )
+    """Media di `col` e IC 95% con cluster bootstrap sui pazienti (`scpipe.cluster_bootstrap`).
+
+    I pazienti entrano nell'ordine di prima comparsa in `df`; stesso seme per ogni
+    colonna, quindi `excess` ed `excess_eq` usano le stesse estrazioni di pazienti.
+    """
+    by_pat = {p: df.loc[df.patient == p, col].values for p in df.patient.unique()}
+    return _cluster_bootstrap(by_pat, n, SEED)
 
 
 def naive_bootstrap(df: pd.DataFrame, col: str = "excess", n: int = N_BOOT) -> tuple:
-    """Stima l'IC al 95% tramite bootstrap standard sulle singole coppie (senza correzione per cluster)."""
+    """IC 95% percentile ricampionando le singole coppie (unita' sbagliata, solo per confronto)."""
     rng = np.random.default_rng(SEED)
     v = df[col].values
     stats = np.array([rng.choice(v, len(v), replace=True).mean() for _ in range(n)])
@@ -288,9 +301,34 @@ def chat_sensitivity(gex: pd.DataFrame, hiconf: bool) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def plot_pairs(per_pair: pd.DataFrame, cc: str) -> None:
+    """Figura dell'eccesso per coppia di compartimenti con IC (salta se la tabella e' vuota)."""
+    if per_pair.empty:
+        print("[!] nessuna coppia di compartimenti con >=3 pazienti: figura saltata.")
+        return
+    fig, ax = plt.subplots(figsize=(7, 4))
+    lab = [f"{a[:4]}↔{b[:4]}" for a, b in zip(per_pair.comp_a, per_pair.comp_b)]
+    ax.errorbar(
+        per_pair.excess,
+        range(len(per_pair)),
+        xerr=[per_pair.excess - per_pair.lo, per_pair.hi - per_pair.excess],
+        fmt="o",
+        capsize=4,
+        color="#d95f02",
+    )
+    ax.axvline(0, ls="--", c="k", lw=0.8)
+    ax.set_yticks(range(len(per_pair)), lab)
+    ax.set_xlabel("eccesso di discordanza (IC95%, cluster bootstrap sui pazienti)")
+    fig.tight_layout()
+    fig.savefig(FIG / f"excess_by_pair_{cc}.png", dpi=140)
+    plt.close(fig)
+
+
 def main() -> None:
     """Punto di ingresso principale per i test di robustezza statistica e biologica."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Discordanza clonale a coppie, cluster bootstrap e controlli di robustezza."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
     ap.add_argument("--clone-def", choices=["clone_b", "clone_ab"], default="clone_b")
@@ -392,7 +430,9 @@ def main() -> None:
 
     pw = pairwise_discordance(lym, cc)
     if pw.empty:
-        print("Nessuna coppia disponibile.")
+        print(
+            "[!] nessun clone con >=2 cellule in due compartimenti: sezioni A-B saltate."
+        )
         return
     pw.to_csv(TAB / f"pairwise_discordance_{cc}.csv", index=False)
 
@@ -416,7 +456,30 @@ def main() -> None:
     print(
         f"cluster bootstrap (sui pazienti): {m:+.4f}  IC95% [{lo_c:+.4f}, {hi_c:+.4f}]"
     )
-    print(f"l'IC si allarga di {((hi_c - lo_c) / (hi_n - lo_n)):.1f}x")
+    print(f"l'IC si allarga di {((hi_c - lo_c) / max(hi_n - lo_n, 1e-12)):.1f}x")
+    m_eq, lo_eq, hi_eq = cluster_bootstrap(pw, "excess_eq")
+    print(
+        f"sensibilita', pesi uguali 1/2||pA-pB||^2: {m_eq:+.4f}  IC95% [{lo_eq:+.4f}, {hi_eq:+.4f}]"
+    )
+    pd.DataFrame(
+        [
+            {
+                "clone_def": cc,
+                "n_pairs": len(pw),
+                "n_patients": pw.patient.nunique(),
+                "d_across": pw.d_across.mean(),
+                "d_within": pw.d_within.mean(),
+                "excess": m,
+                "lo_cluster": lo_c,
+                "hi_cluster": hi_c,
+                "lo_naive": lo_n,
+                "hi_naive": hi_n,
+                "excess_eq": m_eq,
+                "lo_eq_cluster": lo_eq,
+                "hi_eq_cluster": hi_eq,
+            }
+        ]
+    ).to_csv(TAB / f"excess_summary_{cc}.csv", index=False)
 
     print("\nper coppia di compartimenti (cluster bootstrap):")
     rows = []
@@ -438,7 +501,7 @@ def main() -> None:
         )
     per_pair = pd.DataFrame(rows)
     print(per_pair.round(4).to_string(index=False))
-    per_pair.to_csv(TAB / "excess_by_compartment_pair.csv", index=False)
+    per_pair.to_csv(TAB / f"excess_by_compartment_pair_{cc}.csv", index=False)
 
     print("\nper paziente (eccesso medio):")
     print(pw.groupby("patient").excess.agg(["mean", "size"]).round(4).to_string())
@@ -459,13 +522,29 @@ def main() -> None:
                 f"cloni fortemente discordanti: {len(keys)} | cellule: {len(sel):,}\n"
             )
             print(tab.round(3).to_string())
-            print(
-                "\nLa co-espressione di CD8A/CD8B nelle cellule annotate come CD4T nei cloni discordanti"
-            )
-            print(
-                "indica un'assegnazione imprecisa a livello di clustering trascrizionale."
-            )
-            tab.to_csv(TAB / "discordant_clone_markers.csv")
+            # Lettura condizionata ai dati: CD8A nelle CD4T rispetto alle CD8T degli stessi cloni
+            cd4 = sel.loc[sel.all_celltype == "CD4T", "g_CD8A"]
+            cd8 = sel.loc[sel.all_celltype == "CD8T", "g_CD8A"]
+            if len(cd4) and len(cd8):
+                r = cd4.mean() / max(cd8.mean(), 1e-9)
+                print(
+                    f"\nCD8A medio (CP10k): CD4T {cd4.mean():.2f} vs CD8T {cd8.mean():.2f} "
+                    f"(rapporto {r:.2f})"
+                )
+                if r > 0.5:
+                    print(
+                        "  Le CD4T di questi cloni esprimono CD8A quasi quanto le CD8T:"
+                    )
+                    print("  compatibile con un'etichetta CD4T sbagliata.")
+                else:
+                    print(
+                        "  Le CD4T di questi cloni esprimono poco CD8A: l'etichetta CD4T e'"
+                    )
+                    print(
+                        "  coerente con i marcatori; la discordanza va cercata nelle cellule"
+                    )
+                    print("  etichettate CD8T o NK (vedi 08_disambiguate.py).")
+            tab.to_csv(TAB / f"discordant_clone_markers_{cc}.csv")
         else:
             print(
                 "numero insufficiente di cloni fortemente discordanti per la verifica."
@@ -507,22 +586,7 @@ def main() -> None:
     fig.savefig(FIG / "ambient_vs_real_tcr.png", dpi=140)
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(7, 4))
-    lab = [f"{a[:4]}↔{b[:4]}" for a, b in zip(per_pair.comp_a, per_pair.comp_b)]
-    ax.errorbar(
-        per_pair.excess,
-        range(len(per_pair)),
-        xerr=[per_pair.excess - per_pair.lo, per_pair.hi - per_pair.excess],
-        fmt="o",
-        capsize=4,
-        color="#d95f02",
-    )
-    ax.axvline(0, ls="--", c="k", lw=0.8)
-    ax.set_yticks(range(len(per_pair)), lab)
-    ax.set_xlabel("eccesso di discordanza (IC95%, cluster bootstrap sui pazienti)")
-    fig.tight_layout()
-    fig.savefig(FIG / "excess_by_pair.png", dpi=140)
-    plt.close(fig)
+    plot_pairs(per_pair, cc)
 
     print("\n" + "=" * 78)
     if lo_c > 0:

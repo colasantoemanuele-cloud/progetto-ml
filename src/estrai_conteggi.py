@@ -1,38 +1,85 @@
+#!/usr/bin/env python3
+"""
+estrai_conteggi.py - Cellule per paziente della coorte appaiata (Tumor + Adjacent_normal).
+
+Scopo
+-----
+Utilita' di riepilogo: legge i metadati cellulari scRNA-seq di GEO (GSE278688),
+esclude Platelet ed Endocrine come 04_splits.py, individua i pazienti che hanno sia
+Tumor sia Adjacent_normal e stampa il numero di cellule di ciascuno nei due tessuti
+solidi (sono le cellule del task task1a_paired; totale 67.662 nella versione
+pubblicata). Non legge la matrice di espressione.
+
+Input
+-----
+  --metadata  data/raw/GSE278688/GSE278688_sc_metadata.csv.gz
+              (colonne usate: tissue, patients, all_celltype)
+
+Output
+------
+  solo testo a video (nessun file scritto)
+
+Argomenti
+---------
+  --metadata (default data/raw/GSE278688/GSE278688_sc_metadata.csv.gz)
+
+Uso
+---
+    python src/estrai_conteggi.py
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
 import pandas as pd
-import sys
-import os
 
-# Percorso del file compresso contenente i metadati cellulari GEO (GSE278688)
-file_metadati = "data/raw/GSE278688/GSE278688_sc_metadata.csv.gz"
-
-if not os.path.exists(file_metadati):
-    print(f"ERRORE: Non trovo il file {file_metadati}.")
-    sys.exit(1)
-
-print("Caricamento metadati...")
-obs = pd.read_csv(file_metadati)
-
-# Esclusione delle popolazioni non target o a bassa numerosita' (Platelet ed Endocrine)
+# Popolazioni escluse a priori, come in 04_splits.py
 EXCLUDE_ALWAYS = ["Platelet", "Endocrine"]
-obs = obs[~obs["all_celltype"].isin(EXCLUDE_ALWAYS)].copy()
 
-# Identificazione dei 5 pazienti dotati di campioni tissutali appaiati (Tumor e Adjacent_normal)
-tis = pd.crosstab(obs["patients"], obs["tissue"])
-paired = sorted(
-    tis.index[(tis.get("Tumor", 0) > 0) & (tis.get("Adjacent_normal", 0) > 0)]
-)
 
-# Selezione delle cellule appartenenti ai due compartimenti solidi per la coorte appaiata
-t1all = obs[obs["tissue"].isin(["Tumor", "Adjacent_normal"])]
-t1p = t1all[t1all["patients"].isin(paired)]
+def paired_counts(obs: pd.DataFrame) -> pd.Series:
+    """Cellule per paziente in Tumor + Adjacent_normal, per i soli pazienti appaiati."""
+    obs = obs[~obs["all_celltype"].isin(EXCLUDE_ALWAYS)]
+    tis = pd.crosstab(obs["patients"], obs["tissue"])
+    paired = sorted(
+        tis.index[(tis.get("Tumor", 0) > 0) & (tis.get("Adjacent_normal", 0) > 0)]
+    )
+    t1 = obs[obs["tissue"].isin(["Tumor", "Adjacent_normal"])]
+    return t1[t1["patients"].isin(paired)]["patients"].value_counts().sort_index()
 
-# Aggregazione e ordinamento dei conteggi cellulari per singolo paziente
-conteggi = t1p["patients"].value_counts().sort_index()
 
-print("\n--- RIEPILOGO CONTEGGI PER PAZIENTE (COORTE APPAIATA) ---")
-print("Paziente\tCellule totali")
-print("-" * 30)
-for paziente, n_celle in conteggi.items():
-    print(f"{paziente}\t\t{n_celle:,}".replace(",", "."))
-print("-" * 30)
-print(f"TOTALE\t\t{conteggi.sum():,}".replace(",", "."))
+def main() -> None:
+    ap = argparse.ArgumentParser(
+        description="Cellule per paziente della coorte appaiata Tumor + Adjacent_normal."
+    )
+    ap.add_argument(
+        "--metadata",
+        type=Path,
+        default=Path("data/raw/GSE278688/GSE278688_sc_metadata.csv.gz"),
+    )
+    args = ap.parse_args()
+    if not args.metadata.exists():
+        raise SystemExit(f"[ERRORE] file assente: {args.metadata}")
+
+    print("Caricamento metadati...")
+    obs = pd.read_csv(args.metadata)
+    missing = {"tissue", "patients", "all_celltype"} - set(obs.columns)
+    if missing:
+        raise SystemExit(f"[ERRORE] colonne mancanti nei metadati: {sorted(missing)}")
+    conteggi = paired_counts(obs)
+    if conteggi.empty:
+        raise SystemExit("[ERRORE] nessun paziente con Tumor e Adjacent_normal.")
+
+    print("\n--- RIEPILOGO CONTEGGI PER PAZIENTE (COORTE APPAIATA) ---")
+    print("Paziente\tCellule totali")
+    print("-" * 30)
+    for paziente, n_celle in conteggi.items():
+        print(f"{paziente}\t\t{n_celle:,}".replace(",", "."))
+    print("-" * 30)
+    print(f"TOTALE\t\t{conteggi.sum():,}".replace(",", "."))
+
+
+if __name__ == "__main__":
+    main()

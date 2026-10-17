@@ -1,32 +1,41 @@
 #!/usr/bin/env python3
 """
-04_splits.py - Definizione degli spazi di etichettatura e delle partizioni di validazione.
+04_splits.py - Definizione dei task di classificazione e delle partizioni di validazione.
 
-Questo modulo costruisce i sottotask di classificazione supervisionata operando
-esclusivamente sulla tabella dei metadati osservazionali (obs), senza accedere
-alla matrice di espressione X.
+Scopo
+-----
+Costruisce i task supervisionati dalla sola tabella `obs` (X non viene letta) e, per
+ciascuno, tre partizioni:
+  - fold_group_5 : StratifiedGroupKFold a 5 fold con il paziente come gruppo
+                   (partizione primaria, salvo i task in LOPO_PRIMARY);
+  - fold_lopo    : LeaveOneGroupOut (un paziente per fold), primaria per
+                   task1a_paired e rare;
+  - fold_random_5: StratifiedKFold a 5 fold sulle cellule, senza gruppi: controllo
+                   negativo che misura quanto la correlazione intra-paziente gonfia la stima.
+Un controllo verifica che nessun paziente stia in due fold di fold_group_5.
 
-Per ciascun task vengono generate tre partizioni di cross-validation:
-  - fold_group_5 : StratifiedGroupKFold (5 fold) vincolato al paziente (gruppo).
-                   Rappresenta la partizione primaria per la stima della
-                   capacita' di generalizzazione inter-paziente.
-  - fold_lopo    : LeaveOneGroupOut (Leave-One-Patient-Out), impiegato per task
-                   a ridotta numerosita' campionaria o con classi rare.
-  - fold_random_5: StratifiedKFold (5 fold) a livello di singola cellula, privo
-                   di vincolo di gruppo. Costituisce il controllo negativo per
-                   quantificare l'inflazione da data leakage intra-paziente.
+Task: task1a_all e task1a_paired (Tumor vs Adjacent_normal; solo 5 pazienti hanno
+entrambi i tessuti, PA04, PA06, PA08, PA09, PA10, e sono identificati qui),
+task2_v1 (9 tipi cellulari del tumore), task2_v2 (CAF+Stellate riuniti), task2_hier1
+(Immune/Epithelial/Stromal), task2_hier3 (CD4T/CD8T/NK), rare.
+Platelet (anucleate, quasi solo nel sangue) ed Endocrine sono escluse a priori: le
+Endocrine sono presenti in 12 pazienti, ma solo 2 ne hanno almeno 10 cellule.
 
-Nel contrasto tissutale (Task 1a: Tumor vs Adjacent_normal), solo 5 pazienti su 13
-dispongono di entrambi i compartimenti bioptici (PA04, PA06, PA08, PA09, PA10).
-Per disaccoppiare il segnale biologico tessuto-specifico dal confondimento
-strutturale dell'identita' del donatore, il modulo definisce sia la partizione
-completa (task1a_all, controllo) sia la partizione ristretta ai soli pazienti
-appaiati (task1a_paired).
+Input
+-----
+  --h5ad  data/interim/sc_raw.h5ad (solo obs, modalita' backed)
 
-Le popolazioni Platelet (anucleate, confinate al sangue periferico) ed Endocrine
-(60 cellule distribuite su soli 2 pazienti) vengono escluse a priori.
+Output
+------
+  data/interim/splits_{tag}.csv          una riga per (task, cellula) con i tre fold
+  results/tables/task_summary_{tag}.csv  cellule, classi, pazienti e valutazione primaria per task
 
-Uso:
+Argomenti
+---------
+  --h5ad (obbligatorio), --tag (default sc)
+
+Uso
+---
     python src/04_splits.py --h5ad data/interim/sc_raw.h5ad --tag sc
 """
 
@@ -231,7 +240,7 @@ def audit(name: str, df: pd.DataFrame) -> bool:
     else:
         print(f"[ok] LOPO: ogni paziente ha tutte le {df.y.nunique()} classi")
 
-    # Misurazione della dispersione dei pazienti nello split casuale (dimostrazione empirica del leakage)
+    # Misurazione della dispersione dei pazienti nello split casuale (controllo negativo: quanti pazienti per fold)
     rnd = pd.crosstab(df.patient, df.fold_random_5)
     n_pf = (rnd > 0).sum(axis=0).mean()
     print(
@@ -243,7 +252,9 @@ def audit(name: str, df: pd.DataFrame) -> bool:
 
 def main() -> None:
     """Punto di ingresso per la generazione e validazione delle tabelle di partizionamento."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Task di classificazione e partizioni di validazione (per paziente e casuali)."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--tag", default="sc")
     args = ap.parse_args()
@@ -253,6 +264,8 @@ def main() -> None:
 
     # Apertura in modalita' backed='r' per leggere esclusivamente la tabella obs
     adata = ad.read_h5ad(args.h5ad, backed="r")
+    if adata.n_obs == 0:
+        raise SystemExit(f"[ERRORE] {args.h5ad} non contiene cellule")
     obs = adata.obs.copy()
     for c in ("tissue", "patients", "all_celltype"):
         obs[c] = obs[c].astype(str)

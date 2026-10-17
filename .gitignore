@@ -13,7 +13,7 @@ mmc*.xlsx
 
 # Tabelle intermedie ad alta cardinalita' (livello singola cellula / coppia intra-compartimento)
 results/tables/doublet_scores.csv
-results/tables/clone_switching_within.csv
+results/tables/clone_switching_within*.csv
 
 # Modelli serializzati, log e artefatti temporanei
 results/models/

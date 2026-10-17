@@ -1,51 +1,60 @@
 #!/usr/bin/env python3
 """
-20_xai_per_patient.py: Stabilita' inter-paziente delle spiegazioni XAI in validazione Leave-One-Patient-Out.
+20_xai_per_patient.py - Stabilita' fra pazienti delle spiegazioni di una logistica L1 (fold LOPO contro controllo casuale).
 
-Inquadramento Metodologico
---------------------------
-Quando il numero di osservazioni per soggetto e' elevato ma il numero di soggetti
-indipendenti e' ridotto, l'analisi di spiegabilita' (Explainable AI, XAI) attraverso
-i fold di una cross-validation Leave-One-Patient-Out (LOPO) consente di valutare se
-un classificatore lineare apprenda una regola trascrizionale invariante rispetto al
-paziente o se adatti la propria frontiera decisionale alle specificita' dei soggetti
-inclusi nel training set.
+Scopo
+-----
+Se le cellule della coorte appaiata (task1a_paired: 67.662 cellule, 5 pazienti)
+fossero osservazioni indipendenti, togliere dal training un paziente (circa 13.000
+cellule) cambierebbe poco i coefficienti appresi. Lo script confronta quanto si
+somigliano le spiegazioni dei fold leave-one-patient-out (LOPO) con quanto si
+somigliano spiegazioni ottenute togliendo lo stesso numero di cellule a caso.
 
-Se le 67.662 cellule della coorte appaiata costituissero osservazioni indipendenti,
-l'esclusione di circa 13.000 cellule (un paziente su cinque) lascerebbe pressoche'
-inalterato il vettore dei coefficienti appresi. La divergenza tra le spiegazioni
-dei fold LOPO rispetto a un controllo nullo (in cui viene rimosso il medesimo numero
-di cellule campionate casualmente ignorando l'identita' del paziente) misura pertanto
-direttamente il grado di ridondanza intra-paziente (pseudoreplicazione) a livello
-dello spazio delle feature.
+Metodo: logistica L1 (C = 0.1, liblinear, classi bilanciate) su log1p(CP10k) dei geni
+espressi in almeno 10 cellule di training, scalati senza centratura; importanza di
+un gene = |coefficiente|. Training di ogni fold sottocampionato a 20.000 cellule.
+  1. Jaccard fra i top-50 geni di ogni coppia di fold LOPO;
+  2. Spearman fra i vettori completi dei coefficienti;
+  3. geni presenti nei top-50 di tutti i fold (salvati con il simbolo) e geni
+     esclusivi di un fold;
+  4. controllo: 5 sottoinsiemi casuali di cellule della stessa dimensione, senza
+     struttura per paziente; Jaccard medio fra le loro spiegazioni.
+La differenza controllo - LOPO e' una misura indicativa: la simulazione
+`src/sim/sim_d_xai_stability.py` (risultati in `results/tables/sim_d_xai_stability.csv`)
+riporta la differenza con e senza un effetto paziente costruito, su pochi pazienti e
+con una sola forma di effetto.
+I geni comuni a tutti i fold includono geni di risposta immediata associati allo
+stress di dissociazione (FOS, CD69, BTG2, HSPH1, DUSP4, CREM nella versione
+pubblicata) e CTRB1, marcatore acinare (probabile RNA ambientale): non sono
+necessariamente biologia tumore/normale.
 
-Metriche di Stabilita' e Metodo XAI
------------------------------------
-Lo script utilizza l'interpretabilita' intrinseca di un modello di Regressione
-Logistica con penalizzazione L1 (Lasso, `C = 0.1`, pesi bilanciati per classe),
-preferita ad approssimazioni locali post-hoc (quali SHAP) per l'esattezza analitica
-dei pesi lineari e l'efficienza computazionale su matrici sparse ad alta dimensionalita'.
-Per ciascuno dei 5 fold LOPO vengono calcolati:
-  1. L'indice di similarita' di Jaccard tra gli insiemi dei `TOP_K = 50` geni a
-     maggiore valore assoluto del coefficiente massimo multi-classe;
-  2. La correlazione di rango di Spearman tra i vettori completi dei coefficienti;
-  3. L'intersezione globale dei geni condivisi da tutti i 5 fold rispetto ai geni
-     esclusivi di un singolo fold (spiegazioni paziente-specifiche);
-  4. Il confronto diretto con la stabilita' di Jaccard ottenuta su 5 repliche di
-     controllo prive di struttura per paziente (`N_CONTROL = 5`).
+Input
+-----
+  --h5ad    data/interim/sc_raw.h5ad
+  --splits  data/interim/splits_sc.csv (da 04_splits.py)
 
-Esecuzione:
-    python src/20_xai_per_patient.py \
-        --h5ad data/interim/sc_raw.h5ad \
-        --splits data/interim/splits_sc.csv \
-        --task task1a_paired
+Output
+------
+  results/tables/xai_jaccard_{task}.csv        matrice di Jaccard fra fold (top-50)
+  results/tables/xai_spearman_{task}.csv       matrice di Spearman fra fold
+  results/tables/xai_summary_{task}.csv        Jaccard LOPO, controllo, differenza, Spearman, n geni comuni
+  results/tables/xai_common_genes_{task}.csv   geni nei top-50 di tutti i fold (id e simbolo)
+  results/figures/xai_per_patient_{task}.png
+
+Argomenti
+---------
+  --h5ad, --splits (obbligatori), --task (default task1a_paired), --scheme (default fold_lopo)
+
+Uso
+---
+    python src/20_xai_per_patient.py --h5ad data/interim/sc_raw.h5ad \
+        --splits data/interim/splits_sc.csv --task task1a_paired
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-import warnings
 from itertools import combinations
 from pathlib import Path
 
@@ -60,13 +69,11 @@ import pandas as pd
 import scipy.sparse as sp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scpipe import LogCPM  # noqa: E402
+from scpipe import LogCPM, jaccard  # noqa: E402
 
 from scipy.stats import spearmanr  # noqa: E402
 from sklearn.linear_model import LogisticRegression  # noqa: E402
 from sklearn.preprocessing import StandardScaler  # noqa: E402
-
-warnings.filterwarnings("ignore")
 
 # Percorsi di output e iperparametri del protocollo di stabilita' XAI
 FIG = Path("results/figures")
@@ -80,11 +87,6 @@ TOP_K = 50  # Cardinalita' del sottoinsieme di geni principali per la metrica di
 N_CONTROL = (
     5  # Numero di repliche casuali per il controllo privo di struttura di gruppo
 )
-
-
-def jaccard(a: set, b: set) -> float:
-    """Calcola l'indice di similarita' di Jaccard tra due insiemi finiti di feature."""
-    return len(a & b) / max(len(a | b), 1)
 
 
 def fit_explanation(X, y, genes, rng):
@@ -102,7 +104,7 @@ def fit_explanation(X, y, genes, rng):
 
     # Addestramento del modello lineare sparso L1 con bilanciamento inverso delle frequenze di classe
     clf = LogisticRegression(
-        penalty="l1",
+        l1_ratio=1.0,  # penalita' L1 pura (equivale a penalty="l1", deprecato in sklearn 1.8)
         C=0.1,
         solver="liblinear",
         max_iter=1000,
@@ -120,10 +122,49 @@ def fit_explanation(X, y, genes, rng):
     return full, top
 
 
+def lopo_explanations(X, y, folds, patients, genes, rng):
+    """Una spiegazione per fold: logistica L1 addestrata sul solo training del fold.
+
+    Il training di ogni fold (al massimo MAX_TRAIN cellule estratte con `rng`) e' l'unica
+    parte dei dati passata a `fit_explanation`: le cellule di test non entrano.
+    Restituisce (coefficienti, top-K, paziente escluso), dizionari indicizzati per fold.
+    """
+    coefs, tops, labels = {}, {}, {}
+    for f in np.unique(folds):
+        tr = np.where(folds != f)[0]
+        held_out = pd.Series(patients[folds == f]).mode()[0]
+        if len(tr) > MAX_TRAIN:
+            tr = np.sort(rng.choice(tr, MAX_TRAIN, replace=False))
+        full, top = fit_explanation(X[tr], y[tr], genes, rng)
+        coefs[f], tops[f], labels[f] = full, top, held_out
+        nz = int((full > 0).sum())
+        print(
+            f"  fold {f} (escluso {held_out}): train {len(tr):,} cellule | "
+            f"{nz:,} geni con coefficiente non nullo"
+        )
+
+    return coefs, tops, labels
+
+
+def control_explanations(X, y, n_train, genes, rng, n_control=N_CONTROL):
+    """Controllo senza struttura per paziente: `n_control` sottoinsiemi casuali di
+    `n_train` cellule (estratte da tutte, ignorando il paziente), una spiegazione ciascuno.
+    Restituisce la lista degli insiemi top-K."""
+    ctrl_tops = []
+    for i in range(n_control):
+        sel = rng.choice(len(y), n_train, replace=False)
+        _, top = fit_explanation(X[sel], y[sel], genes, rng)
+        ctrl_tops.append(top)
+        print(f"  replica {i + 1}/{n_control} completata")
+    return ctrl_tops
+
+
 def main() -> None:
     """Orchestra l'estrazione delle spiegazioni L1 sui 5 fold LOPO, il calcolo delle
     matrici di similarita' di Jaccard e Spearman e il confronto con il controllo casuale."""
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Stabilita' fra pazienti delle spiegazioni L1: fold LOPO contro controllo."
+    )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--splits", type=Path, required=True)
     ap.add_argument("--task", default="task1a_paired")
@@ -146,6 +187,10 @@ def main() -> None:
     folds = sub[args.scheme].values
     patients = sub.patient.values
     rng = np.random.default_rng(SEED)
+    if sub.empty or len(np.unique(folds)) < 2:
+        raise SystemExit(
+            f"[ERRORE] task {args.task}: servono almeno 2 fold in {args.scheme}"
+        )
 
     print(
         f"[ok] {args.task}: {X.shape[0]:,} cellule | {len(np.unique(patients))} pazienti"
@@ -158,19 +203,7 @@ def main() -> None:
     print(
         f"\n{'=' * 74}\nSPIEGAZIONI: una per fold LOPO (= una per paziente escluso)\n{'=' * 74}"
     )
-    coefs, tops, labels = {}, {}, {}
-    for f in np.unique(folds):
-        tr = np.where(folds != f)[0]
-        held_out = pd.Series(patients[folds == f]).mode()[0]
-        if len(tr) > MAX_TRAIN:
-            tr = np.sort(rng.choice(tr, MAX_TRAIN, replace=False))
-        full, top = fit_explanation(X[tr], y[tr], genes, rng)
-        coefs[f], tops[f], labels[f] = full, top, held_out
-        nz = int((full > 0).sum())
-        print(
-            f"  fold {f} (escluso {held_out}): train {len(tr):,} cellule | "
-            f"{nz:,} geni con coefficiente non nullo"
-        )
+    coefs, tops, labels = lopo_explanations(X, y, folds, patients, genes, rng)
 
     # Calcolo delle matrici simmetriche di similarita' (Jaccard sui top-K e Spearman globale)
     print(
@@ -203,13 +236,23 @@ def main() -> None:
     print(
         f"geni presenti in TUTTE e 5           : {len(common)} ({len(common) / TOP_K:.0%} di top-{TOP_K})"
     )
+    ids = sorted(common)
+    sym = (
+        adata.var.gene_symbol.reindex(ids).astype(str).tolist()
+        if "gene_symbol" in adata.var
+        else ids
+    )
+    pd.DataFrame({"gene_id": ids, "gene_symbol": sym}).sort_values(
+        "gene_symbol"
+    ).to_csv(TAB / f"xai_common_genes_{args.task}.csv", index=False)
     if common:
-        sym = (
-            adata.var.gene_symbol.reindex(sorted(common)).dropna().tolist()
-            if "gene_symbol" in adata.var
-            else sorted(common)
+        print(f"  -> {', '.join(sorted(map(str, sym)))}")
+        print(
+            "  (geni di risposta immediata come FOS, CD69, BTG2, DUSP4 sono associati"
         )
-        print(f"  -> {', '.join(map(str, sym[:20]))}")
+        print(
+            "  allo stress di dissociazione; CTRB1 e' acinare, probabile RNA ambientale)"
+        )
     print("\ngeni esclusivi di un solo fold (spiegazione paziente-specifica):")
     for f in fs:
         others = set.union(*[tops[g] for g in fs if g != f])
@@ -224,13 +267,8 @@ def main() -> None:
     )
     print("Ripeto lo stesso esperimento ignorando il paziente: sottoinsiemi casuali")
     print("della stessa dimensione, campionati da tutte le cellule mescolate.\n")
-    ctrl_tops = []
     n_train = min(MAX_TRAIN, int(np.median([np.sum(folds != f) for f in fs])))
-    for i in range(N_CONTROL):
-        sel = rng.choice(len(y), n_train, replace=False)
-        _, top = fit_explanation(X[sel], y[sel], genes, rng)
-        ctrl_tops.append(top)
-        print(f"  replica {i + 1}/{N_CONTROL} completata")
+    ctrl_tops = control_explanations(X, y, n_train, genes, rng)
     j_ctrl = np.mean([jaccard(a, b) for a, b in combinations(ctrl_tops, 2)])
 
     print(f"\n  Jaccard medio FRA PAZIENTI (LOPO)        : {j_mean:.3f}")
@@ -249,17 +287,17 @@ def main() -> None:
             "  rimuovere UN paziente cambia cio' che il modello impara piu' di quanto"
         )
         print(
-            "  lo cambi rimuovere lo stesso numero di cellule prese a caso. Le cellule"
+            "  lo cambi rimuovere lo stesso numero di cellule prese a caso: e' cio' che"
         )
-        print("  dello stesso paziente sono quindi ridondanti fra loro, e l'unita'")
-        print("  informativa e' il paziente, non la cellula.")
+        print("  ci si aspetta se le cellule dello stesso paziente sono ridondanti fra")
+        print("  loro e l'unita' informativa e' il paziente, non la cellula.")
         print(
-            "\n  CAUTELA: su dati simulati la differenza fra 'effetto forte' e 'nessun"
+            "\n  CAUTELA: confrontare con results/tables/sim_d_xai_stability.csv (stessa"
         )
         print(
-            "  effetto' era di soli 0.02 punti. Il segno e' informativo, la magnitudine"
+            "  procedura su dati simulati con e senza effetto paziente): la grandezza e'"
         )
-        print("  va riportata come indicativa, non come stima puntuale dell'effetto.")
+        print("  indicativa, non una stima calibrata dell'effetto.")
     elif j_ctrl - j_mean > 0.02:
         print("  LETTURA: differenza nella direzione attesa ma di entita' contenuta.")
         print("  Compatibile sia con un effetto-paziente moderato sia con rumore di")
@@ -275,8 +313,10 @@ def main() -> None:
         print(
             "  NON supporta l'argomento sulla pseudoreplicazione per questa via, e va"
         )
-        print("  riportato come tale. L'argomento resta comunque sostenuto dal divario")
-        print("  fra split casuale e split per paziente misurato al paragrafo 3.2.")
+        print(
+            "  riportato come tale. L'argomento resta sostenuto dal divario fra split"
+        )
+        print("  casuale e split per paziente misurato da 05_baseline.py.")
 
     pd.DataFrame(
         [

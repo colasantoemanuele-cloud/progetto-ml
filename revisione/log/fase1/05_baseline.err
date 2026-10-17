@@ -1,0 +1,23 @@
+	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/05_baseline.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv"
+	User time (seconds): 5645.77
+	System time (seconds): 62.83
+	Percent of CPU this job got: 537%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 17:41.42
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 9734252
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 19
+	Minor (reclaiming a frame) page faults: 5195237
+	Voluntary context switches: 18077
+	Involuntary context switches: 456567
+	Swaps: 0
+	File system inputs: 1669872
+	File system outputs: 576
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

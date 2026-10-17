@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
-# download_tcr.sh: acquisizione automatizzata dei 30 file VDJ di GSE300435 con retry e ripresa.
+# download_tcr.sh - Download dei 30 file VDJ (filtered_contig_annotations) di GSE300435.
 #
-# Disaccoppiato dall'analisi statistica per garantire l'integrita' dei file di input.
-# Idempotente e rilanciabile: verifica l'integrita' gzip dei file in cache e riprende i download parziali.
-#
-#   bash src/download_tcr.sh data/raw/metadata/filelist.txt data/raw/tcr
+# Scopo:   scarica da NCBI GEO i file *_VDJ_filtered_contig_annotations.csv.gz elencati in
+#          filelist.txt, con retry e ripresa dei download parziali. Idempotente: i file gia'
+#          presenti e integri (gzip -t) non vengono riscaricati.
+# Input:   FILELIST (default data/raw/metadata/filelist.txt, da 00_fetch_metadata.py)
+# Output:  OUTDIR/<GSM>_PA_<nn>-<tessuto>-VDJ_filtered_contig_annotations.csv.gz (30 file)
+# Errori:  esce con codice 1 se il filelist non elenca esattamente 30 file VDJ, se un
+#          download fallisce o se alla fine in OUTDIR non ci sono 30 file validi.
+# Uso:     bash src/download_tcr.sh [FILELIST] [OUTDIR]
+#          bash src/download_tcr.sh data/raw/metadata/filelist.txt data/raw/tcr
 
 set -euo pipefail
+
+N_EXPECTED=30
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  echo "uso: bash src/download_tcr.sh [FILELIST] [OUTDIR]"
+  echo "     scarica i ${N_EXPECTED} file VDJ di GSE300435 elencati in FILELIST"
+  echo "     (default data/raw/metadata/filelist.txt) dentro OUTDIR (default data/raw/tcr)"
+  exit 0
+fi
 
 FILELIST="${1:-data/raw/metadata/filelist.txt}"
 OUTDIR="${2:-data/raw/tcr}"
@@ -24,7 +37,10 @@ fi
 
 mapfile -t FILES < <(awk -F'\t' '$2 ~ /VDJ_filtered_contig_annotations\.csv\.gz$/ {print $2}' "$FILELIST")
 echo "[ok] ${#FILES[@]} file VDJ da scaricare"
-[[ ${#FILES[@]} -eq 30 ]] || echo "[!!] attesi 30, trovati ${#FILES[@]}"
+if [[ ${#FILES[@]} -ne $N_EXPECTED ]]; then
+  echo "[ERRORE] attesi $N_EXPECTED file VDJ nel filelist, trovati ${#FILES[@]}" >&2
+  exit 1
+fi
 
 ok=0; fail=0
 for f in "${FILES[@]}"; do
@@ -53,4 +69,9 @@ done
 echo
 echo "[ok] scaricati/validi: $ok | falliti: $fail"
 [[ $fail -eq 0 ]] || { echo "[ERRORE] rilancia lo script: riprende da dove ha lasciato" >&2; exit 1; }
+n_ok=$(find "$OUTDIR" -name '*VDJ_filtered_contig_annotations.csv.gz' | wc -l)
+if [[ $n_ok -ne $N_EXPECTED ]]; then
+  echo "[ERRORE] in $OUTDIR ci sono $n_ok file VDJ, attesi $N_EXPECTED" >&2
+  exit 1
+fi
 du -sh "$OUTDIR"
