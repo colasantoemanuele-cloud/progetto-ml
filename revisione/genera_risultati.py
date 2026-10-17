@@ -4,9 +4,11 @@ genera_risultati.py - Scrive revisione/RISULTATI_FINALI.md leggendo solo results
 
 Scopo
 -----
-Ogni numero di RISULTATI_FINALI.md viene da una tabella di `results/tables/`, citata
-accanto al numero (criterio 4): il file non contiene cifre scritte a mano, tranne i
-valori della presentazione nella colonna "prima" della tabella iniziale. Le note
+Ogni risultato di RISULTATI_FINALI.md viene da una tabella di `results/tables/`, citata
+accanto al numero (criterio 4). Sono scritti a mano solo i valori della presentazione
+(colonna "prima" della tabella iniziale e dizionario `h_old`) e la soglia SMALL_K = 5
+pazienti sotto cui gli IC non sono calibrati; numeri di pazienti, fold e cellule di
+training sono letti dalle tabelle. Le note
 sull'esecuzione (commit, memoria, script non rieseguiti) sono lette da
 `revisione/note_esecuzione.md`, se esiste, e copiate in fondo.
 
@@ -40,6 +42,14 @@ TAB = Path("results/tables")
 OUT = Path("revisione/RISULTATI_FINALI.md")
 NOTE = Path("revisione/note_esecuzione.md")
 MISSING: list[str] = []
+SMALL_K = (
+    5  # pazienti: con <= SMALL_K l'IC del cluster bootstrap non e' calibrato (sim_a)
+)
+# esiti che non sono un risultato cambiato
+ESITO = {
+    "logistica L2 task2_hier3": "arrotondamento (stessa stima, arrotondata male prima)",
+    "AUC loci PDAC entro paziente (mediana / media dei 4 pazienti)": "uguale (il valore precedente era la mediana)",
+}
 
 
 def t(name: str) -> pd.DataFrame:
@@ -69,8 +79,15 @@ def f(x: float, nd: int = 3, sign: bool = False) -> str:
     """Numero in formato italiano (virgola decimale)."""
     if x is None or (isinstance(x, float) and np.isnan(x)):
         return "⟦n.d.⟧"
+    if x != 0 and abs(x) < 0.5 * 10**-nd:
+        nd += 1  # evita "-0,000" per differenze piccolissime ma non nulle
     s = f"{x:+.{nd}f}" if sign else f"{x:.{nd}f}"
     return s.replace(".", ",")
+
+
+def n_(x: float) -> str:
+    """Intero con il punto come separatore delle migliaia."""
+    return "⟦n.d.⟧" if np.isnan(x) else f"{x:,.0f}".replace(",", ".")
 
 
 def pct(x: float, nd: int = 1) -> str:
@@ -84,6 +101,8 @@ def ci(lo: float, hi: float, nd: int = 3, sign: bool = False) -> str:
 def p_fmt(p: float) -> str:
     if np.isnan(p):
         return "⟦n.d.⟧"
+    if p < 0.001:
+        return f"{p:.1e}".replace(".", ",")
     return f(p, 4) if p < 0.01 else f(p, 3)
 
 
@@ -134,6 +153,7 @@ def main() -> None:
     tcr_rate, mix = t("tcr_rate_by_celltype"), t("doublet_mixture")
     ce, cps = t("clonal_expansion_tests"), t("clonal_expansion_perm_sensitivity")
     ly_e, ly_x = t("loyo_clonal_expansion_error"), t("loyo_clonal_expansion_excess")
+    ly_s = t("loyo_clonal_expansion_perm_sensitivity")
     hyp, holm, ni = (
         t("pseudobulk_hypothesis_tests"),
         t("ni_score_holm_joint"),
@@ -141,6 +161,11 @@ def main() -> None:
     )
     mal, ext = t("malignancy_lopo_summary"), t("external_test_summary")
     loci, loci_p = t("cnv_loci_auc"), t("cnv_loci_auc_by_patient")
+    auc_pat = (
+        loci_p.loc[loci_p.patient != "_mean", "auc_PDAC_COMPOSITE"]
+        if not loci_p.empty
+        else pd.Series(dtype=float)
+    )
     sa_nb, sa_cb = t("sim_a_nadeau_bengio"), t("sim_a_cluster_bootstrap")
     sb, sc_, sd = (
         t("sim_b_reference_schemes"),
@@ -239,6 +264,12 @@ def main() -> None:
             "LightGBM task2_hier3",
             "0,923",
             f(zv(zs, "task2_hier3", "lightgbm")),
+            "model_zoo_summary_sc",
+        ),
+        (
+            "MLP task2_hier3 (README pubblicato)",
+            "0,903",
+            f(zv(zs, "task2_hier3", "mlp")),
             "model_zoo_summary_sc",
         ),
         (
@@ -405,9 +436,10 @@ def main() -> None:
             "cnv_loci_auc",
         ),
         (
-            "AUC loci PDAC entro paziente (media)",
+            "AUC loci PDAC entro paziente (mediana / media dei 4 pazienti)",
             "0,53",
-            f(v(loci_p, "auc_PDAC_COMPOSITE", patient="_mean")),
+            f"{f(auc_pat.median()) if len(auc_pat) else '⟦n.d.⟧'} / "
+            f"{f(v(loci_p, 'auc_PDAC_COMPOSITE', patient='_mean'))}",
             "cnv_loci_auc_by_patient",
         ),
         (
@@ -420,14 +452,9 @@ def main() -> None:
     rows = []
     for lab, old, new, src in pres:
         same = old.replace(" ", "") == new.replace(" ", "")
+        esito = ESITO.get(lab, "uguale" if same else "cambiato")
         rows.append(
-            [
-                lab,
-                f"**{old}**",
-                new if same else f"**{new}**",
-                "uguale" if same else "cambiato",
-                f"`{src}`",
-            ]
+            [lab, f"**{old}**", new if same else f"**{new}**", esito, f"`{src}`"]
         )
 
     L: list[str] = []
@@ -441,16 +468,14 @@ def main() -> None:
         md_table(rows, ["Numero", "Prima (presentazione)", "Dopo", "Esito", "Tabella"])
     )
     L.append(
-        "\nNote: lo 0,53 e' l'AUC entro paziente dei loci PDAC (\"≈ 0,53\" nel README pubblicato); "
-        "i p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 4 pazienti (Adjacent_normal, "
-        "differenza appaiata) non sono calibrati (vedi Simulazioni).\n"
+        "\nNote: lo 0,53 e' l'AUC entro paziente dei loci PDAC (\"≈ 0,53\" nel README pubblicato, la "
+        "mediana dei pazienti valutabili); i p grezzi di H1-H4 sono nella sezione delle ipotesi. "
+        f"Gli IC con {SMALL_K} pazienti o meno (Adjacent_normal, differenza appaiata) non sono "
+        "calibrati (vedi Simulazioni).\n"
     )
 
     # --- dataset
     L.append("## Dataset\n")
-
-    def n_(x):
-        return "⟦n.d.⟧" if np.isnan(x) else f"{x:,.0f}".replace(",", ".")
 
     L.append(
         f"scRNA-seq: {n_(v(ds, 'n_cells'))} cellule, {n_(v(ds, 'n_patients'))} pazienti, "
@@ -510,7 +535,10 @@ def main() -> None:
         )
 
     # --- modelli
-    L.append("## 13 modelli (11, LOPO, 20.000 cellule di training per fold)\n")
+    n_tr = zs.n_train_mean.max() if not zs.empty else np.nan
+    nf = pd.concat([zs.n_folds, z1.n_folds]) if not zs.empty else pd.Series([np.nan])
+    zs_folds = f"{nf.min():.0f}-{nf.max():.0f}"
+    L.append(f"## 13 modelli (11, LOPO, {n_(n_tr)} cellule di training per fold)\n")
     for df, task in ((zs, "task2_v1"), (zs, "task2_hier3"), (z1, "task1a_paired")):
         if df.empty:
             continue
@@ -548,7 +576,9 @@ def main() -> None:
             f"rispetto al migliore (`model_comparison_{task}`)."
         )
     L.append(
-        "\nCon 5-13 fold la potenza e' bassa: un p non significativo non dimostra l'equivalenza.\n"
+        f"\nCon {zs_folds} fold la potenza e' bassa: un p non significativo non dimostra "
+        "l'equivalenza. La calibrazione di Nadeau-Bengio e' verificata in `sim_a` con 5 fold "
+        "stratificati di uguale dimensione, non con fold LOPO di dimensione diversa.\n"
     )
 
     # --- feature selection
@@ -620,7 +650,7 @@ def main() -> None:
     L.append(
         f"- Rumore di base (stesso clone, stesso compartimento): {f(v(exb, 'd_within'))}; discordanza fra compartimenti "
         f"{f(v(exb, 'd_across'))}; eccesso {f(v(exb, 'excess'), sign=True)} IC {ci(v(exb, 'lo_cluster'), v(exb, 'hi_cluster'), sign=True)} "
-        f"({v(exb, 'n_patients'):.0f} pazienti, {v(exb, 'n_pairs'):.0f} coppie; `excess_summary_clone_b`)."
+        f"({v(exb, 'n_patients'):.0f} pazienti, {n_(v(exb, 'n_pairs'))} coppie; `excess_summary_clone_b`)."
     )
     L.append(
         f"- Sensibilita' (B3): pesi uguali {f(v(exb, 'excess_eq'), sign=True)} IC {ci(v(exb, 'lo_eq_cluster'), v(exb, 'hi_eq_cluster'), sign=True)}; "
@@ -678,7 +708,7 @@ def main() -> None:
             ]
         )
     L.append(
-        "\n**Differenze appaiate** (`error_rate_paired_diff`; B2: ricampionature distinte e frazione > 0 con <= 5 pazienti)\n"
+        f"\n**Differenze appaiate** (`error_rate_paired_diff`; B2: ricampionature distinte e frazione > 0 con <= {SMALL_K} pazienti)\n"
     )
     L.append(
         md_table(
@@ -742,7 +772,7 @@ def main() -> None:
             for r in tri.itertuples()
         ]
         L.append(
-            "**Cloni presenti nei tre compartimenti (08)** (`triple_clones_summary`; 4 pazienti: IC non calibrati)\n"
+            f"**Cloni presenti nei tre compartimenti (08)** (`triple_clones_summary`; {tri.n_patients.max():.0f} pazienti: IC non calibrati)\n"
         )
         L.append(
             md_table(rr, ["Contrasto", "Media", "IC 95%", "Cloni", "Pazienti"]) + "\n"
@@ -822,9 +852,19 @@ def main() -> None:
     )
     for nm, ly in (("errore", ly_e), ("eccesso", ly_x)):
         if not ly.empty:
+            src = f"loyo_clonal_expansion_{'error' if nm == 'errore' else 'excess'}"
             L.append(
                 f"\n- Leave-one-patient-out, {nm}: p < 0,05 in {int(ly.still_significant.sum())}/{len(ly)} casi, "
-                f"ρ fra {f(ly.rho_without.min())} e {f(ly.rho_without.max())} (`loyo_clonal_expansion_{'error' if nm == 'errore' else 'excess'}`)."
+                f"ρ fra {f(ly.rho_without.min())} e {f(ly.rho_without.max())}; p centrato < 0,05 in "
+                f"{int((ly.p_centered_without < 0.05).sum())}/{len(ly)} (massimo {p_fmt(ly.p_centered_without.max())}) "
+                f"(`{src}`)."
+            )
+    if not ly_s.empty:
+        for n_perm, g in ly_s.groupby("n_perm"):
+            L.append(
+                f"- Leave-one-patient-out, errore, {n_(n_perm)} permutazioni ({g.seed.nunique()} semi): p fra "
+                f"{p_fmt(g.p.min())} e {p_fmt(g.p.max())}, p centrato fino a {p_fmt(g.p_centered.max())} "
+                "(`loyo_clonal_expansion_perm_sensitivity`)."
             )
     L.append("\n### Quattro ipotesi per paziente (16, 19)\n")
     rr = []
@@ -841,7 +881,8 @@ def main() -> None:
         )
     L.append(md_table(rr, ["Ipotesi", "Covariata", "ρ", "p", "p_Holm (4 test)"]))
     L.append(
-        "\nFonti: `pseudobulk_hypothesis_tests`, `ni_score_test`, `ni_score_holm_joint`. n = 10 pazienti: potenza bassa.\n"
+        "\nFonti: `pseudobulk_hypothesis_tests`, `ni_score_test`, `ni_score_holm_joint`. "
+        f"n = {v(ni, 'n_patients', hypothesis='H4_ni_score'):.0f} pazienti: potenza bassa.\n"
     )
 
     # --- CNV

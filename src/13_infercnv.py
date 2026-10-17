@@ -47,8 +47,8 @@ trascrittoma stesso, in tre stadi:
 Input
 -----
   --h5ad       data/interim/sc_raw.h5ad (conteggi grezzi; obs: tissue, patients, all_celltype)
-  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste e copre tutte le cellule, altrimenti
-               calcolato e scritto; una cache incompleta ferma lo script)
+  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste e contiene esattamente le cellule
+               selezionate, altrimenti calcolato e scritto; una cache diversa ferma lo script)
   data/interim/gene_positions_ensembl116.csv (letta se esiste, altrimenti scaricata da BioMart)
 
 Output
@@ -351,6 +351,13 @@ def main() -> None:
             raise SystemExit(
                 f"[ERRORE] la cache {args.cnv_cache} non copre {int(score.isna().sum()):,} "
                 f"cellule su {sub.n_obs:,}: cancellala per ricalcolare inferCNV."
+            )
+        # cache piu' grande del sottoinsieme: calcolata su un altro riferimento immunitario
+        extra = len(cs.index.difference(sub.obs_names))
+        if extra:
+            raise SystemExit(
+                f"[ERRORE] la cache {args.cnv_cache} contiene {extra:,} cellule non selezionate "
+                "(altro sottoinsieme o riferimento): cancellala per ricalcolare inferCNV."
             )
         sub.obs["cnv_score"] = score.values
     else:

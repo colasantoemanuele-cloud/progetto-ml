@@ -1,0 +1,10 @@
+......                                                                   [100%]
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[False-10]
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[False-11]
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[True-10]
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[True-11]
+PASSED tests/test_stats.py::test_block_permutation_type1_with_patient_confounder
+PASSED tests/test_stats.py::test_nadeau_bengio_calibration_and_power
+6 passed, 101 deselected in 57.67s

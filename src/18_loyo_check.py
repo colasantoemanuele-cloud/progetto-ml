@@ -112,7 +112,8 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
                 "null_mean_without": bp["null_mean"],
                 "p_centered_without": bp["p_centered"],
                 "delta_rho": rho - rho_full,
-                "still_significant": p < 0.05,
+                # NaN (esito costante senza il paziente) non conta come significativo
+                "still_significant": bool(p < 0.05),
                 "rho_full": rho_full,
                 "p_full": p_full,
                 "null_mean_full": full["null_mean"],
@@ -134,6 +135,10 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
     print(
         f"\nrisultato resta significativo (p<0.05) in {n_robust}/{len(pats)} versioni leave-one-out."
     )
+    if out.p_without.isna().any():
+        print(
+            f"[!!] p non definito in {int(out.p_without.isna().sum())} esclusioni (esito costante)"
+        )
     if n_robust == len(pats):
         print("VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.")
     elif n_robust >= len(pats) - 1:
@@ -147,6 +152,11 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
         print("          senza cautela: da riportare come tale.")
 
     # Identificazione del paziente la cui esclusione determina la massima riduzione di rho
+    if out.rho_without.isna().all():
+        print(
+            "\nrho non definito in tutte le esclusioni (esito costante): nessun confronto."
+        )
+        return out
     worst = out.loc[out.rho_without.idxmin()]
     print(
         f"\npaziente il cui contributo pesa di piu' (rho piu' basso se rimosso): "

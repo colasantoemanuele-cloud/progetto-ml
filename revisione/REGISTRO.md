@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1 fatto (1 ALTA, 18 MEDIA, 29 BASSA corretti o motivati); prossimo: giro 2 incrementale | 8058701 |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2 incrementale: 0/4/16 (commit giro 2); prossimo: giro 3 incrementale | - |
 | 3 Esecuzione finale | da fare | - |
 
 ## Note iniziali
@@ -189,6 +189,31 @@ Esecuzione finale di 11 (codice di 11 = commit 8058701; log in `revisione/log/11
   `scpipe.py` e `04_splits.py`.
 - `envs/conda-lock.yml` rigenerato (requests e threadpoolctl fissati; percorso relativo).
 
+## Giro 2 (incrementale, `git diff 52ace44 HEAD`, un revisore)
+
+Esito: 0 ALTA, 4 MEDIA, 16 BASSA; pytest veloce 100 passati, ruff pulito; README contro tabelle:
+~230 numeri, nessuna discrepanza. Rapporto: `revisione/log/giro2_revisore.md`.
+- MEDIA 1: `permutation_corr_test` e `block_permutation_test` davano un p minimo spurio con
+  un input costante (rho NaN): ora restituiscono NaN con un avviso; 18 gestisce rho NaN;
+  nuovo test `test_permutation_tests_constant_input_are_nan`. Per input non costanti il calcolo
+  non cambia: test lenti 6/6 passati (`revisione/log/giro2_pytest_slow.log`).
+- MEDIA 2: README dichiara le colonne con unita' sbagliata tenute per confronto (`lo_naive`,
+  `hi_naive`, `clone_naive_permutation`) e le percentuali per cellula descrittive.
+- MEDIA 3: `RISULTATI_FINALI.md` riporta B4 di 18 (p centrato, semi, 100.000 permutazioni).
+- MEDIA 4: docstring del generatore corretta; pazienti, fold e cellule letti dalle tabelle.
+- BASSA corrette: 6-14, 16-20 (README: fonti di 35 ricampionature e IC clone_ab, tempi
+  "circa 9", test di Spearman, file non versionati; 13: cache controllata nei due sensi;
+  11: docstring BLAS, `--from-table` usa tutti i task della tabella; 10: messaggio sul segno
+  e verdetto solo sugli schemi calibrati; 08 e 10: niente tabelle vecchie se il risultato e'
+  vuoto; sim_c: docstring; generatore: p < 0,001 in notazione esponenziale, esito
+  "arrotondamento" per 0,851 -> 0,850, riga MLP, mediana 0,533 per il vecchio 0,53, nota su
+  NB in LOPO). BASSA 15: commit di ogni file `fin_*` in `revisione/log/11_final/_commit.txt`.
+- Nessuna riesecuzione: le modifiche non cambiano il calcolo sui dati reali (controlli su input
+  degeneri, messaggi, docstring). 08, 10, 13, 18 si rieseguono comunque nella Fase 3.
+- 11: dopo 8058701 cambiano solo docstring e il default di `--tasks` con `--from-table`; il
+  calcolo dei modelli resta quello di 8058701. scpipe: cambiano solo le due funzioni di
+  permutazione (non usate da 11, che importa LogCPM, HVGSelector, macro_f1, nadeau_bengio_ttest).
+
 ## Problemi respinti
 
 - Giro 1, n. 13 (RISULTATI_FINALI.md assente): il file e' un prodotto della Fase 3; la bozza e'
@@ -202,3 +227,7 @@ Esecuzione finale di 11 (codice di 11 = commit 8058701; log in `revisione/log/11
 - Giro 1, n. 39 per 05 (`n_classes` non usato in `make_pipeline`): respinto. Il parametro non
   cambia il calcolo; toglierlo cambierebbe il codice di 05 (17 minuti, 9.7 GB) e
   obbligherebbe a rieseguirlo in Fase 3 senza alcun effetto sui numeri. Corretto in 20.
+- Giro 2, n. 5 (valori della versione precedente nel README: d2 0,790, 0,24, 2 su 100,
+  0,063/0,040): respinto. Le regole della revisione chiedono di riportare il vecchio e il nuovo
+  valore di ogni numero pubblicato che cambia; nel README sono dichiarati come valori della
+  versione precedente, non come risultati.

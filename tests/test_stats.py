@@ -28,8 +28,8 @@ banda si corregge lo stimatore):
 6. Regola della maggioranza, macro-F1 sulle classi presenti, livello espanso:
    proprieta' esatte (nessuna banda).
 7. Test di permutazione di Spearman (`scpipe.permutation_corr_test`, unita' = righe,
-   usato per H1-H4 in 16 e 19 con n = 10 pazienti): sotto H0 (x e y indipendenti,
-   n = 10) frazione di p < 0.05 in [0.02, 0.08]. 400 repliche, 2.000 permutazioni.
+   usato per H1-H4 in 16 e 19 e per le medie per paziente in 17, con n = 10
+   pazienti): sotto H0 (x e y indipendenti, n = 10) frazione di p < 0.05 in [0.02, 0.08]. 400 repliche, 2.000 permutazioni.
 """
 
 from __future__ import annotations
@@ -288,3 +288,15 @@ def test_small_k_diagnostics():
     assert np.isnan(
         scpipe.small_k_diagnostics({"P0": np.array([1.0])})["frac_boot_gt0"]
     )
+
+
+def test_permutation_tests_constant_input_are_nan():
+    # esito costante: rho non definito, nessun p minimo spurio
+    with pytest.warns(UserWarning):
+        rho, p = scpipe.permutation_corr_test(np.arange(10.0), np.zeros(10), n_perm=200)
+    assert np.isnan(rho) and np.isnan(p)
+    with pytest.warns(UserWarning):
+        r = scpipe.block_permutation_test(
+            np.arange(10.0), np.zeros(10), np.repeat(["A", "B"], 5), n_perm=200
+        )
+    assert all(np.isnan(r[k]) for k in ("rho", "p", "null_mean", "p_centered"))

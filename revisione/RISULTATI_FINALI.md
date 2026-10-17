@@ -10,8 +10,9 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | macro-F1 task1a_paired, split casuale | **0,875±0,002** | 0,875±0,002 | uguale | `baseline_summary_sc` |
 | macro-F1 task1a_paired, LOPO | **0,729±0,100** | 0,729±0,100 | uguale | `baseline_summary_sc` |
 | LightGBM task2_v1 (LOPO) | **0,962** | 0,962 | uguale | `model_zoo_summary_sc` |
-| logistica L2 task2_hier3 | **0,851** | **0,850** | cambiato | `model_zoo_summary_sc` |
+| logistica L2 task2_hier3 | **0,851** | **0,850** | arrotondamento (stessa stima, arrotondata male prima) | `model_zoo_summary_sc` |
 | LightGBM task2_hier3 | **0,923** | 0,923 | uguale | `model_zoo_summary_sc` |
+| MLP task2_hier3 (README pubblicato) | **0,903** | **0,904** | cambiato | `model_zoo_summary_sc` |
 | RF vs LightGBM task2_v1: p Wilcoxon / p Nadeau-Bengio | **p 0,002/0,074** | p 0,002/0,074 | uguale | `model_comparison_task2_v1` |
 | dummy task1a_paired: Δ dal migliore / p Nadeau-Bengio | **0,229/0,072** | 0,229/0,072 | uguale | `model_comparison_task1a_paired` |
 | selezione feature, k casuali k = 50, task2_v1 | **0,361** | **0,367** | cambiato | `feature_selection_summary_task2_v1` |
@@ -40,10 +41,10 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | duttali adiacenti predette maligne | **31,7%** | **37,1%** | cambiato | `external_test_summary` |
 | AUC pooled score CNV medio | **0,492** | 0,492 | uguale | `cnv_loci_auc` |
 | AUC pooled loci PDAC | **0,682** | 0,682 | uguale | `cnv_loci_auc` |
-| AUC loci PDAC entro paziente (media) | **0,53** | **0,540** | cambiato | `cnv_loci_auc_by_patient` |
+| AUC loci PDAC entro paziente (mediana / media dei 4 pazienti) | **0,53** | **0,533 / 0,540** | uguale (il valore precedente era la mediana) | `cnv_loci_auc_by_patient` |
 | sim (b): errore PBMC stimato da LOCO con artefatto (moderato / forte) | **0,24** | **0,126 / 0,385** | cambiato | `sim_b_reference_schemes` |
 
-Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato); i p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 4 pazienti (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
+Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato, la mediana dei pazienti valutabili); i p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
 
 ## Dataset
 
@@ -67,7 +68,7 @@ Fonte: `task_summary_sc`.
 | :--- | :--- | :--- | :--- | :--- |
 | task1a_all | 0,682 | 0,878 | -0,196 | 86,0 |
 | task1a_paired | 0,729 | 0,875 | -0,146 | 50,3 |
-| task2_hier1 | 0,999 | 0,999 | -0,000 | 2,9 |
+| task2_hier1 | 0,999 | 0,999 | -0,0002 | 2,9 |
 | task2_hier3 | 0,866 | 0,885 | -0,019 | 13,9 |
 | task2_v1 | 0,954 | 0,964 | -0,009 | 12,8 |
 | task2_v2 | 0,951 | 0,961 | -0,010 | 19,1 |
@@ -134,7 +135,7 @@ Fonte: `baseline_gap_sc` (per paziente = LOPO per task1a_paired, 5 fold per pazi
 - task2_hier3: migliore macro-F1 0,923; 12 modelli su 12 con p di Nadeau-Bengio < 0,05 rispetto al migliore (`model_comparison_task2_hier3`).
 - task1a_paired: migliore macro-F1 0,725; 0 modelli su 12 con p di Nadeau-Bengio < 0,05 rispetto al migliore (`model_comparison_task1a_paired`).
 
-Con 5-13 fold la potenza e' bassa: un p non significativo non dimostra l'equivalenza.
+Con 5-13 fold la potenza e' bassa: un p non significativo non dimostra l'equivalenza. La calibrazione di Nadeau-Bengio e' verificata in `sim_a` con 5 fold stratificati di uguale dimensione, non con fold LOPO di dimensione diversa.
 
 ## Selezione delle feature (12)
 
@@ -178,7 +179,7 @@ Jaccard medio fra i top-50 dei 5 fold LOPO 0,300 (0,220-0,408 fra coppie, `xai_j
 
 ## Validazione clonale con il TCR
 
-- Rumore di base (stesso clone, stesso compartimento): 0,107; discordanza fra compartimenti 0,166; eccesso +0,059 IC [+0,031; +0,110] (11 pazienti, 1114 coppie; `excess_summary_clone_b`).
+- Rumore di base (stesso clone, stesso compartimento): 0,107; discordanza fra compartimenti 0,166; eccesso +0,059 IC [+0,031; +0,110] (11 pazienti, 1.114 coppie; `excess_summary_clone_b`).
 - Sensibilita' (B3): pesi uguali +0,074 IC [+0,050; +0,119]; clone TRA+TRB +0,065 IC [+0,035; +0,121] (`excess_summary_clone_ab`); split-half di 06 +0,057 IC [+0,017; +0,127] (14 pazienti; `clone_switching_summary_clone_b`).
 
 **Tasso d'errore per compartimento e schema di riferimento** (`error_rate_schemes`)
@@ -264,11 +265,11 @@ Fonte: `doublet_mixture` (B5: medie e strati per compartimento). d1 e d2 non son
 | Esito | Livello | n | ρ | p | media nulla | p centrato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | error | patient_means | 10 | 0,467 | 0,176 |  |  |
-| error | clone_block_permutation | 287 | 0,177 | 0,0009 | 0,0118 | 0,0015 |
+| error | clone_block_permutation | 287 | 0,177 | 9,0e-04 | 0,0118 | 0,0015 |
 | error | clone_naive_permutation | 287 | 0,177 | 0,0030 |  |  |
 | excess | patient_means | 10 | 0,321 | 0,368 |  |  |
-| excess | clone_block_permutation | 287 | 0,281 | 0,0000 | 0,0265 | 0,0000 |
-| excess | clone_naive_permutation | 287 | 0,281 | 0,0000 |  |  |
+| excess | clone_block_permutation | 287 | 0,281 | 5,0e-05 | 0,0265 | 5,0e-05 |
+| excess | clone_naive_permutation | 287 | 0,281 | 5,0e-05 |  |  |
 
 Fonte: `clonal_expansion_tests`.
 
@@ -276,16 +277,18 @@ Fonte: `clonal_expansion_tests`.
 
 | Esito | Seme | Permutazioni | p | media nulla | p centrato |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| error | 0 | 20.000 | 0,0009 | 0,0118 | 0,0015 |
+| error | 0 | 20.000 | 9,0e-04 | 0,0118 | 0,0015 |
 | error | 1 | 20.000 | 0,0013 | 0,0110 | 0,0022 |
 | error | 2 | 20.000 | 0,0014 | 0,0116 | 0,0020 |
 | error | 3 | 20.000 | 0,0018 | 0,0117 | 0,0028 |
 | error | 4 | 20.000 | 0,0014 | 0,0119 | 0,0026 |
 | error | 0 | 100.000 | 0,0017 | 0,0115 | 0,0026 |
 
-- Leave-one-patient-out, errore: p < 0,05 in 10/10 casi, ρ fra 0,146 e 0,197 (`loyo_clonal_expansion_error`).
+- Leave-one-patient-out, errore: p < 0,05 in 10/10 casi, ρ fra 0,146 e 0,197; p centrato < 0,05 in 10/10 (massimo 0,016) (`loyo_clonal_expansion_error`).
 
-- Leave-one-patient-out, eccesso: p < 0,05 in 10/10 casi, ρ fra 0,236 e 0,368 (`loyo_clonal_expansion_excess`).
+- Leave-one-patient-out, eccesso: p < 0,05 in 10/10 casi, ρ fra 0,236 e 0,368; p centrato < 0,05 in 10/10 (massimo 9,0e-04) (`loyo_clonal_expansion_excess`).
+- Leave-one-patient-out, errore, 20.000 permutazioni (5 semi): p fra 9,0e-04 e 0,012, p centrato fino a 0,017 (`loyo_clonal_expansion_perm_sensitivity`).
+- Leave-one-patient-out, errore, 100.000 permutazioni (1 semi): p fra 0,0011 e 0,011, p centrato fino a 0,016 (`loyo_clonal_expansion_perm_sensitivity`).
 
 ### Quattro ipotesi per paziente (16, 19)
 
@@ -345,8 +348,8 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 | H0 | loco | PBMC | 0,095 | 0,091 | +0,003 |
 | H0 | loco | Tumor | 0,097 | 0,093 | +0,004 |
 | H0 | naive | Adjacent_normal | 0,096 | 0,096 | +0,000 |
-| H0 | naive | PBMC | 0,091 | 0,091 | +0,000 |
-| H0 | naive | Tumor | 0,092 | 0,092 | +0,000 |
+| H0 | naive | PBMC | 0,091 | 0,091 | +0,0002 |
+| H0 | naive | Tumor | 0,092 | 0,092 | +0,0002 |
 | artifact_moderate | blood | Adjacent_normal | 0,098 | 0,093 | +0,005 |
 | artifact_moderate | blood | Tumor | 0,102 | 0,096 | +0,006 |
 | artifact_moderate | loco | Adjacent_normal | 0,091 | 0,091 | +0,000 |
@@ -361,8 +364,8 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 | artifact_strong | loco | PBMC | 0,385 | 0,092 | +0,293 |
 | artifact_strong | loco | Tumor | 0,094 | 0,089 | +0,005 |
 | artifact_strong | naive | Adjacent_normal | 0,089 | 0,089 | +0,000 |
-| artifact_strong | naive | PBMC | 0,094 | 0,093 | +0,000 |
-| artifact_strong | naive | Tumor | 0,091 | 0,091 | +0,000 |
+| artifact_strong | naive | PBMC | 0,094 | 0,093 | +0,0003 |
+| artifact_strong | naive | Tumor | 0,091 | 0,091 | +0,0000 |
 
 **(c) Block permutation sotto H0 con confondente di paziente** (`sim_c_block_permutation`)
 

@@ -190,6 +190,9 @@ def part1(lym: pd.DataFrame) -> None:
         print(
             "Nessun clone in tutti e tre i compartimenti. Confronto appaiato impossibile."
         )
+        # niente tabelle di un'esecuzione precedente in results/
+        for name in ("triple_clones.csv", "triple_clones_summary.csv"):
+            (TAB / name).unlink(missing_ok=True)
         return
     tri.to_csv(TAB / "triple_clones.csv", index=False)
 
@@ -463,6 +466,7 @@ def part3(gex: pd.DataFrame) -> None:
     out = pd.DataFrame(rows)
     if out.empty:
         print("nessuna classe con almeno 20 cellule TCR+ e 20 TCR-: (3) non eseguito.")
+        (TAB / "doublet_tcr_pos_vs_neg.csv").unlink(missing_ok=True)
         return
     print("(medie per cellula, descrittive; ultime colonne: pazienti concordi)")
     print(out.round(4).to_string(index=False))

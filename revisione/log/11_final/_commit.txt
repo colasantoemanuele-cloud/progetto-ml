@@ -1,1 +1,14 @@
-8058701
+Codice che ha prodotto ciascun file model_zoo_fin_* (righe usate nell'unione):
+- fin_v1_lightgbm  (lightgbm, task2_v1)                          52ace44
+- fin_rest         (dummy, naive_bayes, decision_tree, bagging,
+                    random_forest sui 3 task; le altre righe sono
+                    sostituite da fin_conv / fin_dense)             52ace44
+- fin_lgbm_rest    (lightgbm, task2_hier3 e task1a_paired)        52ace44 + modifiche del giro 1 non
+                                                                   ancora committate (= 8058701 per 11)
+- fin_conv         (logreg_l2, logreg_l1, elasticnet, svm_linear,
+                    mlp: righe di mlp sostituite da fin_dense)     8058701 senza il limite BLAS
+- fin_dense        (knn, svm_rbf, mlp, BLAS a un thread)           8058701
+Fra 52ace44 e 8058701 il calcolo dei modelli in fin_rest / fin_v1_lightgbm non cambia
+(modifiche: filtro dei warning, registrazione della convergenza, controlli sugli input);
+la colonna `converged` e' vuota per questi modelli, che non hanno un solutore iterativo.
+Riferimento per la Fase 3: 8058701.

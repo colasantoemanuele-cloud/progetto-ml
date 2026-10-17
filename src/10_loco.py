@@ -539,6 +539,12 @@ def mixture(gex: pd.DataFrame) -> None:
                 )
     out = pd.DataFrame(rows)
     out.to_csv(TAB / "doublet_mixture.csv", index=False)
+    has_pooled = (
+        len(out) > 0 and ((out.statistic == "median") & (out.stratum == "all")).any()
+    )
+    if not has_pooled:
+        # nessuna stima pooled: niente repliche di un'esecuzione precedente in results/
+        (TAB / "doublet_mixture_boot.csv").unlink(missing_ok=True)
     if out.empty:
         print("  nessuno strato con abbastanza cellule: d1 e d2 non stimati.")
         return
@@ -712,17 +718,21 @@ def main() -> None:
         print(f"Tutti i contrasti hanno <= {SMALL_K} pazienti: l'IC non e' calibrato")
         print("(copertura sotto il 95% in simulazione), quindi nessun verdetto; vedi")
         print("n_distinct_resamples e frac_boot_gt0 in error_rate_paired_diff.csv.")
-        sign = "positiva" if (ta["diff"] > 0).all() else "di segno non costante"
-        print(f"La stima puntuale e' {sign} in tutti gli schemi.")
-    elif (ta.lo > 0).all():
-        print(
-            "La differenza Tumor - Adjacent_normal resta positiva in tutti gli schemi."
-        )
+        if (ta["diff"] > 0).all():
+            print("La stima puntuale e' positiva in tutti gli schemi.")
+        else:
+            print("La stima puntuale non ha lo stesso segno in tutti gli schemi.")
     else:
-        print(
-            "La differenza Tumor - Adjacent_normal non e' positiva con IC che esclude 0"
-        )
-        print("in tutti gli schemi: l'asimmetria dipende dallo schema di riferimento.")
+        # verdetto solo sugli schemi con IC calibrato (piu' di SMALL_K pazienti)
+        cal = ta[ta.n_patients > SMALL_K]
+        print(f"Schemi con piu' di {SMALL_K} pazienti: {', '.join(cal.scheme)}.")
+        if (cal.lo > 0).all():
+            print(
+                "In questi schemi la differenza Tumor - Adjacent_normal ha IC sopra 0."
+            )
+        else:
+            print("In almeno uno di questi schemi l'IC della differenza include 0:")
+            print("l'asimmetria dipende dallo schema di riferimento.")
     print("=" * 78)
 
 

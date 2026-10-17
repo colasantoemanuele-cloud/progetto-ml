@@ -50,6 +50,8 @@ Uso
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -279,12 +281,18 @@ def permutation_corr_test(
 
     Le permutazioni sono `n_perm` estrazioni casuali (non l'enumerazione di tutte
     le n! permutazioni: il test non e' esatto). p con la correzione +1 di
-    Phipson & Smyth (2010). Restituisce (rho, p).
+    Phipson & Smyth (2010). Restituisce (rho, p). Se x o y e' costante rho non e'
+    definito: restituisce (NaN, NaN) con un avviso, invece di un p minimo spurio.
     """
     rng = np.random.default_rng(seed)
     n = len(x)
     rx = pd.Series(x).rank().values
     ry = pd.Series(y).rank().values
+    if np.ptp(rx) == 0 or np.ptp(ry) == 0:
+        warnings.warn(
+            "permutation_corr_test: x o y costante, rho non definito", stacklevel=2
+        )
+        return np.nan, np.nan
     rho_obs = float(np.corrcoef(rx, ry)[0, 1])
     perm_idx = np.argsort(rng.random((n_perm, n)), axis=1)
     rhos = _corr_rows(rx, ry[perm_idx])
@@ -311,6 +319,7 @@ def block_permutation_test(
       - p_centered : p bilaterale |rho_perm - null_mean| >= |rho - null_mean|.
     Entrambi i p sono Monte Carlo con correzione +1 (Phipson & Smyth).
     Calibrazione del p non centrato in `tests/test_stats.py`.
+    Se x o y e' costante rho non e' definito: tutti i valori sono NaN, con un avviso.
     """
     rng = np.random.default_rng(seed)
     # Ordinamento stabile per paziente: ogni blocco occupa un intervallo contiguo
@@ -318,6 +327,11 @@ def block_permutation_test(
     x_s, g_s = x[order], group[order]
     ry_s = pd.Series(y[order]).rank().values
     rx_s = pd.Series(x_s).rank().values
+    if np.ptp(rx_s) == 0 or np.ptp(ry_s) == 0:
+        warnings.warn(
+            "block_permutation_test: x o y costante, rho non definito", stacklevel=2
+        )
+        return {"rho": np.nan, "p": np.nan, "null_mean": np.nan, "p_centered": np.nan}
     rho_obs = float(np.corrcoef(rx_s, ry_s)[0, 1])
 
     n = len(x_s)

@@ -33,7 +33,8 @@ Scelte del disegno:
 Il macro-F1 di ogni fold e' calcolato sulle sole classi presenti nel fold di test.
 Se un modello fallisce in un fold, tutti i suoi fold vengono scartati.
 Riproducibilita': `knn`, `svm_rbf` e `mlp` (proiezione densa) sono addestrati con BLAS a
-un solo thread: con piu' thread l'MLP cambia risultato secondo il numero di thread.
+un solo thread: con piu' thread TruncatedSVD e l'MLP cambiano risultato secondo il numero di
+thread (l'MLP fino a 0,014 di macro-F1 per fold, knn e svm_rbf meno di 0,001).
 Convergenza: per i modelli con solutore iterativo (logreg_l2, logreg_l1, elasticnet,
 svm_linear, mlp) ogni fold registra se l'addestramento ha emesso un
 `ConvergenceWarning` (colonna `converged`; vuota per gli altri modelli).
@@ -53,7 +54,7 @@ Output
 
 Argomenti
 ---------
-  --h5ad, --splits (obbligatori), --tasks (default task2_hier3 task2_v1),
+  --h5ad, --splits (obbligatori), --tasks (default task2_hier3 task2_v1; con --from-table tutti i task della tabella),
   --models (default tutti), --max-train (default 20000; 0 = tutte le cellule),
   --scheme (forza fold_group_5 / fold_random_5 / fold_lopo), --tag (default sc),
   --update (sostituisce nella tabella esistente solo i modelli e i task rieseguiti),
@@ -393,7 +394,12 @@ def main() -> None:
     )
     ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument("--splits", type=Path, required=True)
-    ap.add_argument("--tasks", nargs="*", default=["task2_hier3", "task2_v1"])
+    ap.add_argument(
+        "--tasks",
+        nargs="*",
+        default=None,
+        help="default task2_hier3 task2_v1; con --from-table tutti i task della tabella",
+    )
     ap.add_argument("--models", nargs="*", default=list(_models()))
     ap.add_argument("--max-train", type=int, default=20000, help="0 = tutte le cellule")
     ap.add_argument(
@@ -424,8 +430,15 @@ def main() -> None:
         if not out.exists():
             raise SystemExit(f"[ERRORE] --from-table: {out} assente")
         res = pd.read_csv(out)
+        if args.tasks is None:
+            args.tasks = list(dict.fromkeys(res.task))
+        missing = [t for t in args.tasks if t not in set(res.task)]
+        if missing:
+            print(f"[!!] --from-table: task assenti da {out}: {missing} (saltati)")
         args.tasks = [t for t in args.tasks if t in set(res.task)]
     else:
+        if args.tasks is None:
+            args.tasks = ["task2_hier3", "task2_v1"]
         print("[..] carico h5ad ...")
         adata = ad.read_h5ad(args.h5ad)
         adata.X = sp.csr_matrix(adata.X)

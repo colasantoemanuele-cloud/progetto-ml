@@ -1,8 +1,8 @@
 # Stato della revisione
 
-**Giro 1** (revisione completa), chiuso il 18/10 alle 01:35 (commit 8058701): 1 ALTA, 18 MEDIA, 29 BASSA; tutti corretti salvo 4 motivati in `REGISTRO.md` ("Problemi respinti"). Resta: giro 2 incrementale (un revisore sul `git diff`), poi il giro di chiusura con 4 revisori in parallelo e i test lenti.
+**Giro 1** (completo, 01:35, 8058701): 1 ALTA, 18 MEDIA, 29 BASSA. **Giro 2** (incrementale, 02:10): 0 ALTA, 4 MEDIA, 16 BASSA; corretti tutti salvo 1 BASSA motivata. Resta: giro 3 incrementale; se pulito, verifiche della Fase 3 e giro di chiusura con 4 revisori in parallelo e test lenti.
 
-**Test e stile.** `pytest -m "not slow"`: 100 passati; test lenti: 6/6 passati in Fase 1 (si ripetono al giro di chiusura). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
+**Test e stile.** `pytest -m "not slow"`: 101 passati; test lenti: 6/6 passati (giro 2). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
 
 **Numeri della presentazione cambiati** (tabella completa in `RISULTATI_FINALI.md`):
 

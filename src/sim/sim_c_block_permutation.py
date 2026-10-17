@@ -14,8 +14,9 @@ media della distribuzione nulla e, per confronto, la permutazione che ignora i
 pazienti. Frazione di p < 0.05 = tasso di falsi positivi.
 Forza del confondente c in {0, 0.5, 1, 2}; 1.000 repliche per livello, 2.000 permutazioni
 per replica; intervallo binomiale esatto (Clopper-Pearson) al 95% per ogni tasso. Le prime
-100 repliche di ogni livello sono quelle del disegno da 100 repliche citato nella
-presentazione (stesso seme): il loro conteggio e' riportato a parte.
+100 repliche di ogni livello sono quelle della versione precedente di questo script
+(100 repliche, semi 300 + i), riportate a parte; il dato "2 su 100" citato nella
+presentazione non e' riprodotto.
 
 Input
 -----
