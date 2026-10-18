@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/06_clonotype_consistency.py --h5ad data/interim/sc_raw.h5ad --filelist data/raw/metadata/filelist.txt --outdir data/raw/tcr --skip-download"
-	User time (seconds): 45.49
-	System time (seconds): 0.44
-	Percent of CPU this job got: 100%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:45.53
+	User time (seconds): 40.87
+	System time (seconds): 0.33
+	Percent of CPU this job got: 101%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:40.66
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 500016
+	Maximum resident set size (kbytes): 500384
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 1
-	Minor (reclaiming a frame) page faults: 224907
-	Voluntary context switches: 37
-	Involuntary context switches: 445
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 229439
+	Voluntary context switches: 35
+	Involuntary context switches: 338
 	Swaps: 0
 	File system inputs: 8
 	File system outputs: 7048

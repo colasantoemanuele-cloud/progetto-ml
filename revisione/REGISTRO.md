@@ -15,8 +15,8 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37 (04ebed5); giro 6: 2/4/22 (b696162); giro 7 (nuove regole: solo dataset reale): 2/4/15; prossimo: giro 8 (ultimo) | - |
-| 3 Esecuzione finale | eseguita al commit 61fb36b (tutti rc = 0); RISULTATI_FINALI.md generato; manca il giro di chiusura | (commit Fase 3) |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37 (04ebed5); giro 6: 2/4/22 (b696162); giro 7: 2/4/15 (cb2b492); giro 8 (ultimo): 1 ALTA, 2 MEDIA unici, corretti; loop chiuso | - |
+| 3 Esecuzione finale | eseguita al commit 61fb36b e ripetuta per gli script toccati nei giri 4-8 (tutti rc = 0); RISULTATI_FINALI.md generato | (commit finale) |
 
 ## Note iniziali
 
@@ -355,6 +355,23 @@ deciso le correzioni e aperto il giro 8 come ultimo.
 - BASSA corrette; nuovi limiti noti (TISSUE_MAP, top-50 di 20) in `revisione/limiti_noti.md`.
 - Riesecuzioni: 05 (solo legenda; tabelle identiche), 06-10, 21, 15-19, simulazioni, 20, 13 e 14
   senza cache; tutti rc = 0.
+
+## Giro 8 (ultimo, 4 revisori, regole dell'utente: correzioni del giro 7, numeri, biologia)
+
+Esito per area: (a) 0/0/2 nella sua area + 1 ALTA e 2 MEDIA nel README; (b) 1/1/9; (c) 0/2/5;
+(d) 1/3/6. Problemi unici ALTA/MEDIA: 1 ALTA (tabella delle fonti del README e §6 con i numeri di
+prima del giro 7, compreso il confronto p 0,0030/0,0009 diventato 0,00045/0,0004), 2 MEDIA (§7
+del README sulle finestre interpolate; `sim_b` con stima ed errore vero su unita' diverse). Tutti
+corretti; `sim_b` rieseguito: sotto H0 scarto entro 0,005, LOCO 0,119 e 0,383 (vero 0,086),
+blood/naive entro 0,008. BASSA corrette: 06, 10 (riga dei pareggi, pazienti dei cloni NK), 13, 14,
+18, 20 (firma di dissociazione separata dai geni di attivazione T), generatore, README (§5, test,
+numeri di riga dei limiti). Non corretti: `revisione/non_risolti.md` (sensibilita' dei pareggi nei
+consumatori; radice `progetto-ml/`) e nuovi limiti noti (contig a pari UMI). Verifiche biologiche
+superate dai revisori (identita' clonale con eccezioni, marcatori, riferimento CNV, loci e
+direzioni, malignita' come ipotesi, NK/doppietti, geni di dissociazione, 4 pazienti, H1-H4).
+Riesecuzioni: ramo TCR, simulazioni, 20, 13, 14, 00-04 e 11 --from-table; tutti rc = 0; l'h5ad
+ricostruito e' identico. pytest completo 114 passati; ruff pulito. Loop chiuso (regola
+dell'utente: dopo il giro 8 si chiude in ogni caso).
 
 ## Problemi respinti
 

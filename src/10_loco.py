@@ -657,10 +657,13 @@ def decompose_tumor_error(j: pd.DataFrame) -> pd.DataFrame:
     rows.append(
         {
             "category": "ties_excluded",
-            "n_errors": 0,
+            # errore non definito per le unita' in pareggio
+            "n_errors": np.nan,
             "rate_over_all_clones": np.nan,
             "n_clones": len(t_all) - n,
-            "n_patients": t_all.patient.nunique(),
+            "n_patients": t_all[
+                t_all.tie.astype(bool) if "tie" in t_all else t_all.index.isin([])
+            ].patient.nunique(),
         }
     )
     # Tasso escludendo i cloni etichettati NK, con IC sui pazienti
@@ -721,7 +724,8 @@ def mixture_error_nk(gex: pd.DataFrame, jblood: pd.DataFrame) -> pd.DataFrame:
     """d1 e d2 per le cellule NK-TCR+ dei cloni del Tumor contati come errore (schema blood).
 
     Le NK-TCR- e le CD8T-TCR+ di riferimento sono quelle del Tumor; IC con bootstrap
-    sui pazienti come in `mixture`.
+    sui pazienti come in `mixture`. I cloni NK in errore vengono da pochi pazienti
+    (`n_patients_with_error_nk`): l'IC non e' calibrato.
     """
     err = jblood[
         (jblood.tissue == "Tumor") & (jblood.lab == "NK") & (jblood.error == 1)
@@ -745,7 +749,10 @@ def mixture_error_nk(gex: pd.DataFrame, jblood: pd.DataFrame) -> pd.DataFrame:
                 "statistic": stat,
                 "n_nk_tcr_pos_cells": int((nk_pos & in_err).sum()),
                 "n_clones": len(key),
+                # pazienti ricampionati (tutto il Tumor) e pazienti con cloni NK in errore
                 "n_patients": k,
+                "n_patients_with_error_nk": err.patient.nunique(),
+                "ic_calibrato": False,
                 "d1": d1,
                 "d1_lo": lo1,
                 "d1_hi": hi1,

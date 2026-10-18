@@ -1,25 +1,25 @@
-        condition scheme          tissue  est_error  est_error_max  true_error  reps  mean_n   bias
-               H0  blood Adjacent_normal      0.092          0.170       0.101    30  53.567 -0.008
-               H0  blood           Tumor      0.089          0.122       0.095    30 363.133 -0.006
-               H0   loco Adjacent_normal      0.084          0.167       0.096    30  54.800 -0.012
-               H0   loco            PBMC      0.087          0.124       0.094    30 363.267 -0.007
-               H0   loco           Tumor      0.088          0.122       0.095    30 363.867 -0.007
-               H0  naive Adjacent_normal      0.087          0.160       0.098    30  55.633 -0.012
-               H0  naive            PBMC      0.084          0.120       0.094    30 374.133 -0.010
-               H0  naive           Tumor      0.084          0.113       0.095    30 374.133 -0.011
-artifact_moderate  blood Adjacent_normal      0.090          0.184       0.098    30  53.033 -0.008
-artifact_moderate  blood           Tumor      0.093          0.123       0.099    30 363.100 -0.006
-artifact_moderate   loco Adjacent_normal      0.084          0.196       0.097    30  56.033 -0.013
-artifact_moderate   loco            PBMC      0.119          0.150       0.096    30 318.633  0.023
-artifact_moderate   loco           Tumor      0.093          0.123       0.100    30 364.933 -0.006
-artifact_moderate  naive Adjacent_normal      0.083          0.191       0.096    30  56.867 -0.013
-artifact_moderate  naive            PBMC      0.084          0.117       0.095    30 378.067 -0.011
-artifact_moderate  naive           Tumor      0.087          0.119       0.099    30 378.067 -0.012
-  artifact_strong  blood Adjacent_normal      0.085          0.179       0.092    30  54.633 -0.007
-  artifact_strong  blood           Tumor      0.086          0.121       0.093    30 362.133 -0.006
-  artifact_strong   loco Adjacent_normal      0.084          0.196       0.093    30  50.667 -0.009
-  artifact_strong   loco            PBMC      0.383          0.439       0.095    30 336.900  0.288
-  artifact_strong   loco           Tumor      0.085          0.120       0.092    30 364.133 -0.007
-  artifact_strong  naive Adjacent_normal      0.080          0.175       0.094    30  59.267 -0.013
-  artifact_strong  naive            PBMC      0.086          0.118       0.097    30 342.300 -0.011
-  artifact_strong  naive           Tumor      0.084          0.110       0.094    30 342.300 -0.011
+        condition scheme          tissue  est_error  est_error_max  true_error  reps  mean_n  mean_ties  bias
+               H0  blood Adjacent_normal      0.092          0.170       0.088    30  52.833      5.233 0.004
+               H0  blood           Tumor      0.089          0.122       0.084    30 358.633      5.233 0.005
+               H0   loco Adjacent_normal      0.084          0.167       0.084    30  54.067      9.367 0.000
+               H0   loco            PBMC      0.087          0.124       0.084    30 359.133      9.367 0.003
+               H0   loco           Tumor      0.088          0.122       0.084    30 359.367      9.367 0.004
+               H0  naive Adjacent_normal      0.087          0.160       0.087    30  54.900      9.567 0.000
+               H0  naive            PBMC      0.084          0.120       0.084    30 369.933      9.567 0.000
+               H0  naive           Tumor      0.084          0.113       0.084    30 369.500      9.567 0.000
+artifact_moderate  blood Adjacent_normal      0.090          0.184       0.085    30  52.300      5.433 0.005
+artifact_moderate  blood           Tumor      0.093          0.123       0.088    30 358.400      5.433 0.006
+artifact_moderate   loco Adjacent_normal      0.084          0.196       0.084    30  55.267      9.200 0.000
+artifact_moderate   loco            PBMC      0.119          0.150       0.086    30 314.900      9.200 0.034
+artifact_moderate   loco           Tumor      0.093          0.123       0.088    30 360.233      9.200 0.005
+artifact_moderate  naive Adjacent_normal      0.083          0.191       0.083    30  56.100     10.133 0.000
+artifact_moderate  naive            PBMC      0.084          0.117       0.084    30 373.500     10.133 0.000
+artifact_moderate  naive           Tumor      0.087          0.119       0.087    30 373.267     10.133 0.000
+  artifact_strong  blood Adjacent_normal      0.085          0.179       0.078    30  53.733      5.600 0.007
+  artifact_strong  blood           Tumor      0.086          0.121       0.081    30 357.433      5.600 0.006
+  artifact_strong   loco Adjacent_normal      0.084          0.196       0.083    30  50.067      8.833 0.001
+  artifact_strong   loco            PBMC      0.383          0.439       0.086    30 333.367      8.833 0.297
+  artifact_strong   loco           Tumor      0.085          0.120       0.080    30 359.433      8.833 0.005
+  artifact_strong  naive Adjacent_normal      0.080          0.175       0.080    30  58.367      9.100 0.000
+  artifact_strong  naive            PBMC      0.086          0.118       0.085    30 338.067      9.100 0.000
+  artifact_strong  naive           Tumor      0.084          0.110       0.084    30 338.333      9.100 0.000

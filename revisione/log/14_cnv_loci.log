@@ -1,10 +1,5 @@
 [..] carico h5ad ...
-[..] coordinate dei geni (Ensembl 116) ...
-[ok] 14 geni su cromosomi non standard (MT, contig) esclusi
-[ok] posizioni per 19,579/30,543 geni
-[..] infercnv, riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] di tutti i pazienti (lento) ...
-[ok] soglia del rumore globale: 0.0534 (1,5 x sd di tutta X_cnv)
-[ok] X_cnv (101219, 1672) in 42s
+[ok] X_cnv da cache data/interim/cnv_matrix.npz
 
 controllo delle finestre dei loci (intervallo della finestra sovrapposto al locus):
   CDKN2A_9p21: CDKN2A a chr9:21.97-22.00 Mb in 10 finestre, tutte attribuite al locus: True (finestre del locus: 10)

@@ -770,9 +770,12 @@ def main() -> None:
             f"predette maligne: {pred.mean():.1%} | non maligne: {1 - pred.mean():.1%}"
         )
         print(
-            "La frazione predetta maligna misura quanto il classificatore separa le duttali"
+            "La frazione predetta maligna misura quante duttali adiacenti hanno il profilo"
         )
-        print("tumorali dalle duttali peri-tumorali; non e' un tasso di falsi positivi")
+        print(
+            "trascrizionale delle duttali tumorali etichettate maligne da inferCNV; non e' un"
+        )
+        print("tasso di falsi positivi")
         print("rispetto a una verita' indipendente (vedi docstring, punto 3).")
         pd.DataFrame({"pred": pred}, index=ext.obs_names).to_csv(
             TAB / "external_test_predictions.csv"

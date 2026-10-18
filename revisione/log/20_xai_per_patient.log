@@ -39,7 +39,8 @@ Spearman fra i vettori di coefficienti: media 0.234
 geni nell'unione delle 5 spiegazioni : 124
 geni presenti in tutte le 5       : 9 (18% di top-50)
   -> BTG2, CD69, CREM, CTRB1, DUSP4, FOS, GAPDH, HSPH1, VIM
-  geni di risposta immediata, associati allo stress di dissociazione: BTG2, CD69, CREM, DUSP4, FOS, HSPH1
+  firma dello stress da dissociazione: BTG2, FOS, HSPH1
+  risposta immediata che marca anche attivazione o residenza tissutale delle T: CD69, CREM, DUSP4
   marcatori acinari (probabile RNA ambientale): CTRB1
 
 geni presenti solo nella spiegazione addestrata senza quel paziente:

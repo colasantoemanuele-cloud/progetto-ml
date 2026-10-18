@@ -1,7 +1,8 @@
 """Test delle formule di `src/scpipe.py`.
 
 Famiglia "Formule": confronto con calcoli a mano su esempi piccoli.
-Nessuna banda statistica: i confronti sono esatti (tolleranza numerica 1e-9).
+Nessuna banda statistica: confronti con tolleranze numeriche fra 1e-9 e 1e-4
+(arrotondamento float32).
 """
 
 from __future__ import annotations

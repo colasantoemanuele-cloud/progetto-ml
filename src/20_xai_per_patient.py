@@ -97,25 +97,12 @@ TOP_K = 50  # Cardinalita' del sottoinsieme di geni principali per la metrica di
 N_CONTROL = (
     5  # Numero di repliche casuali per il controllo privo di struttura di gruppo
 )
-# Geni di risposta immediata (stress di dissociazione) e marcatori acinari, per il commento
-# sui geni comuni a tutti i fold
-IMMEDIATE_EARLY = {
-    "FOS",
-    "FOSB",
-    "JUN",
-    "JUNB",
-    "EGR1",
-    "CD69",
-    "BTG2",
-    "DUSP1",
-    "DUSP4",
-    "CREM",
-    "HSPH1",
-    "HSPA1A",
-    "HSPA1B",
-    "IER2",
-    "NR4A1",
-}
+# Firma dello stress da dissociazione (geni precoci e da shock termico), geni di risposta
+# immediata che marcano anche attivazione o residenza tissutale delle T, e marcatori acinari,
+# per il commento sui geni comuni a tutti i fold
+DISSOCIATION = {"FOS", "FOSB", "JUN", "JUNB", "EGR1", "BTG2", "DUSP1", "IER2", "NR4A1",
+                "HSPA1A", "HSPA1B", "HSPH1"}  # fmt: skip
+T_ACTIVATION = {"CD69", "DUSP4", "CREM"}
 ACINAR = {"CTRB1", "CTRB2", "PRSS1", "CPA1", "CELA3A", "PNLIP", "CLPS"}
 
 
@@ -309,13 +296,16 @@ def main() -> None:
     ).to_csv(TAB / f"xai_common_genes_{args.task}.csv", index=False)
     if common:
         print(f"  -> {', '.join(sorted(map(str, sym)))}")
-        # geni di risposta immediata (stress di dissociazione) e acinari (RNA ambientale)
-        ieg = sorted(set(sym) & IMMEDIATE_EARLY)
+        # firma di dissociazione, attivazione/residenza delle T, acinari (RNA ambientale)
+        diss = sorted(set(sym) & DISSOCIATION)
+        tact = sorted(set(sym) & T_ACTIVATION)
         acinar = sorted(set(sym) & ACINAR)
-        if ieg:
+        if diss:
+            print(f"  firma dello stress da dissociazione: {', '.join(diss)}")
+        if tact:
             print(
-                f"  geni di risposta immediata, associati allo stress di dissociazione: "
-                f"{', '.join(ieg)}"
+                "  risposta immediata che marca anche attivazione o residenza tissutale "
+                f"delle T: {', '.join(tact)}"
             )
         if acinar:
             print(

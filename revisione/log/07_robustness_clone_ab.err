@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/07_robustness.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr --clone-def clone_ab"
-	User time (seconds): 43.73
-	System time (seconds): 0.77
-	Percent of CPU this job got: 101%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:44.03
+	User time (seconds): 37.52
+	System time (seconds): 0.64
+	Percent of CPU this job got: 102%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:37.23
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 3317684
+	Maximum resident set size (kbytes): 3312484
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 241594
-	Voluntary context switches: 25
-	Involuntary context switches: 424
+	Minor (reclaiming a frame) page faults: 230562
+	Voluntary context switches: 30
+	Involuntary context switches: 365
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 528

@@ -1,21 +1,21 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/02_build_h5ad.py --which sc --outdir data --no-counts-layer"
-	User time (seconds): 106.74
-	System time (seconds): 3.41
+	User time (seconds): 107.64
+	System time (seconds): 3.46
 	Percent of CPU this job got: 100%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:49.19
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:50.14
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 7655848
+	Maximum resident set size (kbytes): 7656524
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 1310109
-	Voluntary context switches: 56
-	Involuntary context switches: 1237
+	Minor (reclaiming a frame) page faults: 1309103
+	Voluntary context switches: 48
+	Involuntary context switches: 1364
 	Swaps: 0
-	File system inputs: 2140200
-	File system outputs: 1654952
+	File system inputs: 2140832
+	File system outputs: 1655048
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

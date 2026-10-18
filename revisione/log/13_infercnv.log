@@ -18,12 +18,8 @@ PA12                    0    230   230
 PA13                    0    678   678
 PA14                    0     19    19
 All                   334   8370  8704
-[..] coordinate dei geni (Ensembl 116) ...
-[ok] 14 geni su cromosomi non standard (MT, contig) esclusi
-[ok] posizioni per 19,579/30,543 geni
-[..] infercnv: riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] (tutti i pazienti)
-[ok] soglia del rumore globale: 0.0534 (1,5 x sd di tutta X_cnv)
-[ok] CNV in 42s
+
+[ok] CNV score da cache data/interim/cnv_scores.csv
 
 ==========================================================================
 ETICHETTA DI MALIGNITA' (soglia per paziente sugli immuni di riferimento)
@@ -77,8 +73,9 @@ DUTTALI DEL TESSUTO ADIACENTE (mai in training; stessa esecuzione inferCNV)
 ==========================================================================
 duttali normali adiacenti: 334
 predette maligne: 37.4% | non maligne: 62.6%
-La frazione predetta maligna misura quanto il classificatore separa le duttali
-tumorali dalle duttali peri-tumorali; non e' un tasso di falsi positivi
+La frazione predetta maligna misura quante duttali adiacenti hanno il profilo
+trascrizionale delle duttali tumorali etichettate maligne da inferCNV; non e' un
+tasso di falsi positivi
 rispetto a una verita' indipendente (vedi docstring, punto 3).
 
 [ok] figura: results/figures/malignancy.png

@@ -46,7 +46,9 @@ Output
                                               est_error (errore stimato medio), est_error_max
                                               (massimo sulle repliche), true_error (errore vero
                                               medio), reps, mean_n (cloni giudicati, media),
-                                              bias (est_error - true_error)
+                                              mean_ties (unita' in pareggio per replica nello
+                                              schema, escluse sia dalla stima sia dall'errore
+                                              vero, come in 10), bias (est_error - true_error)
 
 Argomenti
 ---------
@@ -157,6 +159,11 @@ def run(reps: int) -> pd.DataFrame:
                 if j.empty:
                     continue
                 j = j.merge(truth, on=["patient", "clone", "tissue"], how="left")
+                # le unita' in pareggio non hanno etichetta di maggioranza: escluse sia dalla
+                # stima sia dall'errore vero, cosi' i due sono calcolati sulle stesse unita'
+                n_ties = int(j["tie"].sum()) if "tie" in j else 0
+                if "tie" in j:
+                    j = j[~j["tie"].astype(bool)]
                 # errore vero: etichetta di maggioranza diversa dal lignaggio simulato
                 j["true_error"] = j.lab != j.true_identity
                 for t, g in j.groupby("tissue"):
@@ -169,6 +176,7 @@ def run(reps: int) -> pd.DataFrame:
                             "est_error": g.error.mean(),
                             "true_error": g.true_error.mean(),
                             "n": len(g),
+                            "n_ties": n_ties,
                         }
                     )
     d = pd.DataFrame(rows)
@@ -180,6 +188,7 @@ def run(reps: int) -> pd.DataFrame:
             true_error=("true_error", "mean"),
             reps=("rep", "nunique"),
             mean_n=("n", "mean"),
+            mean_ties=("n_ties", "mean"),
         )
         .reset_index()
     )

@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/sim/sim_d_xai_stability.py"
-	User time (seconds): 15.90
-	System time (seconds): 0.25
-	Percent of CPU this job got: 97%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:16.57
+	User time (seconds): 14.24
+	System time (seconds): 0.21
+	Percent of CPU this job got: 107%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:13.50
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 284824
+	Maximum resident set size (kbytes): 285004
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 53606
-	Voluntary context switches: 21
-	Involuntary context switches: 851
+	Minor (reclaiming a frame) page faults: 53108
+	Voluntary context switches: 20
+	Involuntary context switches: 261
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 24

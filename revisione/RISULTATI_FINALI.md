@@ -218,7 +218,7 @@ Jaccard medio fra i top-50 dei 5 fold LOPO 0,300 (0,220-0,408 fra coppie, `xai_j
 | transition_CD4T_to_CD8T | 32 | 0,116 | 277 |  |
 | transition_CD4T_to_NK | 4 | 0,014 | 277 |  |
 | transition_CD8T_to_NK | 11 | 0,040 | 277 |  |
-| ties_excluded | 0 | ⟦n.d.⟧ | 10 |  |
+| ties_excluded | ⟦n.d.⟧ | ⟦n.d.⟧ | 10 |  |
 | error_rate_excluding_NK_labels | 32 | 0,122 | 262 | [0,049; 0,224] |
 
 **Regola d'identita' CD4/CD8 (B6)** (`error_rate_identity_rules`)
@@ -248,7 +248,7 @@ Marcatori nelle cellule etichettate CD8T del Tumor (`marker_test_disc_vs_conc`):
 
 ### Doppietti fra le NK con TCR (09, 10)
 
-Tassi di TCR produttivo per classe: `tcr_rate_by_celltype` (14 classi).
+Tassi di cellule con catena TRB produttiva per classe: `tcr_rate_by_celltype` (14 classi).
 
 | Statistica | Strato | Pazienti | d1 | IC d1 | d2 | IC d2 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -348,30 +348,30 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
 | Condizione | Schema | Compartimento | Errore stimato | Errore vero | Distorsione |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| H0 | blood | Adjacent_normal | 0,092 | 0,101 | -0,008 |
-| H0 | blood | Tumor | 0,089 | 0,095 | -0,006 |
-| H0 | loco | Adjacent_normal | 0,084 | 0,096 | -0,012 |
-| H0 | loco | PBMC | 0,087 | 0,094 | -0,007 |
-| H0 | loco | Tumor | 0,088 | 0,095 | -0,007 |
-| H0 | naive | Adjacent_normal | 0,087 | 0,098 | -0,012 |
-| H0 | naive | PBMC | 0,084 | 0,094 | -0,010 |
-| H0 | naive | Tumor | 0,084 | 0,095 | -0,011 |
-| artifact_moderate | blood | Adjacent_normal | 0,090 | 0,098 | -0,008 |
-| artifact_moderate | blood | Tumor | 0,093 | 0,099 | -0,006 |
-| artifact_moderate | loco | Adjacent_normal | 0,084 | 0,097 | -0,013 |
-| artifact_moderate | loco | PBMC | 0,119 | 0,096 | +0,023 |
-| artifact_moderate | loco | Tumor | 0,093 | 0,100 | -0,006 |
-| artifact_moderate | naive | Adjacent_normal | 0,083 | 0,096 | -0,013 |
-| artifact_moderate | naive | PBMC | 0,084 | 0,095 | -0,011 |
-| artifact_moderate | naive | Tumor | 0,087 | 0,099 | -0,012 |
-| artifact_strong | blood | Adjacent_normal | 0,085 | 0,092 | -0,007 |
-| artifact_strong | blood | Tumor | 0,086 | 0,093 | -0,006 |
-| artifact_strong | loco | Adjacent_normal | 0,084 | 0,093 | -0,009 |
-| artifact_strong | loco | PBMC | 0,383 | 0,095 | +0,288 |
-| artifact_strong | loco | Tumor | 0,085 | 0,092 | -0,007 |
-| artifact_strong | naive | Adjacent_normal | 0,080 | 0,094 | -0,013 |
-| artifact_strong | naive | PBMC | 0,086 | 0,097 | -0,011 |
-| artifact_strong | naive | Tumor | 0,084 | 0,094 | -0,011 |
+| H0 | blood | Adjacent_normal | 0,092 | 0,088 | +0,004 |
+| H0 | blood | Tumor | 0,089 | 0,084 | +0,005 |
+| H0 | loco | Adjacent_normal | 0,084 | 0,084 | +0,000 |
+| H0 | loco | PBMC | 0,087 | 0,084 | +0,003 |
+| H0 | loco | Tumor | 0,088 | 0,084 | +0,004 |
+| H0 | naive | Adjacent_normal | 0,087 | 0,087 | +0,000 |
+| H0 | naive | PBMC | 0,084 | 0,084 | +0,0002 |
+| H0 | naive | Tumor | 0,084 | 0,084 | +0,0002 |
+| artifact_moderate | blood | Adjacent_normal | 0,090 | 0,085 | +0,005 |
+| artifact_moderate | blood | Tumor | 0,093 | 0,088 | +0,006 |
+| artifact_moderate | loco | Adjacent_normal | 0,084 | 0,084 | +0,000 |
+| artifact_moderate | loco | PBMC | 0,119 | 0,086 | +0,034 |
+| artifact_moderate | loco | Tumor | 0,093 | 0,088 | +0,005 |
+| artifact_moderate | naive | Adjacent_normal | 0,083 | 0,083 | +0,000 |
+| artifact_moderate | naive | PBMC | 0,084 | 0,084 | +0,000 |
+| artifact_moderate | naive | Tumor | 0,087 | 0,087 | +0,000 |
+| artifact_strong | blood | Adjacent_normal | 0,085 | 0,078 | +0,007 |
+| artifact_strong | blood | Tumor | 0,086 | 0,081 | +0,006 |
+| artifact_strong | loco | Adjacent_normal | 0,084 | 0,083 | +0,001 |
+| artifact_strong | loco | PBMC | 0,383 | 0,086 | +0,297 |
+| artifact_strong | loco | Tumor | 0,085 | 0,080 | +0,005 |
+| artifact_strong | naive | Adjacent_normal | 0,080 | 0,080 | +0,000 |
+| artifact_strong | naive | PBMC | 0,086 | 0,085 | +0,0003 |
+| artifact_strong | naive | Tumor | 0,084 | 0,084 | +0,0001 |
 
 **(c) Block permutation sotto H0 con confondente di paziente** (`sim_c_block_permutation`)
 
@@ -387,38 +387,38 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
 ## Esecuzione finale (Fase 3)
 
-Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni dei giri 4-7 sono stati rieseguiti 04, 05 (giro 7: solo la legenda delle figure; tabelle identiche byte per byte), 06-10, 13-21 e le simulazioni (colonna "Ultima esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
+Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni dei giri 4-8 sono stati rieseguiti 00-04 (giro 8, con il codice finale), 05 (giro 7: solo la legenda delle figure; tabelle identiche byte per byte), 06-10, 13-21 e le simulazioni; 11 ha rigenerato riepilogo, confronti e figure con `--from-table` nel giro 8 (colonna "Ultima esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
 
 | Script | Esito | Picco di memoria | Durata | Ultima esecuzione |
 | :--- | :--- | :--- | :--- | :--- |
-| 00_fetch_metadata | rc = 0 | 0,1 GB | 0:00,44 | Fase 3 (61fb36b) |
-| 00b_download_tcr | rc = 0 | 0,0 GB | 0:00,88 | Fase 3 (61fb36b) |
-| 01_probe_labels | rc = 0 | 0,2 GB | 0:01,02 | Fase 3 (61fb36b) |
-| 01b_tcr_check | rc = 0 | 0,2 GB | 0:00,98 | Fase 3 (61fb36b) |
-| 02_build_h5ad_sc | rc = 0 | 7,7 GB | 1:49,19 | Fase 3 (61fb36b) |
-| 02_build_h5ad_sn | rc = 0 | 1,0 GB | 0:11,34 | Fase 3 (61fb36b) |
-| 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,01 | Fase 3 (61fb36b) |
-| 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,75 | Fase 3 (61fb36b) |
-| 04_splits | rc = 0 | 0,4 GB | 0:04,74 | giro 6 |
-| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:45,53 | giro 7 |
-| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:44,03 | giro 7 |
-| 20_xai_per_patient | rc = 0 | 6,0 GB | 2:26,09 | giro 7 |
-| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:50,16 | giro 7 |
-| 08_disambiguate | rc = 0 | 3,5 GB | 0:46,07 | giro 7 |
-| 09_arbitrate | rc = 0 | 3,4 GB | 1:03,74 | giro 7 |
-| sim_a_calibration | rc = 0 | 0,2 GB | 4:33,42 | giro 7 |
-| sim_b_reference_schemes | rc = 0 | 0,3 GB | 2:36,21 | giro 7 |
-| 10_loco | rc = 0 | 3,4 GB | 7:57,35 | giro 7 |
-| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:03,87 | giro 7 |
-| 15_inventory | rc = 0 | 0,3 GB | 0:03,10 | giro 7 |
-| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:21,68 | giro 7 |
-| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:13,23 | giro 7 |
-| 18_loyo_check | rc = 0 | 1,1 GB | 0:24,28 | giro 7 |
-| 19_ni_score | rc = 0 | 0,2 GB | 0:03,43 | giro 7 |
-| sim_c_block_permutation | rc = 0 | 0,2 GB | 3:06,04 | giro 7 |
-| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:16,57 | giro 7 |
-| 13_infercnv | rc = 0 | 10,8 GB | 1:39,14 | giro 7 |
-| 14_cnv_loci | rc = 0 | 12,6 GB | 1:08,03 | giro 7 |
+| 00_fetch_metadata | rc = 0 | 0,1 GB | 0:00,35 | giro 8c |
+| 00b_download_tcr | rc = 0 | 0,0 GB | 0:00,90 | giro 8c |
+| 01_probe_labels | rc = 0 | 0,2 GB | 0:01,02 | giro 8c |
+| 01b_tcr_check | rc = 0 | 0,2 GB | 0:00,98 | giro 8c |
+| 02_build_h5ad_sc | rc = 0 | 7,7 GB | 1:50,14 | giro 8c |
+| 02_build_h5ad_sn | rc = 0 | 1,0 GB | 0:11,43 | giro 8c |
+| 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,19 | giro 8c |
+| 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,84 | giro 8c |
+| 04_splits | rc = 0 | 0,4 GB | 0:04,72 | giro 8c |
+| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:40,66 | giro 8 |
+| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:37,23 | giro 8 |
+| 20_xai_per_patient | rc = 0 | 6,0 GB | 2:00,90 | giro 8 |
+| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:39,38 | giro 8 |
+| 08_disambiguate | rc = 0 | 3,5 GB | 0:36,05 | giro 8 |
+| 09_arbitrate | rc = 0 | 3,4 GB | 0:45,46 | giro 8 |
+| sim_a_calibration | rc = 0 | 0,2 GB | 3:38,20 | giro 8 |
+| sim_b_reference_schemes | rc = 0 | 0,3 GB | 1:44,61 | giro 8 |
+| 10_loco | rc = 0 | 3,4 GB | 5:43,02 | giro 8 |
+| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:02,47 | giro 8 |
+| 15_inventory | rc = 0 | 0,3 GB | 0:02,11 | giro 8 |
+| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:15,72 | giro 8 |
+| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:09,37 | giro 8 |
+| 18_loyo_check | rc = 0 | 1,1 GB | 0:17,31 | giro 8 |
+| 19_ni_score | rc = 0 | 0,2 GB | 0:02,10 | giro 8 |
+| sim_c_block_permutation | rc = 0 | 0,2 GB | 2:02,95 | giro 8 |
+| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:13,50 | giro 8 |
+| 13_infercnv | rc = 0 | 6,0 GB | 0:54,77 | giro 8b |
+| 14_cnv_loci | rc = 0 | 8,6 GB | 0:19,95 | giro 8b |
 | 05_baseline | rc = 0 | 9,7 GB | 17:09,67 | giro 7 |
 
 **Non rieseguiti** (calcolo invariato dall'esecuzione precedente, verificato con `git diff`):
@@ -431,6 +431,8 @@ Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picc
 
 Nel giro 7 sono cambiati i risultati del ramo TCR (pareggi dell'etichetta di maggioranza esclusi) e del ramo CNV (soglia del rumore globale, coordinate reali delle finestre), e lo scenario `coverage_pairs_real_sizes` di `sim_a`; vedi la tabella prima/dopo.
 
+Nel giro 8 sono cambiati solo `sim_b_reference_schemes` (stima ed errore vero sulle stesse unita'), `error_decomposition_blood` (riga dei pareggi) e `doublet_mixture_error_nk` (colonne aggiunte). Unici file di `results/` non prodotti dall'ultima versione del codice: le uscite di 12 (eseguito al commit `52ace44`; poi cambiano solo controlli sugli input, `choices`, `help` e la riemissione degli avvisi non di convergenza) e la cache di Scrublet (`doublet_scores.csv`).
+
 
 ## Limiti noti
 
@@ -438,11 +440,22 @@ Problemi del codice che riguardano dati simulati, test sintetici o input anomali
 
 | Dove | Problema | Verifica sul dataset reale |
 | :--- | :--- | :--- |
-| `src/scpipe.py:72` (`LogCPM`), `:97` (`HVGSelector`) | richiedono una matrice sparsa CSR: con un `ndarray` denso vanno in errore | tutti gli script convertono prima in CSR (`src/05_baseline.py:309`, `src/11_model_zoo.py:477`, `src/12_feature_selection.py:289`, `src/20_xai_per_patient.py:228`, `src/13_infercnv.py` prima del Random Forest e sulle duttali adiacenti); i test di leakage passano matrici CSR |
-| `src/sim/sim_a_calibration.py:85`, `tests/test_stats.py:60` (`SIZES`) | con k = 11 l'undicesima numerosita' (40) e' aggiunta a mano; le coppie reali dell'eccesso (13-282 per paziente) sono piu' sbilanciate | riguarda solo la simulazione di calibrazione; lo scenario `coverage_pairs_real_sizes` di `sim_a_cluster_bootstrap.csv` usa le numerosita' reali delle 11 coppie dell'eccesso (copertura dell'IC espanso 93,8% con esito continuo e 92,8% con esito binario, dentro la banda) |
-| `tests/test_stats.py:240`, `:247` | il test di Nadeau-Bengio usa gli stessi semi di `sim_a` (55.000 + k, 51.005): e' un sottoinsieme della stessa simulazione, non una seconda verifica | dichiarato nel docstring del test (righe 37-38); nessun numero del dataset reale dipende dal test |
-| `src/11_model_zoo.py:390` (e figure `model_zoo_{task}`), `src/12_feature_selection.py`, `src/20_xai_per_patient.py` | i file di confronto e le figure dipendono solo dal task: un'esecuzione con un altro `--tag` o schema li sovrascrive | i comandi del README eseguono ogni task una sola volta, con uno schema solo; `model_comparison_{task2_v1,task2_hier3,task1a_paired}` coincidono con le tabelle per fold (verificato dai revisori dei giri di chiusura) |
+| `src/scpipe.py:72` (`LogCPM`), `:97` (`HVGSelector`) | richiedono una matrice sparsa CSR: con un `ndarray` denso vanno in errore | tutti gli script convertono prima in CSR (`src/05_baseline.py:309`, `src/11_model_zoo.py:478`, `src/12_feature_selection.py:289`, `src/20_xai_per_patient.py:216`, `src/13_infercnv.py` prima del Random Forest e sulle duttali adiacenti); i test di leakage passano matrici CSR |
+| `src/sim/sim_a_calibration.py:88`, `tests/test_stats.py:62` (`SIZES`) | con k = 11 l'undicesima numerosita' (40) e' aggiunta a mano; le coppie reali dell'eccesso (13-282 per paziente) sono piu' sbilanciate | riguarda solo la simulazione di calibrazione; lo scenario `coverage_pairs_real_sizes` di `sim_a_cluster_bootstrap.csv` usa le numerosita' reali delle 11 coppie dell'eccesso (copertura dell'IC espanso 93,8% con esito continuo e 92,8% con esito binario, dentro la banda) |
+| `tests/test_stats.py:242`, `:249` | il test di Nadeau-Bengio usa gli stessi semi di `sim_a` (55.000 + k, 51.005): e' un sottoinsieme della stessa simulazione, non una seconda verifica | dichiarato nel docstring del test (righe 39-40); nessun numero del dataset reale dipende dal test |
+| `src/11_model_zoo.py:391` (e figure `model_zoo_{task}`), `src/12_feature_selection.py`, `src/20_xai_per_patient.py` | i file di confronto e le figure dipendono solo dal task: un'esecuzione con un altro `--tag` o schema li sovrascrive | i comandi del README eseguono ogni task una sola volta, con uno schema solo; `model_comparison_{task2_v1,task2_hier3,task1a_paired}` coincidono con le tabelle per fold (verificato dai revisori dei giri di chiusura) |
 | argparse degli script TCR e CNV | `--help` mostra "(default: None)" per gli argomenti obbligatori | solo testo d'aiuto; i comandi del README passano tutti gli argomenti obbligatori |
-| `src/07_robustness.py:119`, `src/08_disambiguate.py:118`, `src/09_arbitrate.py:110`, `src/10_loco.py:151` (`TISSUE_MAP[tis]`) | un file VDJ con un tessuto diverso da Tumor, Normal o PBMC manda lo script in `KeyError` (06 invece lo salta con un avviso) | i 30 file di `vdj_inventory.csv` hanno solo i tessuti Tumor, Normal e PBMC; tutti gli script terminano con rc = 0 (`revisione/log/_status.txt`) |
-| `src/20_xai_per_patient.py:147` (`np.argsort(-coef)[:TOP_K]`) | con meno di 50 coefficienti non nulli i geni mancanti dei top-50 sarebbero scelti fra pareggi a zero in ordine arbitrario | sul dataset reale i fold LOPO hanno da 3.887 a 4.380 coefficienti non nulli (`revisione/log/20_xai_per_patient.log`) |
+| `src/07_robustness.py:119`, `src/08_disambiguate.py:118`, `src/09_arbitrate.py:117`, `src/10_loco.py:173` e `:532` (`TISSUE_MAP[tis]`) | un file VDJ con un tessuto diverso da Tumor, Normal o PBMC manda lo script in `KeyError` (06 invece lo salta con un avviso) | i 30 file di `vdj_inventory.csv` hanno solo i tessuti Tumor, Normal e PBMC; tutti gli script terminano con rc = 0 (`revisione/log/_status.txt`) |
+| `src/20_xai_per_patient.py:135` (`np.argsort(-coef)[:TOP_K]`) | con meno di 50 coefficienti non nulli i geni mancanti dei top-50 sarebbero scelti fra pareggi a zero in ordine arbitrario | sul dataset reale i fold LOPO hanno da 3.887 a 4.380 coefficienti non nulli (`revisione/log/20_xai_per_patient.log`) |
+| scelta del contig dominante (`sort_values("umis").drop_duplicates` in 06-10) | con due catene TRB a pari UMI massimi il clone assegnato dipende dall'ordine delle righe (ordinamento non stabile) | riguarda 346 cellule su 123.280 per la TRB; un ricalcolo indipendente con una scelta diversa del contig da' gli stessi numeri principali (Tumor 277 cloni, 0,170; Adjacent_normal 117, 0,060) e cambia solo la sensibilita' "pareggi = errore" (0,199 -> 0,201): `revisione/log/giro8_revisore_b.md`, punto 7 |
+
+
+## Non risolti
+
+Problemi segnalati dai revisori dell'ultimo giro (giro 8) e non corretti, con il motivo. Nessuno cambia un numero principale sul dataset reale.
+
+| Dove | Problema | Motivo |
+| :--- | :--- | :--- |
+| `src/06_clonotype_consistency.py` (riepilogo split-half), `src/16_pseudobulk_patient.py`, `src/17_clonal_expansion.py`, `src/18_loyo_check.py`, `src/19_ni_score.py` | i pareggi dell'etichetta di maggioranza sono esclusi, ma la sensibilita' "pareggi = errore / pareggi = corretti" e' tabulata solo in 09 e 10 (`arbitration_tie_sensitivity`, `error_rate_tie_sensitivity`) | il revisore l'ha ricalcolata e le conclusioni non cambiano (17, errore: ρ 0,186 e 0,217 contro 0,220; H1-H4 con segno e p simili; 06: +0,052 e +0,058 contro +0,063): `revisione/log/giro8_revisore_b.md`, punto 6. Questi valori non sono in `results/tables` e non sono citati come risultati |
+| `README.md:94` | la radice indicata e' `progetto-ml/`, la cartella locale si chiama `pdac-ml` | `progetto-ml` e' il nome del repository remoto, richiesto dalla correzione D3 |
 

@@ -239,7 +239,7 @@ def build_clones(contigs: pd.DataFrame) -> pd.DataFrame:
     return w
 
 
-def majority(labels: pd.Series) -> str:
+def majority(labels: pd.Series) -> str | None:
     """Etichetta modale (`scpipe.majority_label`); None in caso di pareggio."""
     return majority_label(labels.values)
 
@@ -600,10 +600,11 @@ def main() -> None:
 
     print("\n" + "=" * 74)
     if lo > 0:
-        print("ESITO: l'IC 95% (cluster bootstrap sui pazienti) esclude lo zero.")
+        print("ESITO: l'IC 95% (cluster bootstrap sui pazienti) esclude lo zero, ma la")
         print(
-            "  Le etichette dei cloni condivisi cambiano fra compartimenti piu' che entro."
+            "  copertura di questo IC non e' verificata (esplorativo; stimatore principale"
         )
+        print("  in 07_robustness.py).")
     else:
         print("ESITO: l'IC 95% (cluster bootstrap sui pazienti) include lo zero.")
         print(

@@ -1,10 +1,10 @@
 # Stato della revisione
 
-**Giri:** 1 completo 1/18/29; 2-3 incrementali 0/4/16, 0/5/8; Fase 3; 4-6 chiusure 2/9/38, 2/3/37, 2/4/22; **7 (regole: solo dataset reale) 2/4/15**, corretti con le decisioni dell'utente (pareggi esclusi; soglia inferCNV globale; finestre CNV con coordinate reali). ALTA + MEDIA: 11, 5, 6, 6. Resta: giro 8 (ultimo), poi Fase 3 finale.
+**Giri:** 1 completo 1/18/29; 2-3 incrementali 0/4/16, 0/5/8; 4-7 chiusure 2/9/38, 2/3/37, 2/4/22, 2/4/15; **8 (ultimo): 1 ALTA e 2 MEDIA unici, corretti e rieseguiti**. Loop chiuso; Fase 3 completata (tutti gli script rc = 0; unici file non rieseguiti: uscite di 12, calcolo invariato, e cache di Scrublet). pytest completo 114 passati; ruff pulito. Limiti noti e non risolti: README §7 e `RISULTATI_FINALI.md`.
 
 **Numeri cambiati al giro 7:** errore Tumor 0,195 -> 0,170 [0,095; 0,252]; Adjacent 0,059 -> 0,060; differenza +0,080 -> +0,059 [0,000; +0,160]; AUC LOPO 13 0,837 -> 0,836; adiacenti predette maligne 30,8% -> 37,4%; AUC loci pooled 0,698 -> 0,717, entro paziente 0,557 -> 0,566 (score medio 0,616).
 
-**Test e stile.** pytest completo: 108 passati (lenti compresi, giro 6). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
+**Test e stile.** pytest completo: 114 passati (lenti compresi, finale). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
 
 **Numeri della presentazione cambiati** (tabella completa in `RISULTATI_FINALI.md`):
 
@@ -17,7 +17,7 @@
 | doppietti d2 | 0,790 [0,660; 0,876] | 0,676 [0,559; 0,781] (d1 0,723 [0,556; 0,848]) |
 | AUC LOPO 13 / duttali adiacenti maligne | 0,825 / 31,7% | 0,836 / 37,4% |
 | AUC CNV: score medio / loci pooled / entro paziente | 0,492 / 0,682 / 0,53 | 0,598 / 0,717 / 0,566 |
-| sim (b) / (c) / (d) | 0,24 / 2 su 100 / 0,063-0,040 | 0,126-0,385 / 4-11 su 100, 4,8-5,9% su 1.000 / 0,143-0,030 |
+| sim (b) / (c) / (d) | 0,24 / 2 su 100 / 0,063-0,040 | 0,119-0,383 / 4-11 su 100, 4,8-5,9% su 1.000 / 0,143-0,030 |
 
 **Bootstrap.** Tutti gli IC con il paziente come unita' (0,195; +0,059; +0,080; d1/d2; 06-10, 16, 17, 19) usano il cluster bootstrap con intervallo "expanded percentile" (Hesterberg 2015; `scpipe.percentile_ci`), 2.000 repliche (500 per d1/d2). Copertura al 95% nominale (`sim_a_cluster_bootstrap`, media pooled): 4 pazienti 82-83%, 5 pazienti 91,5-92,5%, 10 pazienti 93,5-93,8%, 11 pazienti 93,5-94,8%. Con 4-5 pazienti (Adjacent_normal, +0,080) l'IC non e' calibrato; per Spearman e d1/d2 la copertura non e' verificata.
 

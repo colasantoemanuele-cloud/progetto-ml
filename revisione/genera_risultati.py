@@ -14,11 +14,11 @@ codice passando il valore esatto) e il valore esatto dista meno di 0,001 da quel
 precedente. Le note
 sull'esecuzione (commit, memoria, script non rieseguiti) sono lette da
 `revisione/note_esecuzione.md`, se esiste, e copiate in fondo, seguite dai limiti noti del
-codice (`revisione/limiti_noti.md`).
+codice (`revisione/limiti_noti.md`) e dai problemi non risolti (`revisione/non_risolti.md`).
 
 Input
 -----
-  results/tables/*.csv, revisione/note_esecuzione.md e revisione/limiti_noti.md (facoltativi)
+  results/tables/*.csv, revisione/note_esecuzione.md, limiti_noti.md e non_risolti.md (facoltativi)
 
 Output
 ------
@@ -46,6 +46,7 @@ TAB = Path("results/tables")
 OUT = Path("revisione/RISULTATI_FINALI.md")
 NOTE = Path("revisione/note_esecuzione.md")
 LIMITS = Path("revisione/limiti_noti.md")
+UNRESOLVED = Path("revisione/non_risolti.md")
 MISSING: list[str] = []
 SMALL_K = (
     5  # pazienti: con <= SMALL_K l'IC del cluster bootstrap non e' calibrato (sim_a)
@@ -835,7 +836,7 @@ def main() -> None:
         L.append("### Doppietti fra le NK con TCR (09, 10)\n")
         if not tcr_rate.empty:
             L.append(
-                f"Tassi di TCR produttivo per classe: `tcr_rate_by_celltype` ({len(tcr_rate)} classi).\n"
+                f"Tassi di cellule con catena TRB produttiva per classe: `tcr_rate_by_celltype` ({len(tcr_rate)} classi).\n"
             )
         rr = (
             [
@@ -1102,6 +1103,8 @@ def main() -> None:
         L.append("\n" + NOTE.read_text())
     if LIMITS.exists():
         L.append("\n" + LIMITS.read_text())
+    if UNRESOLVED.exists():
+        L.append("\n" + UNRESOLVED.read_text())
     if MISSING:
         L.append(
             "\n## Valori mancanti\n\n" + "\n".join(f"- {m}" for m in MISSING) + "\n"

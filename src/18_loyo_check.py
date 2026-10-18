@@ -5,7 +5,8 @@
 Scopo
 -----
 In 17_clonal_expansion.py l'associazione fra dimensione clonale ed errore (o eccesso
-di discordanza) e' stimata su 287 cloni di 10 pazienti (versione pubblicata), con un
+di discordanza) e' stimata su 287 cloni di 10 pazienti (277 per l'errore: i cloni con
+etichetta di maggioranza in pareggio sono esclusi, come in 17), con un
 numero di cloni per paziente molto diseguale. Questo script verifica che il
 risultato non dipenda da un solo paziente: per ciascun paziente rimuove tutti i suoi
 cloni e ricalcola sui restanti il rho di Spearman pooled e il p del block

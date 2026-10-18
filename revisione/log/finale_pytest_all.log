@@ -1,0 +1,241 @@
+........................................................................ [ 63%]
+..........................................                               [100%]
+==================================== PASSES ====================================
+_________________ test_window_table_matches_infercnvpy_windows _________________
+----------------------------- Captured stderr call -----------------------------
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 156.00it/s]
+_____________________ test_locus_windows_and_marker_check ______________________
+----------------------------- Captured stdout call -----------------------------
+  CDKN2A_9p21: CDKN2A a chr9:21.97-22.00 Mb in 1 finestre, tutte attribuite al locus: True (finestre del locus: 2)
+  TP53_17p13: gene TP53 senza coordinate, controllo non eseguito
+  SMAD4_18q21: gene SMAD4 senza coordinate, controllo non eseguito
+  MYC_8q24: gene MYC senza coordinate, controllo non eseguito
+  KRAS_12p12: gene KRAS senza coordinate, controllo non eseguito
+  CDKN2A_9p21: CDKN2A a chr9:21.97-22.00 Mb in 0 finestre, tutte attribuite al locus: False (finestre del locus: 0)
+_________________________ test_05_baseline_no_leakage __________________________
+----------------------------- Captured stdout call -----------------------------
+
+==========================================================================
+task2_v1: 240 cellule x 80 geni | 3 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.275 ± 0.000   [0s]
+  fold_group_5   logreg_l2  macro-F1 = 0.712 ± 0.038   [0s]
+  fold_random_5  dummy      macro-F1 = 0.288 ± 0.002   [0s]
+  fold_random_5  logreg_l2  macro-F1 = 0.664 ± 0.025   [0s]
+
+==========================================================================
+task2_v1: 240 cellule x 80 geni | 3 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.275 ± 0.000   [0s]
+  fold_group_5   logreg_l2  macro-F1 = 0.637 ± 0.342   [0s]
+  fold_random_5  dummy      macro-F1 = 0.288 ± 0.002   [0s]
+  fold_random_5  logreg_l2  macro-F1 = 0.673 ± 0.039   [0s]
+___________________ test_11_model_zoo_no_leakage[logreg_l2] ____________________
+----------------------------- Captured stdout call -----------------------------
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  logreg_l2       macro-F1 = 0.7816 ± 0.0851   [     0s]
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  logreg_l2       macro-F1 = 0.6905 ± 0.2115   [     0s]
+______________________ test_11_model_zoo_no_leakage[knn] _______________________
+----------------------------- Captured stdout call -----------------------------
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  knn             macro-F1 = 0.8447 ± 0.0216   [     0s]
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  knn             macro-F1 = 0.7175 ± 0.1881   [     0s]
+_________________ test_11_model_zoo_no_leakage[random_forest] __________________
+----------------------------- Captured stdout call -----------------------------
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  random_forest   macro-F1 = 0.9255 ± 0.0307   [     3s]
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  random_forest   macro-F1 = 0.8044 ± 0.2423   [     3s]
+__________________ test_11_model_zoo_no_leakage[naive_bayes] ___________________
+----------------------------- Captured stdout call -----------------------------
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  naive_bayes     macro-F1 = 0.8126 ± 0.0652   [     0s]
+
+==============================================================================
+task2_v1: 240 cellule | 3 classi | split: fold_lopo
+==============================================================================
+  naive_bayes     macro-F1 = 0.7323 ± 0.2554   [     0s]
+_____________________ test_12_feature_selection_no_leakage _____________________
+----------------------------- Captured stdout call -----------------------------
+  random      [    0s] non nulli 76
+  hvg         [    0s] non nulli 76
+  anova       [    0s] non nulli 76
+  chi2        [    0s] non nulli 76
+  l1_logreg   [    0s] non nulli 17 | iter 144 | convergenza True
+  rf_import   [    0s] non nulli 76
+  random      [    0s] non nulli 76
+  hvg         [    0s] non nulli 76
+  anova       [    0s] non nulli 76
+  chi2        [    0s] non nulli 76
+  l1_logreg   [    0s] non nulli 17 | iter 144 | convergenza True
+  rf_import   [    0s] non nulli 76
+  random      [    0s] non nulli 73
+  hvg         [    0s] non nulli 73
+  anova       [    0s] non nulli 73
+  chi2        [    0s] non nulli 73
+  l1_logreg   [    0s] non nulli 17 | iter 105 | convergenza True
+  rf_import   [    0s] non nulli 73
+  random      [    0s] non nulli 79
+  hvg         [    0s] non nulli 79
+  anova       [    0s] non nulli 79
+  chi2        [    0s] non nulli 79
+  l1_logreg   [    0s] non nulli 18 | iter 151 | convergenza True
+  rf_import   [    0s] non nulli 79
+____________________________ test_20_xai_no_leakage ____________________________
+----------------------------- Captured stdout call -----------------------------
+  fold 0 (escluso P0): train 200 cellule | 11 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 200 cellule | 12 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 200 cellule | 11 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 200 cellule | 10 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 200 cellule | 12 geni con coefficiente non nullo
+  fold 5 (escluso P5): train 200 cellule | 11 geni con coefficiente non nullo
+  fold 0 (escluso P0): train 200 cellule | 11 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 200 cellule | 9 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 200 cellule | 14 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 200 cellule | 12 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 200 cellule | 14 geni con coefficiente non nullo
+  fold 5 (escluso P5): train 200 cellule | 13 geni con coefficiente non nullo
+___________________________ test_report_counts_ties ____________________________
+----------------------------- Captured stdout call -----------------------------
+
+--- test ---
+  Tumor            errore = 0.286  IC95% [0.286, 0.286]  (n=21, 3 pz; 3 pareggi esclusi)
+=========================== short test summary info ============================
+PASSED tests/test_cnv.py::test_global_noise_filter_matches_numpy_and_is_order_free
+PASSED tests/test_cnv.py::test_window_table_matches_infercnvpy_windows
+PASSED tests/test_cnv.py::test_locus_windows_and_marker_check
+PASSED tests/test_leakage.py::test_05_baseline_no_leakage
+PASSED tests/test_leakage.py::test_11_model_zoo_no_leakage[logreg_l2]
+PASSED tests/test_leakage.py::test_11_model_zoo_no_leakage[knn]
+PASSED tests/test_leakage.py::test_11_model_zoo_no_leakage[random_forest]
+PASSED tests/test_leakage.py::test_11_model_zoo_no_leakage[naive_bayes]
+PASSED tests/test_leakage.py::test_12_feature_selection_no_leakage
+PASSED tests/test_leakage.py::test_13_infercnv_no_leakage
+PASSED tests/test_leakage.py::test_20_xai_no_leakage
+PASSED tests/test_leakage.py::test_04_splits_patient_disjoint
+PASSED tests/test_scpipe.py::test_nadeau_bengio_hand_computed
+PASSED tests/test_scpipe.py::test_nadeau_bengio_symmetric_in_sign
+PASSED tests/test_scpipe.py::test_nadeau_bengio_zero_variance_nonzero_mean
+PASSED tests/test_scpipe.py::test_nadeau_bengio_identical_models
+PASSED tests/test_scpipe.py::test_nadeau_bengio_single_fold
+PASSED tests/test_scpipe.py::test_jaccard_basic
+PASSED tests/test_scpipe.py::test_jaccard_empty_sets
+PASSED tests/test_scpipe.py::test_mean_pairwise_jaccard
+PASSED tests/test_scpipe.py::test_logcpm_row_sums_before_log
+PASSED tests/test_scpipe.py::test_logcpm_hand_example
+PASSED tests/test_scpipe.py::test_logcpm_is_stateless
+PASSED tests/test_scpipe.py::test_hvg_selects_highest_dispersion
+PASSED tests/test_scpipe.py::test_hvg_excludes_low_mean_and_caps_k
+PASSED tests/test_scpipe.py::test_hvg_matches_numpy_dense
+PASSED tests/test_smoke.py::test_import[00_fetch_metadata.py]
+PASSED tests/test_smoke.py::test_import[01_probe_labels.py]
+PASSED tests/test_smoke.py::test_import[01b_tcr_check.py]
+PASSED tests/test_smoke.py::test_import[02_build_h5ad.py]
+PASSED tests/test_smoke.py::test_import[03_eda_qc.py]
+PASSED tests/test_smoke.py::test_import[04_splits.py]
+PASSED tests/test_smoke.py::test_import[05_baseline.py]
+PASSED tests/test_smoke.py::test_import[06_clonotype_consistency.py]
+PASSED tests/test_smoke.py::test_import[07_robustness.py]
+PASSED tests/test_smoke.py::test_import[08_disambiguate.py]
+PASSED tests/test_smoke.py::test_import[09_arbitrate.py]
+PASSED tests/test_smoke.py::test_import[10_loco.py]
+PASSED tests/test_smoke.py::test_import[11_model_zoo.py]
+PASSED tests/test_smoke.py::test_import[12_feature_selection.py]
+PASSED tests/test_smoke.py::test_import[13_infercnv.py]
+PASSED tests/test_smoke.py::test_import[14_cnv_loci.py]
+PASSED tests/test_smoke.py::test_import[15_inventory.py]
+PASSED tests/test_smoke.py::test_import[16_pseudobulk_patient.py]
+PASSED tests/test_smoke.py::test_import[17_clonal_expansion.py]
+PASSED tests/test_smoke.py::test_import[18_loyo_check.py]
+PASSED tests/test_smoke.py::test_import[19_ni_score.py]
+PASSED tests/test_smoke.py::test_import[20_xai_per_patient.py]
+PASSED tests/test_smoke.py::test_import[21_fig_blood_scheme.py]
+PASSED tests/test_smoke.py::test_import[estrai_conteggi.py]
+PASSED tests/test_smoke.py::test_import[scpipe.py]
+PASSED tests/test_smoke.py::test_import[sim_a_calibration.py]
+PASSED tests/test_smoke.py::test_import[sim_b_reference_schemes.py]
+PASSED tests/test_smoke.py::test_import[sim_c_block_permutation.py]
+PASSED tests/test_smoke.py::test_import[sim_d_xai_stability.py]
+PASSED tests/test_smoke.py::test_help[00_fetch_metadata.py]
+PASSED tests/test_smoke.py::test_help[01_probe_labels.py]
+PASSED tests/test_smoke.py::test_help[01b_tcr_check.py]
+PASSED tests/test_smoke.py::test_help[02_build_h5ad.py]
+PASSED tests/test_smoke.py::test_help[03_eda_qc.py]
+PASSED tests/test_smoke.py::test_help[04_splits.py]
+PASSED tests/test_smoke.py::test_help[05_baseline.py]
+PASSED tests/test_smoke.py::test_help[06_clonotype_consistency.py]
+PASSED tests/test_smoke.py::test_help[07_robustness.py]
+PASSED tests/test_smoke.py::test_help[08_disambiguate.py]
+PASSED tests/test_smoke.py::test_help[09_arbitrate.py]
+PASSED tests/test_smoke.py::test_help[10_loco.py]
+PASSED tests/test_smoke.py::test_help[11_model_zoo.py]
+PASSED tests/test_smoke.py::test_help[12_feature_selection.py]
+PASSED tests/test_smoke.py::test_help[13_infercnv.py]
+PASSED tests/test_smoke.py::test_help[14_cnv_loci.py]
+PASSED tests/test_smoke.py::test_help[15_inventory.py]
+PASSED tests/test_smoke.py::test_help[16_pseudobulk_patient.py]
+PASSED tests/test_smoke.py::test_help[17_clonal_expansion.py]
+PASSED tests/test_smoke.py::test_help[18_loyo_check.py]
+PASSED tests/test_smoke.py::test_help[19_ni_score.py]
+PASSED tests/test_smoke.py::test_help[20_xai_per_patient.py]
+PASSED tests/test_smoke.py::test_help[21_fig_blood_scheme.py]
+PASSED tests/test_smoke.py::test_help[estrai_conteggi.py]
+PASSED tests/test_smoke.py::test_help[sim_a_calibration.py]
+PASSED tests/test_smoke.py::test_help[sim_b_reference_schemes.py]
+PASSED tests/test_smoke.py::test_help[sim_c_block_permutation.py]
+PASSED tests/test_smoke.py::test_help[sim_d_xai_stability.py]
+PASSED tests/test_smoke.py::test_download_tcr_help
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[False-10]
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[False-11]
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[True-10]
+PASSED tests/test_stats.py::test_cluster_bootstrap_coverage[True-11]
+PASSED tests/test_stats.py::test_block_permutation_type1_with_patient_confounder
+PASSED tests/test_stats.py::test_permutation_corr_type1_n10
+PASSED tests/test_stats.py::test_holm_monotone_and_bounded[16_pseudobulk_patient]
+PASSED tests/test_stats.py::test_holm_monotone_and_bounded[19_ni_score]
+PASSED tests/test_stats.py::test_holm_hand_example[16_pseudobulk_patient]
+PASSED tests/test_stats.py::test_holm_hand_example[19_ni_score]
+PASSED tests/test_stats.py::test_pairwise_discordance_unbiased[p0-2-2]
+PASSED tests/test_stats.py::test_pairwise_discordance_unbiased[p0-2-5]
+PASSED tests/test_stats.py::test_pairwise_discordance_unbiased[p0-3-4]
+PASSED tests/test_stats.py::test_pairwise_discordance_unbiased[p1-2-2]
+PASSED tests/test_stats.py::test_pairwise_discordance_unbiased[p1-2-5]
+PASSED tests/test_stats.py::test_pairwise_discordance_unbiased[p1-3-4]
+PASSED tests/test_stats.py::test_d_within_08_unbiased[2]
+PASSED tests/test_stats.py::test_d_within_08_unbiased[3]
+PASSED tests/test_stats.py::test_d_within_08_unbiased[6]
+PASSED tests/test_stats.py::test_nadeau_bengio_calibration_and_power
+PASSED tests/test_stats.py::test_majority_label_ties_are_undefined
+PASSED tests/test_stats.py::test_macro_f1_uses_classes_present_in_test
+PASSED tests/test_stats.py::test_expanded_alpha
+PASSED tests/test_stats.py::test_cluster_bootstrap_edge_cases
+PASSED tests/test_stats.py::test_small_k_diagnostics
+PASSED tests/test_stats.py::test_permutation_tests_constant_input_are_nan
+PASSED tests/test_stats.py::test_holm_excludes_undefined_p
+PASSED tests/test_stats.py::test_permutation_tests_nan_input_are_nan
+PASSED tests/test_tcr_ties.py::test_ties_excluded_and_order_independent
+PASSED tests/test_tcr_ties.py::test_report_counts_ties
+114 passed in 117.39s (0:01:57)

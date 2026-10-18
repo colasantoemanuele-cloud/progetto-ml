@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/20_xai_per_patient.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv --task task1a_paired"
-	User time (seconds): 132.42
-	System time (seconds): 7.51
-	Percent of CPU this job got: 95%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:26.09
+	User time (seconds): 115.30
+	System time (seconds): 6.52
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:00.90
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 5960128
+	Maximum resident set size (kbytes): 5972184
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 2744082
-	Voluntary context switches: 26
-	Involuntary context switches: 5642
+	Minor (reclaiming a frame) page faults: 2740534
+	Voluntary context switches: 23
+	Involuntary context switches: 1012
 	Swaps: 0
 	File system inputs: 120
 	File system outputs: 232

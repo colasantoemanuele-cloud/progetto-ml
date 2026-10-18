@@ -1,37 +1,37 @@
 ## Esecuzione finale (Fase 3)
 
-Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni dei giri 4-7 sono stati rieseguiti 04, 05 (giro 7: solo la legenda delle figure; tabelle identiche byte per byte), 06-10, 13-21 e le simulazioni (colonna "Ultima esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
+Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni dei giri 4-8 sono stati rieseguiti 00-04 (giro 8, con il codice finale), 05 (giro 7: solo la legenda delle figure; tabelle identiche byte per byte), 06-10, 13-21 e le simulazioni; 11 ha rigenerato riepilogo, confronti e figure con `--from-table` nel giro 8 (colonna "Ultima esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
 
 | Script | Esito | Picco di memoria | Durata | Ultima esecuzione |
 | :--- | :--- | :--- | :--- | :--- |
-| 00_fetch_metadata | rc = 0 | 0,1 GB | 0:00,44 | Fase 3 (61fb36b) |
-| 00b_download_tcr | rc = 0 | 0,0 GB | 0:00,88 | Fase 3 (61fb36b) |
-| 01_probe_labels | rc = 0 | 0,2 GB | 0:01,02 | Fase 3 (61fb36b) |
-| 01b_tcr_check | rc = 0 | 0,2 GB | 0:00,98 | Fase 3 (61fb36b) |
-| 02_build_h5ad_sc | rc = 0 | 7,7 GB | 1:49,19 | Fase 3 (61fb36b) |
-| 02_build_h5ad_sn | rc = 0 | 1,0 GB | 0:11,34 | Fase 3 (61fb36b) |
-| 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,01 | Fase 3 (61fb36b) |
-| 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,75 | Fase 3 (61fb36b) |
-| 04_splits | rc = 0 | 0,4 GB | 0:04,74 | giro 6 |
-| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:45,53 | giro 7 |
-| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:44,03 | giro 7 |
-| 20_xai_per_patient | rc = 0 | 6,0 GB | 2:26,09 | giro 7 |
-| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:50,16 | giro 7 |
-| 08_disambiguate | rc = 0 | 3,5 GB | 0:46,07 | giro 7 |
-| 09_arbitrate | rc = 0 | 3,4 GB | 1:03,74 | giro 7 |
-| sim_a_calibration | rc = 0 | 0,2 GB | 4:33,42 | giro 7 |
-| sim_b_reference_schemes | rc = 0 | 0,3 GB | 2:36,21 | giro 7 |
-| 10_loco | rc = 0 | 3,4 GB | 7:57,35 | giro 7 |
-| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:03,87 | giro 7 |
-| 15_inventory | rc = 0 | 0,3 GB | 0:03,10 | giro 7 |
-| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:21,68 | giro 7 |
-| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:13,23 | giro 7 |
-| 18_loyo_check | rc = 0 | 1,1 GB | 0:24,28 | giro 7 |
-| 19_ni_score | rc = 0 | 0,2 GB | 0:03,43 | giro 7 |
-| sim_c_block_permutation | rc = 0 | 0,2 GB | 3:06,04 | giro 7 |
-| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:16,57 | giro 7 |
-| 13_infercnv | rc = 0 | 10,8 GB | 1:39,14 | giro 7 |
-| 14_cnv_loci | rc = 0 | 12,6 GB | 1:08,03 | giro 7 |
+| 00_fetch_metadata | rc = 0 | 0,1 GB | 0:00,35 | giro 8c |
+| 00b_download_tcr | rc = 0 | 0,0 GB | 0:00,90 | giro 8c |
+| 01_probe_labels | rc = 0 | 0,2 GB | 0:01,02 | giro 8c |
+| 01b_tcr_check | rc = 0 | 0,2 GB | 0:00,98 | giro 8c |
+| 02_build_h5ad_sc | rc = 0 | 7,7 GB | 1:50,14 | giro 8c |
+| 02_build_h5ad_sn | rc = 0 | 1,0 GB | 0:11,43 | giro 8c |
+| 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,19 | giro 8c |
+| 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,84 | giro 8c |
+| 04_splits | rc = 0 | 0,4 GB | 0:04,72 | giro 8c |
+| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:40,66 | giro 8 |
+| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:37,23 | giro 8 |
+| 20_xai_per_patient | rc = 0 | 6,0 GB | 2:00,90 | giro 8 |
+| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:39,38 | giro 8 |
+| 08_disambiguate | rc = 0 | 3,5 GB | 0:36,05 | giro 8 |
+| 09_arbitrate | rc = 0 | 3,4 GB | 0:45,46 | giro 8 |
+| sim_a_calibration | rc = 0 | 0,2 GB | 3:38,20 | giro 8 |
+| sim_b_reference_schemes | rc = 0 | 0,3 GB | 1:44,61 | giro 8 |
+| 10_loco | rc = 0 | 3,4 GB | 5:43,02 | giro 8 |
+| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:02,47 | giro 8 |
+| 15_inventory | rc = 0 | 0,3 GB | 0:02,11 | giro 8 |
+| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:15,72 | giro 8 |
+| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:09,37 | giro 8 |
+| 18_loyo_check | rc = 0 | 1,1 GB | 0:17,31 | giro 8 |
+| 19_ni_score | rc = 0 | 0,2 GB | 0:02,10 | giro 8 |
+| sim_c_block_permutation | rc = 0 | 0,2 GB | 2:02,95 | giro 8 |
+| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:13,50 | giro 8 |
+| 13_infercnv | rc = 0 | 6,0 GB | 0:54,77 | giro 8b |
+| 14_cnv_loci | rc = 0 | 8,6 GB | 0:19,95 | giro 8b |
 | 05_baseline | rc = 0 | 9,7 GB | 17:09,67 | giro 7 |
 
 **Non rieseguiti** (calcolo invariato dall'esecuzione precedente, verificato con `git diff`):
@@ -43,3 +43,5 @@ Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picc
 **Riproducibilita':** `02_build_h5ad.py` ricrea `sc_raw.h5ad` identico byte per byte e `04_splits.py` ricrea `splits_sc.csv` identico. Nella chiusura 1 sono cambiati i risultati di 13 e 14 (cromosomi), le colonne aggiunte a `clone_switching_summary_clone_b` e `error_rate_by_compartment` e le figure di 11 (etichetta dell'asse); nella chiusura 2 solo le figure `excess_by_pair_{cc}` e `error_rate_by_compartment`, nel giro 6 solo `error_rate_blood` ed `error_rate_loco` (IC non calibrati segnati); nel giro 6 inferCNV e' stato ricalcolato senza cache (impronta con versione e parametri) con risultati identici byte per byte.
 
 Nel giro 7 sono cambiati i risultati del ramo TCR (pareggi dell'etichetta di maggioranza esclusi) e del ramo CNV (soglia del rumore globale, coordinate reali delle finestre), e lo scenario `coverage_pairs_real_sizes` di `sim_a`; vedi la tabella prima/dopo.
+
+Nel giro 8 sono cambiati solo `sim_b_reference_schemes` (stima ed errore vero sulle stesse unita'), `error_decomposition_blood` (riga dei pareggi) e `doublet_mixture_error_nk` (colonne aggiunte). Unici file di `results/` non prodotti dall'ultima versione del codice: le uscite di 12 (eseguito al commit `52ace44`; poi cambiano solo controlli sugli input, `choices`, `help` e la riemissione degli avvisi non di convergenza) e la cache di Scrublet (`doublet_scores.csv`).

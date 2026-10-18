@@ -97,6 +97,7 @@ CD4T   NK        4
 NK     CD8T      1
 
 ==========================================================================
-ESITO: l'IC 95% (cluster bootstrap sui pazienti) esclude lo zero.
-  Le etichette dei cloni condivisi cambiano fra compartimenti piu' che entro.
+ESITO: l'IC 95% (cluster bootstrap sui pazienti) esclude lo zero, ma la
+  copertura di questo IC non e' verificata (esplorativo; stimatore principale
+  in 07_robustness.py).
 ==========================================================================

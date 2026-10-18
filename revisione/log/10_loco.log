@@ -80,15 +80,15 @@ Le popolazioni mieloidi esprimono CD4 endogeno e sono escluse dal proxy ambienta
 ==============================================================================
 scomposizione dell'errore nel Tumor:
                       category  n_errors  rate_over_all_clones  n_clones  n_patients     lo     hi
-    CD4_in_blood_labelled_CD8T        32                0.1155       277          10    NaN    NaN
-                   labelled_NK        15                0.0542       277          10    NaN    NaN
-    CD8_in_blood_labelled_CD4T         0                0.0000       277          10    NaN    NaN
-                         other         0                0.0000       277          10    NaN    NaN
-       transition_CD4T_to_CD8T        32                0.1155       277          10    NaN    NaN
-         transition_CD4T_to_NK         4                0.0144       277          10    NaN    NaN
-         transition_CD8T_to_NK        11                0.0397       277          10    NaN    NaN
-                 ties_excluded         0                   NaN        10          10    NaN    NaN
-error_rate_excluding_NK_labels        32                0.1221       262          10 0.0486 0.2238
+    CD4_in_blood_labelled_CD8T      32.0                0.1155       277          10    NaN    NaN
+                   labelled_NK      15.0                0.0542       277          10    NaN    NaN
+    CD8_in_blood_labelled_CD4T       0.0                0.0000       277          10    NaN    NaN
+                         other       0.0                0.0000       277          10    NaN    NaN
+       transition_CD4T_to_CD8T      32.0                0.1155       277          10    NaN    NaN
+         transition_CD4T_to_NK       4.0                0.0144       277          10    NaN    NaN
+         transition_CD8T_to_NK      11.0                0.0397       277          10    NaN    NaN
+                 ties_excluded       NaN                   NaN        10           6    NaN    NaN
+error_rate_excluding_NK_labels      32.0                0.1221       262          10 0.0486 0.2238
 
 sensibilita' ai pareggi dell'etichetta di maggioranza (schema blood):
 scheme         version                         quantity  n_units  n_ties  n_patients  value     lo     hi
@@ -156,9 +156,9 @@ conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati).
   In questi strati la maggioranza di doppietti non e' sostenuta dai dati.
 
 d1/d2 per le NK-TCR+ dei cloni del Tumor contati come errore (schema blood):
-statistic  n_nk_tcr_pos_cells  n_clones  n_patients    d1  d1_lo  d1_hi    d2  d2_lo  d2_hi
-   median                 149        15          13 0.617  0.058  0.849 0.458  0.008  0.653
-     mean                 149        15          13 0.403  0.000  0.579 0.529  0.055  0.719
+statistic  n_nk_tcr_pos_cells  n_clones  n_patients  n_patients_with_error_nk  ic_calibrato    d1  d1_lo  d1_hi    d2  d2_lo  d2_hi
+   median                 149        15          13                         6         False 0.617  0.058  0.849 0.458  0.008  0.653
+     mean                 149        15          13                         6         False 0.403  0.000  0.579 0.529  0.055  0.719
 
 ==============================================================================
   naive  Tumor - Adjacent_normal = +0.024 [+0.000, +0.110]  IC non calibrato (5 pazienti)

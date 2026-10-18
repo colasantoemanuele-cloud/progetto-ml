@@ -196,7 +196,7 @@ def compute_cnv(sub: ad.AnnData, method: str, m13):
 
 def locus_windows(windows: pd.DataFrame, locus: dict) -> np.ndarray:
     """Finestre del locus: quelle il cui intervallo genomico (start del primo gene, end
-    dell'ultimo) si sovrappone al locus."""
+    massimo dei suoi geni) si sovrappone al locus."""
     return (
         (windows.chrom == locus["chrom"])
         & (windows.end >= locus["start"])
