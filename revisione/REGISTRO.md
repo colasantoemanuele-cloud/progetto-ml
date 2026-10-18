@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37; prossimo: chiusura 3 (giro 6, ultimo) | - |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37 (04ebed5); chiusura 3 (giro 6): 2/4/22; limite portato a 10 giri; prossimo: giro 7 | - |
 | 3 Esecuzione finale | eseguita al commit 61fb36b (tutti rc = 0); RISULTATI_FINALI.md generato; manca il giro di chiusura | (commit Fase 3) |
 
 ## Note iniziali
@@ -300,6 +300,17 @@ RISULTATI_FINALI coincidono con le tabelle. Rapporti: `revisione/log/chiusura2_r
   documentata).
 - Riesecuzioni: 06-10, 21, 15-19, simulazioni, 20, 13 e 14 (cache con impronta), 11 con
   --from-table (blocco "chiusura 2" di `revisione/log/_status.txt`).
+
+## Giro 6 = chiusura 3 (completo, 4 revisori)
+
+Esito: (a) 0/2/3, (b) 1/0/7, (c) 0/2/9, (d) 1/0/3 -> 2 ALTA, 4 MEDIA, 22 BASSA; pytest completo
+108 passati (`revisione/log/chiusura3_pytest_all.log`); ruff pulito; numeri del README e di
+RISULTATI_FINALI coincidenti. ALTA + MEDIA: 11 (giro 4) -> 5 (giro 5) -> 6 (giro 6): primo giro
+senza diminuzione. Elenco in `revisione/STATO.md`. L'utente ha portato il limite a 10 giri, con
+stop se ALTA + MEDIA non diminuisce per due giri di fila o se un problema corretto ricompare
+(correzioni che si annullano). Nessuno dei due casi: i due ALTA collegati a giri precedenti sono
+estensioni (NaN dopo l'input costante; un calcolo rimasto fuori dal blocco protetto), non
+correzioni annullate.
 
 ## Problemi respinti
 
