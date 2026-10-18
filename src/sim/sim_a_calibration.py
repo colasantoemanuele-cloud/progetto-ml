@@ -23,7 +23,8 @@ Verifica su dati simulati i due stimatori usati per l'inferenza nella pipeline.
    - esito binario: p del paziente ~ Beta(2, 8) (media 0.2);
    - H0 sulla media: media vera 0 (continuo); frazione di IC che escludono 0;
    - effetto noto: media vera 0.06 (continuo); frazione di IC che escludono 0 (potenza).
-   400 repliche per scenario, 1.000 repliche bootstrap ciascuna.
+   400 repliche per scenario, 1.000 repliche bootstrap ciascuna (le analisi ne usano
+   2.000: l'effetto sulla copertura e' trascurabile).
 
 Input
 -----

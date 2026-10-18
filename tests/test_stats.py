@@ -300,3 +300,12 @@ def test_permutation_tests_constant_input_are_nan():
             np.arange(10.0), np.zeros(10), np.repeat(["A", "B"], 5), n_perm=200
         )
     assert all(np.isnan(r[k]) for k in ("rho", "p", "null_mean", "p_centered"))
+
+
+def test_holm_excludes_undefined_p():
+    # un p NaN non diventa 0 e non riduce il fattore delle altre ipotesi a caso
+    with pytest.warns(UserWarning):
+        adj = scpipe.holm_bonferroni({"a": np.nan, "b": 0.01, "c": 0.04})
+    assert np.isnan(adj["a"])
+    assert adj["b"] == pytest.approx(0.02) and adj["c"] == pytest.approx(0.04)
+    assert list(adj) == ["a", "b", "c"]

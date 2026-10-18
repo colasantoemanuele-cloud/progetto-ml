@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1: 1/18/29 (8058701); giro 2 incrementale: 0/4/16 (commit giro 2); prossimo: giro 3 incrementale | - |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8; prossimo: Fase 3 e giro di chiusura | - |
 | 3 Esecuzione finale | da fare | - |
 
 ## Note iniziali
@@ -213,6 +213,28 @@ Esito: 0 ALTA, 4 MEDIA, 16 BASSA; pytest veloce 100 passati, ruff pulito; README
 - 11: dopo 8058701 cambiano solo docstring e il default di `--tasks` con `--from-table`; il
   calcolo dei modelli resta quello di 8058701. scpipe: cambiano solo le due funzioni di
   permutazione (non usate da 11, che importa LogCPM, HVGSelector, macro_f1, nadeau_bengio_ttest).
+
+## Giro 3 (incrementale, `git diff 8058701 HEAD`, un revisore)
+
+Esito: 0 ALTA, 5 MEDIA, 8 BASSA; pytest veloce 101 passati, ruff pulito; README contro tabelle:
+~240 numeri, nessuna discrepanza; RISULTATI_FINALI.md rigenerato identico. Rapporto:
+`revisione/log/giro3_revisore.md`. Tutti corretti:
+- M1: `holm_bonferroni` esclude i p NaN dalla famiglia (p corretto NaN, avviso); 16 e 19
+  stampano "non definito"; nuovo test `test_holm_excludes_undefined_p`.
+- M2: 18 con esito costante stampa un solo messaggio; il verdetto conta solo le esclusioni con
+  p definito; se il campione completo ha p >= 0,05 non da' un verdetto di robustezza.
+- M3: generatore: tolto il dizionario di esiti fissi; "arrotondamento" calcolato (|esatto -
+  vecchio| < 0,001); numero di modelli e di pazienti letti dalle tabelle; "IC non calibrati"
+  solo con <= SMALL_K pazienti.
+- M4: tolta l'attribuzione dello 0,53 alla mediana (non ricostruibile dal codice di allora):
+  0,53 -> 0,540 (media) e' "cambiato".
+- M5: README: "maggioranza di doppietti" invece dell'intervallo 68-72% in grassetto.
+- BASSA: "1 seme"; separatori delle migliaia; README:34 (stime per schema, IC non calibrati con
+  4-5 pazienti, aggiunto lo schema ingenuo +0,035); nota su Nadeau-Bengio in LOPO e sulle 1.000
+  repliche del bootstrap in sim_a; 11 `--h5ad`/`--splits` non obbligatori con `--from-table`;
+  docstring di sim_c, 08, 10.
+- Nessuna riesecuzione necessaria (nessun calcolo cambiato sui dati reali); tutto viene
+  rieseguito nella Fase 3, salvo 05, 11, 12 (vedi sotto).
 
 ## Problemi respinti
 

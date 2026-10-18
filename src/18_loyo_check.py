@@ -120,28 +120,42 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
                 "p_centered_full": full["p_centered"],
             }
         )
-        flag = "" if p < 0.05 else "  [non piu' significativo senza questo paziente]"
+        if np.isnan(p):
+            flag = "  [p non definito: esito costante]"
+        else:
+            flag = (
+                "" if p < 0.05 else "  [non piu' significativo senza questo paziente]"
+            )
         print(
             f"  senza {held_out} ({n_clones_removed:3d} cloni): rho={rho:+.3f}  p={p:.4f}{flag}"
         )
 
     # Sintesi su tutte le esclusioni
     out = pd.DataFrame(rows)
+    if np.isnan(rho_full):
+        print("\nesito costante su tutti i pazienti: rho non definito, nessun test.")
+        return out
     n_robust_c = int((out.p_centered_without < 0.05).sum())
     print(
         f"\ncon il p centrato: p < 0.05 in {n_robust_c}/{len(pats)} versioni leave-one-out."
     )
     n_robust = out.still_significant.sum()
+    # il verdetto conta solo le esclusioni con p definito
+    n_def = int(out.p_without.notna().sum())
     print(
-        f"\nrisultato resta significativo (p<0.05) in {n_robust}/{len(pats)} versioni leave-one-out."
+        f"\nrisultato resta significativo (p<0.05) in {n_robust}/{n_def} versioni leave-one-out"
+        " con p definito."
     )
-    if out.p_without.isna().any():
+    if n_def < len(pats):
+        print(f"[!!] p non definito in {len(pats) - n_def} esclusioni (esito costante)")
+    if p_full >= 0.05:
         print(
-            f"[!!] p non definito in {int(out.p_without.isna().sum())} esclusioni (esito costante)"
+            "VERDETTO: gia' sul campione completo p >= 0.05: non c'e' un segnale di cui"
         )
-    if n_robust == len(pats):
+        print("          verificare la robustezza.")
+    elif n_robust == n_def:
         print("VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.")
-    elif n_robust >= len(pats) - 1:
+    elif n_robust >= n_def - 1:
         print(
             "VERDETTO: p < 0.05 tranne che rimuovendo un paziente specifico (da ispezionare)."
         )

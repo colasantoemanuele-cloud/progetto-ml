@@ -303,7 +303,11 @@ def main() -> None:
     print("-" * 78)
     print("p-value corretti (Holm-Bonferroni, su 3 test):")
     for k, v in adj.items():
-        sig = "SIGNIFICATIVO" if v < 0.05 else "non significativo"
+        sig = (
+            "non definito"
+            if v != v  # NaN: covariata costante, esclusa dalla famiglia
+            else ("SIGNIFICATIVO" if v < 0.05 else "non significativo")
+        )
         print(f"  {k:20s} p_adj = {v:.4f}   {sig}")
 
     out_tab = pd.DataFrame(results).T

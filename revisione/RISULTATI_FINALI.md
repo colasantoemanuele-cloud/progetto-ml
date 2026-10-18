@@ -10,7 +10,7 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | macro-F1 task1a_paired, split casuale | **0,875±0,002** | 0,875±0,002 | uguale | `baseline_summary_sc` |
 | macro-F1 task1a_paired, LOPO | **0,729±0,100** | 0,729±0,100 | uguale | `baseline_summary_sc` |
 | LightGBM task2_v1 (LOPO) | **0,962** | 0,962 | uguale | `model_zoo_summary_sc` |
-| logistica L2 task2_hier3 | **0,851** | **0,850** | arrotondamento (stessa stima, arrotondata male prima) | `model_zoo_summary_sc` |
+| logistica L2 task2_hier3 | **0,851** | **0,850** | arrotondamento (valore esatto a meno di 0,001 dal precedente) | `model_zoo_summary_sc` |
 | LightGBM task2_hier3 | **0,923** | 0,923 | uguale | `model_zoo_summary_sc` |
 | MLP task2_hier3 (README pubblicato) | **0,903** | **0,904** | cambiato | `model_zoo_summary_sc` |
 | RF vs LightGBM task2_v1: p Wilcoxon / p Nadeau-Bengio | **p 0,002/0,074** | p 0,002/0,074 | uguale | `model_comparison_task2_v1` |
@@ -41,10 +41,10 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | duttali adiacenti predette maligne | **31,7%** | **37,1%** | cambiato | `external_test_summary` |
 | AUC pooled score CNV medio | **0,492** | 0,492 | uguale | `cnv_loci_auc` |
 | AUC pooled loci PDAC | **0,682** | 0,682 | uguale | `cnv_loci_auc` |
-| AUC loci PDAC entro paziente (mediana / media dei 4 pazienti) | **0,53** | **0,533 / 0,540** | uguale (il valore precedente era la mediana) | `cnv_loci_auc_by_patient` |
+| AUC loci PDAC entro paziente (media dei 4 pazienti valutabili) | **0,53** | **0,540** | cambiato | `cnv_loci_auc_by_patient` |
 | sim (b): errore PBMC stimato da LOCO con artefatto (moderato / forte) | **0,24** | **0,126 / 0,385** | cambiato | `sim_b_reference_schemes` |
 
-Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato, la mediana dei pazienti valutabili); i p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
+Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato; il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
 
 ## Dataset
 
@@ -193,7 +193,7 @@ Jaccard medio fra i top-50 dei 5 fold LOPO 0,300 (0,220-0,408 fra coppie, `xai_j
 | loco | Tumor | 0,147 | [0,084; 0,244] | 464 | 11 |
 | naive | PBMC | 0,043 | [0,025; 0,067] | 862 | 11 |
 | naive | Adjacent_normal | 0,076 | [0,051; 0,162] | 646 | 5 |
-| naive | Tumor | 0,092 | [0,062; 0,129] | 1519 | 13 |
+| naive | Tumor | 0,092 | [0,062; 0,129] | 1.519 | 13 |
 
 **Differenze appaiate** (`error_rate_paired_diff`; B2: ricampionature distinte e frazione > 0 con <= 5 pazienti)
 
@@ -285,10 +285,9 @@ Fonte: `clonal_expansion_tests`.
 | error | 0 | 100.000 | 0,0017 | 0,0115 | 0,0026 |
 
 - Leave-one-patient-out, errore: p < 0,05 in 10/10 casi, ρ fra 0,146 e 0,197; p centrato < 0,05 in 10/10 (massimo 0,016) (`loyo_clonal_expansion_error`).
-
 - Leave-one-patient-out, eccesso: p < 0,05 in 10/10 casi, ρ fra 0,236 e 0,368; p centrato < 0,05 in 10/10 (massimo 9,0e-04) (`loyo_clonal_expansion_excess`).
 - Leave-one-patient-out, errore, 20.000 permutazioni (5 semi): p fra 9,0e-04 e 0,012, p centrato fino a 0,017 (`loyo_clonal_expansion_perm_sensitivity`).
-- Leave-one-patient-out, errore, 100.000 permutazioni (1 semi): p fra 0,0011 e 0,011, p centrato fino a 0,016 (`loyo_clonal_expansion_perm_sensitivity`).
+- Leave-one-patient-out, errore, 100.000 permutazioni (1 seme): p fra 0,0011 e 0,011, p centrato fino a 0,016 (`loyo_clonal_expansion_perm_sensitivity`).
 
 ### Quattro ipotesi per paziente (16, 19)
 
@@ -307,11 +306,11 @@ AUC LOPO del Random Forest sull'etichetta CNV: 0,829 ± 0,069 (12 pazienti; `mal
 
 | Paziente | Duttali Tumor | Duttali Adjacent | AUC loci PDAC | AUC score medio |
 | :--- | :--- | :--- | :--- | :--- |
-| PA06 | 2354 | 26 | 0,548 | 0,394 |
+| PA06 | 2.354 | 26 | 0,548 | 0,394 |
 | PA08 | 809 | 210 | 0,582 | 0,430 |
 | PA09 | 981 | 14 | 0,517 | 0,754 |
 | PA10 | 726 | 83 | 0,512 | 0,555 |
-| _mean | 1218 | 83 | 0,540 | 0,533 |
+| _mean | 1.218 | 83 | 0,540 | 0,533 |
 
 Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
@@ -321,8 +320,8 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
 | Scenario | n | k | Repliche | p < 0,05 (NB) | p < 0,05 (t non corretto) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| H0 | 90 | 3 | 1000 | 0,027 | 0,047 |
-| H0 | 90 | 5 | 1000 | 0,018 | 0,061 |
+| H0 | 90 | 3 | 1.000 | 0,027 | 0,047 |
+| H0 | 90 | 5 | 1.000 | 0,018 | 0,061 |
 | effect | 120 | 5 | 300 | 0,993 | 1,000 |
 
 **(a) Cluster bootstrap: copertura / frazione di IC che escludono 0** (`sim_a_cluster_bootstrap`)
@@ -371,10 +370,10 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
 | Confondente | Repliche | FP block (IC 95%) | FP block centrato (IC 95%) | FP ingenuo | FP nelle prime 100 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 0,0 | 1000 | 5,0% [3,7; 6,5] | 4,9% [3,6; 6,4] | 5,1% | 4 |
-| 0,5 | 1000 | 5,9% [4,5; 7,5] | 5,1% [3,8; 6,7] | 25,7% | 6 |
-| 1,0 | 1000 | 4,8% [3,6; 6,3] | 4,1% [3,0; 5,5] | 83,1% | 11 |
-| 2,0 | 1000 | 5,1% [3,8; 6,7] | 4,5% [3,3; 6,0] | 99,4% | 5 |
+| 0,0 | 1.000 | 5,0% [3,7; 6,5] | 4,9% [3,6; 6,4] | 5,1% | 4 |
+| 0,5 | 1.000 | 5,9% [4,5; 7,5] | 5,1% [3,8; 6,7] | 25,7% | 6 |
+| 1,0 | 1.000 | 4,8% [3,6; 6,3] | 4,1% [3,0; 5,5] | 83,1% | 11 |
+| 2,0 | 1.000 | 5,1% [3,8; 6,7] | 4,5% [3,3; 6,0] | 99,4% | 5 |
 
 **(d) Stabilita' XAI**: differenza controllo − LOPO +0,143 con effetto paziente (+0,116; +0,181) e +0,030 senza (`sim_d_xai_stability`).
 

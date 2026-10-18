@@ -46,6 +46,8 @@ Output
   results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, CD4, rapporto CD4, pazienti concordi
   results/tables/doublet_scores.csv             punteggio Scrublet per cellula (cache, escluso da git)
   results/tables/doublet_tcr_pos_vs_neg.csv     Scrublet TCR+ vs TCR- per classe, pazienti concordi
+  (se un'analisi non ha dati, la sua tabella non viene scritta e quella di un'esecuzione
+  precedente viene cancellata)
   results/figures/doublet_by_tcr_status.png
 
 Argomenti

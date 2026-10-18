@@ -61,7 +61,8 @@ Output
   results/tables/error_rate_identity_rules.csv        errore (blood) con regole CD8+ alternative
   results/tables/ambient_cd4_threshold.csv            soglia CD4 per compartimento e numero di cellule
   results/tables/doublet_mixture.csv                  d1, d2 con IC: mediane/medie, pooled/per compartimento
-  results/tables/doublet_mixture_boot.csv             repliche bootstrap di d1, d2 (mediane, pooled)
+  results/tables/doublet_mixture_boot.csv             repliche bootstrap di d1, d2 (mediane, pooled;
+                                                      cancellata se la stima pooled non e' possibile)
   results/figures/error_rate_loco.png
 
 Argomenti

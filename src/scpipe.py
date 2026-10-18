@@ -358,16 +358,25 @@ def holm_bonferroni(pvals: dict) -> dict:
     """Correzione step-down di Holm-Bonferroni (controllo forte del FWER).
 
     I p ordinati in modo crescente sono moltiplicati per (m - i), limitati a 1 e
-    resi monotoni con il massimo cumulato.
+    resi monotoni con il massimo cumulato. Un p non definito (NaN, es. covariata
+    costante) e' escluso dalla famiglia, con un avviso: il suo p corretto e' NaN e
+    m conta solo i test con p definito.
     """
-    items = sorted(pvals.items(), key=lambda kv: kv[1])
+    nan = [k for k, p in pvals.items() if p is None or np.isnan(p)]
+    if nan:
+        warnings.warn(
+            f"holm_bonferroni: p non definito per {nan}, esclusi", stacklevel=2
+        )
+    items = sorted(
+        ((k, p) for k, p in pvals.items() if k not in nan), key=lambda kv: kv[1]
+    )
     m = len(items)
-    adj, running_max = {}, 0.0
+    adj, running_max = {k: np.nan for k in nan}, 0.0
     for i, (name, p) in enumerate(items):
         val = min((m - i) * p, 1.0)
         running_max = max(running_max, val)
         adj[name] = running_max
-    return adj
+    return {k: adj[k] for k in pvals}
 
 
 def majority_label(labels) -> str:

@@ -54,7 +54,7 @@ Output
 
 Argomenti
 ---------
-  --h5ad, --splits (obbligatori), --tasks (default task2_hier3 task2_v1; con --from-table tutti i task della tabella),
+  --h5ad, --splits (obbligatori, tranne con --from-table), --tasks (default task2_hier3 task2_v1; con --from-table tutti i task della tabella),
   --models (default tutti), --max-train (default 20000; 0 = tutte le cellule),
   --scheme (forza fold_group_5 / fold_random_5 / fold_lopo), --tag (default sc),
   --update (sostituisce nella tabella esistente solo i modelli e i task rieseguiti),
@@ -392,8 +392,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(
         description="Confronto di 13 classificatori con validazione per paziente."
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--splits", type=Path, required=True)
+    ap.add_argument("--h5ad", type=Path, help="obbligatorio senza --from-table")
+    ap.add_argument("--splits", type=Path, help="obbligatorio senza --from-table")
     ap.add_argument(
         "--tasks",
         nargs="*",
@@ -437,6 +437,8 @@ def main() -> None:
             print(f"[!!] --from-table: task assenti da {out}: {missing} (saltati)")
         args.tasks = [t for t in args.tasks if t in set(res.task)]
     else:
+        if args.h5ad is None or args.splits is None:
+            ap.error("--h5ad e --splits sono obbligatori senza --from-table")
         if args.tasks is None:
             args.tasks = ["task2_hier3", "task2_v1"]
         print("[..] carico h5ad ...")

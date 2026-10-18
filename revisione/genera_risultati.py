@@ -8,7 +8,8 @@ Ogni risultato di RISULTATI_FINALI.md viene da una tabella di `results/tables/`,
 accanto al numero (criterio 4). Sono scritti a mano solo i valori della presentazione
 (colonna "prima" della tabella iniziale e dizionario `h_old`) e la soglia SMALL_K = 5
 pazienti sotto cui gli IC non sono calibrati; numeri di pazienti, fold e cellule di
-training sono letti dalle tabelle. Le note
+training sono letti dalle tabelle. L'esito "arrotondamento" e' calcolato: il valore esatto
+della tabella dista meno di 0,001 dal valore precedente. Le note
 sull'esecuzione (commit, memoria, script non rieseguiti) sono lette da
 `revisione/note_esecuzione.md`, se esiste, e copiate in fondo.
 
@@ -45,11 +46,6 @@ MISSING: list[str] = []
 SMALL_K = (
     5  # pazienti: con <= SMALL_K l'IC del cluster bootstrap non e' calibrato (sim_a)
 )
-# esiti che non sono un risultato cambiato
-ESITO = {
-    "logistica L2 task2_hier3": "arrotondamento (stessa stima, arrotondata male prima)",
-    "AUC loci PDAC entro paziente (mediana / media dei 4 pazienti)": "uguale (il valore precedente era la mediana)",
-}
 
 
 def t(name: str) -> pd.DataFrame:
@@ -259,6 +255,7 @@ def main() -> None:
             "0,851",
             f(zv(zs, "task2_hier3", "logreg_l2")),
             "model_zoo_summary_sc",
+            zv(zs, "task2_hier3", "logreg_l2"),
         ),
         (
             "LightGBM task2_hier3",
@@ -436,10 +433,9 @@ def main() -> None:
             "cnv_loci_auc",
         ),
         (
-            "AUC loci PDAC entro paziente (mediana / media dei 4 pazienti)",
+            f"AUC loci PDAC entro paziente (media dei {len(auc_pat)} pazienti valutabili)",
             "0,53",
-            f"{f(auc_pat.median()) if len(auc_pat) else '⟦n.d.⟧'} / "
-            f"{f(v(loci_p, 'auc_PDAC_COMPOSITE', patient='_mean'))}",
+            f(v(loci_p, "auc_PDAC_COMPOSITE", patient="_mean")),
             "cnv_loci_auc_by_patient",
         ),
         (
@@ -450,9 +446,12 @@ def main() -> None:
         ),
     ]
     rows = []
-    for lab, old, new, src in pres:
+    for lab, old, new, src, *raw in pres:
         same = old.replace(" ", "") == new.replace(" ", "")
-        esito = ESITO.get(lab, "uguale" if same else "cambiato")
+        esito = "uguale" if same else "cambiato"
+        # stessa stima arrotondata diversamente: il valore esatto dista dal vecchio < 0,001
+        if not same and raw and abs(raw[0] - float(old.replace(",", "."))) < 1e-3:
+            esito = "arrotondamento (valore esatto a meno di 0,001 dal precedente)"
         rows.append(
             [lab, f"**{old}**", new if same else f"**{new}**", esito, f"`{src}`"]
         )
@@ -468,8 +467,9 @@ def main() -> None:
         md_table(rows, ["Numero", "Prima (presentazione)", "Dopo", "Esito", "Tabella"])
     )
     L.append(
-        "\nNote: lo 0,53 e' l'AUC entro paziente dei loci PDAC (\"≈ 0,53\" nel README pubblicato, la "
-        "mediana dei pazienti valutabili); i p grezzi di H1-H4 sono nella sezione delle ipotesi. "
+        "\nNote: lo 0,53 e' l'AUC entro paziente dei loci PDAC (\"≈ 0,53\" nel README pubblicato; "
+        "il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non "
+        "e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. "
         f"Gli IC con {SMALL_K} pazienti o meno (Adjacent_normal, differenza appaiata) non sono "
         "calibrati (vedi Simulazioni).\n"
     )
@@ -538,7 +538,10 @@ def main() -> None:
     n_tr = zs.n_train_mean.max() if not zs.empty else np.nan
     nf = pd.concat([zs.n_folds, z1.n_folds]) if not zs.empty else pd.Series([np.nan])
     zs_folds = f"{nf.min():.0f}-{nf.max():.0f}"
-    L.append(f"## 13 modelli (11, LOPO, {n_(n_tr)} cellule di training per fold)\n")
+    n_mod = zs[zs.task == "task2_v1"].model.nunique() if not zs.empty else 0
+    L.append(
+        f"## {n_mod} modelli (11, LOPO, {n_(n_tr)} cellule di training per fold)\n"
+    )
     for df, task in ((zs, "task2_v1"), (zs, "task2_hier3"), (z1, "task1a_paired")):
         if df.empty:
             continue
@@ -678,7 +681,7 @@ def main() -> None:
                         tis,
                         f(r.error),
                         ci(r.lo, r.hi),
-                        f"{r.n:.0f}",
+                        n_(r.n),
                         f"{r.n_pat:.0f}",
                     ]
                 )
@@ -699,7 +702,7 @@ def main() -> None:
                 r.contrast,
                 f(r.diff, sign=True),
                 ci(r.lo, r.hi, sign=True),
-                f"{r.n_clones:.0f}",
+                n_(r.n_clones),
                 f"{r.n_patients:.0f}",
                 ""
                 if np.isnan(r.n_distinct_resamples)
@@ -730,9 +733,9 @@ def main() -> None:
         [
             [
                 r.category,
-                f"{r.n_errors:.0f}",
+                n_(r.n_errors),
                 f(r.rate_over_all_clones),
-                f"{r.n_clones:.0f}",
+                n_(r.n_clones),
                 "" if np.isnan(r.lo) else ci(r.lo, r.hi),
             ]
             for r in dec.itertuples()
@@ -746,7 +749,7 @@ def main() -> None:
     L.append(md_table(rr, ["Categoria", "Errori", "Tasso", "Cloni", "IC 95%"]))
     rr = (
         [
-            [r.description, r.tissue, f(r.error), ci(r.lo, r.hi), f"{r.n:.0f}"]
+            [r.description, r.tissue, f(r.error), ci(r.lo, r.hi), n_(r.n)]
             for r in rules.itertuples()
         ]
         if not rules.empty
@@ -766,13 +769,15 @@ def main() -> None:
                 r.contrast,
                 f(r.mean, sign=True),
                 ci(r.lo, r.hi, sign=True),
-                f"{r.n_clones:.0f}",
+                n_(r.n_clones),
                 f"{r.n_patients:.0f}",
             ]
             for r in tri.itertuples()
         ]
         L.append(
-            f"**Cloni presenti nei tre compartimenti (08)** (`triple_clones_summary`; {tri.n_patients.max():.0f} pazienti: IC non calibrati)\n"
+            f"**Cloni presenti nei tre compartimenti (08)** (`triple_clones_summary`; {tri.n_patients.max():.0f} pazienti"
+            + (": IC non calibrati" if tri.n_patients.max() <= SMALL_K else "")
+            + ")\n"
         )
         L.append(
             md_table(rr, ["Contrasto", "Media", "IC 95%", "Cloni", "Pazienti"]) + "\n"
@@ -812,7 +817,7 @@ def main() -> None:
             [
                 r.outcome,
                 r.level,
-                f"{r.n:.0f}",
+                n_(r.n),
                 f(r.rho),
                 p_fmt(r.p),
                 "" if np.isnan(r.null_mean) else f(r.null_mean, 4),
@@ -850,11 +855,12 @@ def main() -> None:
             rr, ["Esito", "Seme", "Permutazioni", "p", "media nulla", "p centrato"]
         )
     )
+    L.append("")
     for nm, ly in (("errore", ly_e), ("eccesso", ly_x)):
         if not ly.empty:
             src = f"loyo_clonal_expansion_{'error' if nm == 'errore' else 'excess'}"
             L.append(
-                f"\n- Leave-one-patient-out, {nm}: p < 0,05 in {int(ly.still_significant.sum())}/{len(ly)} casi, "
+                f"- Leave-one-patient-out, {nm}: p < 0,05 in {int(ly.still_significant.sum())}/{len(ly)} casi, "
                 f"ρ fra {f(ly.rho_without.min())} e {f(ly.rho_without.max())}; p centrato < 0,05 in "
                 f"{int((ly.p_centered_without < 0.05).sum())}/{len(ly)} (massimo {p_fmt(ly.p_centered_without.max())}) "
                 f"(`{src}`)."
@@ -862,7 +868,7 @@ def main() -> None:
     if not ly_s.empty:
         for n_perm, g in ly_s.groupby("n_perm"):
             L.append(
-                f"- Leave-one-patient-out, errore, {n_(n_perm)} permutazioni ({g.seed.nunique()} semi): p fra "
+                f"- Leave-one-patient-out, errore, {n_(n_perm)} permutazioni ({g.seed.nunique()} {'seme' if g.seed.nunique() == 1 else 'semi'}): p fra "
                 f"{p_fmt(g.p.min())} e {p_fmt(g.p.max())}, p centrato fino a {p_fmt(g.p_centered.max())} "
                 "(`loyo_clonal_expansion_perm_sensitivity`)."
             )
@@ -899,8 +905,8 @@ def main() -> None:
         rr = [
             [
                 r.patient,
-                f"{r.n_tumor:.0f}",
-                f"{r.n_normal:.0f}",
+                n_(r.n_tumor),
+                n_(r.n_normal),
                 f(r.auc_PDAC_COMPOSITE),
                 f(getattr(r, "_5")),
             ]
@@ -926,9 +932,9 @@ def main() -> None:
         [
             [
                 r.scenario,
-                f"{r.n:.0f}",
+                n_(r.n),
                 f"{r.k:.0f}",
-                f"{r.reps:.0f}",
+                n_(r.reps),
                 f(r.frac_p_lt_005_nadeau_bengio),
                 f(r.frac_p_lt_005_uncorrected),
             ]
@@ -1000,7 +1006,7 @@ def main() -> None:
         rr = [
             [
                 f(r.confounder, 1),
-                f"{r.reps:.0f}",
+                n_(r.reps),
                 f"{pct(r.rate_block)} {ci(100 * r.lo_block, 100 * r.hi_block, 1)}",
                 f"{pct(r.rate_block_centered)} {ci(100 * r.lo_block_centered, 100 * r.hi_block_centered, 1)}",
                 f"{pct(r.rate_naive)}",

@@ -257,7 +257,11 @@ def main() -> None:
     print(f"\np-value grezzi: {all_p}")
     print("\np-value corretti (Holm-Bonferroni, famiglia completa):")
     for k, v in adj.items():
-        sig = "SIGNIFICATIVO" if v < 0.05 else "non significativo"
+        sig = (
+            "non definito"
+            if v != v  # NaN: covariata costante, esclusa dalla famiglia
+            else ("SIGNIFICATIVO" if v < 0.05 else "non significativo")
+        )
         marker = "  [H4: questo script]" if k == "H4_ni_score" else ""
         print(f"  {k:20s} p_adj = {v:.4f}   {sig}{marker}")
 

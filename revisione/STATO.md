@@ -1,8 +1,8 @@
 # Stato della revisione
 
-**Giro 1** (completo, 01:35, 8058701): 1 ALTA, 18 MEDIA, 29 BASSA. **Giro 2** (incrementale, 02:10): 0 ALTA, 4 MEDIA, 16 BASSA; corretti tutti salvo 1 BASSA motivata. Resta: giro 3 incrementale; se pulito, verifiche della Fase 3 e giro di chiusura con 4 revisori in parallelo e test lenti.
+**Giro 1** (completo, 01:35, 8058701): 1 ALTA, 18 MEDIA, 29 BASSA. **Giro 2** (incrementale, 01:54, 50b8095): 0 ALTA, 4 MEDIA, 16 BASSA; corretti tutti salvo 1 BASSA motivata. **Giro 3** (incrementale, 02:30): 0 ALTA, 5 MEDIA, 8 BASSA, tutti corretti. Resta: esecuzione della Fase 3, poi giro di chiusura con 4 revisori in parallelo e test lenti.
 
-**Test e stile.** `pytest -m "not slow"`: 101 passati; test lenti: 6/6 passati (giro 2). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
+**Test e stile.** `pytest -m "not slow"`: 102 passati; test lenti: 6/6 passati (giro 2). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
 
 **Numeri della presentazione cambiati** (tabella completa in `RISULTATI_FINALI.md`):
 
@@ -15,6 +15,7 @@
 | IC errore Tumor 0,195 | [0,123; 0,274] | [0,110; 0,290] |
 | IC Tumor − Adjacent +0,080 | [+0,021; +0,170] | [0,000; +0,192] |
 | doppietti d2 | 0,790 [0,660; 0,876] | 0,676 [0,559; 0,781] (d1 0,723 [0,556; 0,848]) |
+| MLP task2_hier3 (README) | 0,903 | 0,904 (MLP reso deterministico) |
 | AUC LOPO 13 / duttali adiacenti maligne | 0,825 / 31,7% | 0,829 / 37,1% |
 | AUC entro paziente loci PDAC | 0,53 | 0,540 |
 | sim (b) / (c) / (d) | 0,24 / 2 su 100 / 0,063-0,040 | 0,126-0,385 / 4-11 su 100, 4,8-5,9% su 1.000 / 0,143-0,030 |
