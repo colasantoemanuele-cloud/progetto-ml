@@ -232,10 +232,14 @@ def main() -> None:
     """Orchestra il test di sensibilita' Leave-One-Patient-Out per entrambi gli
     indicatori di discordanza clonale (errore binario ed eccesso continuo)."""
     ap = argparse.ArgumentParser(
-        description="Sensibilita' leave-one-patient-out dell'associazione espansione-errore."
+        description="Sensibilita' leave-one-patient-out dell'associazione espansione-errore.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     ap.add_argument(
-        "--input", type=Path, default=Path("results/tables/clonal_expansion_joined.csv")
+        "--input",
+        type=Path,
+        default=Path("results/tables/clonal_expansion_joined.csv"),
+        help="tabella cloni x esiti (da 17_clonal_expansion.py)",
     )
     args = ap.parse_args()
 

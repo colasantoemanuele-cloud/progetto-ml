@@ -8,7 +8,8 @@ Scopo
 richiede decine di GB. Lo script legge il file compresso a blocchi
 (`CHUNK = 20_000_000` righe) con il parser C di pandas, riempie tre vettori
 pre-allocati (`int32` per gli indici, `float32` per i conteggi UMI) e costruisce una
-matrice CSR cellule x geni; il picco di memoria resta intorno a 10-12 GB.
+matrice CSR cellule x geni; il picco di memoria misurato e' di circa 8 GB con
+`--no-counts-layer` (7,7 GB per sc, `revisione/log/_status.txt`), di piu' con il layer `counts`.
 
 Identificativi delle cellule nelle serie GEO:
     scRNA-seq        PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1      (barcode 16 nt)
@@ -212,10 +213,21 @@ def check_counts(X: sp.csr_matrix) -> None:
 def main() -> None:
     """Esegue la pipeline completa di download, assemblaggio CSR, calcolo metriche QC e scrittura atomica .h5ad."""
     ap = argparse.ArgumentParser(
-        description="Conversione delle matrici MatrixMarket di GEO in AnnData (.h5ad)."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Conversione delle matrici MatrixMarket di GEO in AnnData (.h5ad).",
     )
-    ap.add_argument("--which", choices=["sc", "sn"], required=True)
-    ap.add_argument("--outdir", type=Path, default=Path("data"))
+    ap.add_argument(
+        "--which",
+        choices=["sc", "sn"],
+        required=True,
+        help="scRNA-seq (sc) o snRNA-seq (sn)",
+    )
+    ap.add_argument(
+        "--outdir",
+        type=Path,
+        default=Path("data"),
+        help="radice dei dati: scrive in <outdir>/interim, scarica in <outdir>/raw",
+    )
     ap.add_argument(
         "--subsample", type=int, default=0, help="n cellule per sviluppo (0 = tutte)"
     )

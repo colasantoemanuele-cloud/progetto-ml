@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/sim/sim_a_calibration.py"
-	User time (seconds): 271.87
+	User time (seconds): 266.80
 	System time (seconds): 0.14
-	Percent of CPU this job got: 140%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:13.13
+	Percent of CPU this job got: 131%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:22.84
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 192912
+	Maximum resident set size (kbytes): 192552
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 32552
-	Voluntary context switches: 56
-	Involuntary context switches: 1783
+	Minor (reclaiming a frame) page faults: 32549
+	Voluntary context switches: 50
+	Involuntary context switches: 2289
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 32

@@ -31,7 +31,10 @@ Input
 Output
 ------
   results/tables/arbitration.csv                 una riga per (clone, compartimento) risolto
-  results/tables/error_rate_by_compartment.csv   errore per compartimento con IC
+  results/tables/error_rate_by_compartment.csv   errore per compartimento con IC; `ic_calibrato` e' falso
+                                                 con <= 5 pazienti (copertura sotto il 95% in
+                                                 `sim_a`), e allora si riportano anche le
+                                                 ricampionature distinte (`n_distinct_resamples`)
   results/tables/doublet_physical.csv            mediane di n_counts, n_genes, UMI TCR per 1000, per classe x TCR
   results/figures/error_rate_by_compartment.png, results/figures/doublet_physical.png
 
@@ -60,7 +63,12 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scpipe import SMALL_K, cluster_bootstrap, majority_label  # noqa: E402
+from scpipe import (  # noqa: E402
+    SMALL_K,
+    cluster_bootstrap,
+    majority_label,
+    small_k_diagnostics,
+)
 
 FIG = Path("results/figures")
 TAB = Path("results/tables")
@@ -207,14 +215,23 @@ def partA(lym: pd.DataFrame) -> None:
             continue
         by = {p: gg.error.values.astype(float) for p, gg in g.groupby("patient")}
         m, lo, hi = cluster_boot(by)
+        k = g.patient.nunique()
+        # con <= SMALL_K pazienti l'IC non e' calibrato: si riportano le ricampionature distinte
+        n_dist = (
+            small_k_diagnostics(by, N_BOOT, SEED)["n_distinct_resamples"]
+            if k <= SMALL_K
+            else np.nan
+        )
         rows.append(
             {
                 "tissue": tis,
                 "n_clone_comp": len(g),
-                "n_patients": g.patient.nunique(),
+                "n_patients": k,
                 "error_rate": m,
                 "lo": lo,
                 "hi": hi,
+                "ic_calibrato": k > SMALL_K,
+                "n_distinct_resamples": n_dist,
             }
         )
         print(
@@ -223,7 +240,16 @@ def partA(lym: pd.DataFrame) -> None:
         )
     res = pd.DataFrame(
         rows,
-        columns=["tissue", "n_clone_comp", "n_patients", "error_rate", "lo", "hi"],
+        columns=[
+            "tissue",
+            "n_clone_comp",
+            "n_patients",
+            "error_rate",
+            "lo",
+            "hi",
+            "ic_calibrato",
+            "n_distinct_resamples",
+        ],
     )
     res.to_csv(TAB / "error_rate_by_compartment.csv", index=False)
     if res.empty:
@@ -408,10 +434,21 @@ def partB(gex: pd.DataFrame) -> None:
 def main() -> None:
     """Punto di ingresso principale per l'arbitrato clonale e il test biofisico dei doppietti."""
     ap = argparse.ArgumentParser(
-        description="Identita' clonale dai marcatori, errore per compartimento, doppietti."
+        description="Identita' clonale dai marcatori, errore per compartimento, doppietti.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
+    ap.add_argument(
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--tcrdir",
+        type=Path,
+        default=Path("data/raw/tcr"),
+        help="cartella con i file VDJ filtered_contig_annotations",
+    )
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)

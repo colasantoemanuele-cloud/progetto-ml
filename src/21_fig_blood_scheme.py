@@ -17,7 +17,7 @@ Input
 Output
 ------
   results/tables/error_rate_blood.csv   errore per compartimento: n cloni, n pazienti, errore, IC;
-                                        con <= 5 pazienti anche ricampionature distinte e frazione > 0
+                                        con <= 5 pazienti anche il numero di ricampionature distinte
   results/figures/error_rate_blood.png
 
 Argomenti
@@ -57,9 +57,15 @@ def load_loco():
 def main() -> None:
     """Calcola la tabella dello schema blood e disegna la figura."""
     ap = argparse.ArgumentParser(
-        description="Tabella e figura dell'errore con riferimento solo PBMC."
+        description="Tabella e figura dell'errore con riferimento solo PBMC.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--arbitration", type=Path, default=TAB / "arbitration_blood.csv")
+    ap.add_argument(
+        "--arbitration",
+        type=Path,
+        default=TAB / "arbitration_blood.csv",
+        help="identita' clonale e errore per (clone, compartimento), schema 'blood' (da 10_loco.py)",
+    )
     args = ap.parse_args()
     if not args.arbitration.exists():
         raise SystemExit(

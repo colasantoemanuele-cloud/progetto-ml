@@ -2,8 +2,9 @@
 # download_tcr.sh - Download dei 30 file VDJ (filtered_contig_annotations) di GSE300435.
 #
 # Scopo:   scarica da NCBI GEO i file *_VDJ_filtered_contig_annotations.csv.gz elencati in
-#          filelist.txt, con retry e ripresa dei download parziali. Idempotente: i file gia'
-#          presenti e integri (gzip -t) non vengono riscaricati.
+#          filelist.txt, con retry di curl. Idempotente: i file gia' presenti e integri
+#          (gzip -t) vengono saltati; un file il cui download fallisce o risulta corrotto
+#          viene cancellato e riscaricato da capo alla prossima esecuzione.
 # Input:   FILELIST (default data/raw/metadata/filelist.txt, da 00_fetch_metadata.py)
 # Output:  OUTDIR/<GSM>_PA_<nn>-<tessuto>-VDJ_filtered_contig_annotations.csv.gz (30 file)
 # Errori:  esce con codice 1 se il filelist non elenca esattamente 30 file VDJ, se un
@@ -73,7 +74,7 @@ done
 
 echo
 echo "[ok] scaricati/validi: $ok | falliti: $fail"
-[[ $fail -eq 0 ]] || { echo "[ERRORE] rilancia lo script: riprende da dove ha lasciato" >&2; exit 1; }
+[[ $fail -eq 0 ]] || { echo "[ERRORE] rilancia lo script: i file integri vengono saltati, quelli falliti riscaricati" >&2; exit 1; }
 # conta solo i file elencati nel filelist, presenti e integri
 n_ok=0
 for f in "${FILES[@]}"; do

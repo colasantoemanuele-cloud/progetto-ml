@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8; prossimo: Fase 3 e giro di chiusura | - |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1 (4 revisori): 2/9/38; prossimo: chiusura 2 | - |
 | 3 Esecuzione finale | eseguita al commit 61fb36b (tutti rc = 0); RISULTATI_FINALI.md generato; manca il giro di chiusura | (commit Fase 3) |
 
 ## Note iniziali
@@ -245,6 +245,40 @@ RISULTATI_FINALI.md). Tutti rc = 0. 02 ricrea `sc_raw.h5ad` identico byte per by
 di `ni_score_holm_joint.csv` (Holm ora restituisce l'ordine di ingresso). Non rieseguiti: 05, 11,
 12 (codice di calcolo invariato, verificato con git diff e confronto AST di scpipe). Cache usate:
 Scrublet, inferCNV (ricalcolata senza cache nel giro 1, identica). Nessun numero del README cambia.
+
+## Giro 4 = chiusura 1 (completo, 4 revisori in parallelo)
+
+Aree: (a) 04, 05, 11, 12, 20, scpipe; (b) 06-10, 15-19, 21; (c) 13, 14, sim, test; (d) README,
+ambiente, docstring. Esito: (a) 1/4/10, (b) 0/3/7, (c) 0/1/9, (d) 1/1/12 -> 2 ALTA, 9 MEDIA,
+38 BASSA. pytest completo (lenti compresi) 108 passati; ruff pulito. Rapporti:
+`revisione/log/chiusura1_revisore_{a,b,c,d}.md`.
+- ALTA (a1): `--tasks`/`--models`/`--methods` vuoti e fold con una sola classe: `nargs="+"` e
+  messaggi chiari in 05, 11, 12, 20. ALTA (d1): crash del generatore se manca
+  `model_zoo_summary_task1`: corretto.
+- MEDIA (c1): inferCNV includeva il cromosoma mitocondriale (`chrMT` non e' escluso da
+  infercnvpy) e un contig non standard; ora solo cromosomi 1-22 (X e Y esclusi da infercnvpy),
+  con controllo sulle finestre. 13 e 14 rieseguiti senza cache. Numeri cambiati:
+  AUC LOPO 0.829 +- 0.069 -> 0.837 +- 0.071; duttali adiacenti predette maligne 37.1% -> 30.8%;
+  adiacenti "maligne" (n >= 20) 45-62% -> 41-58%; AUC pooled score medio 0.492 -> 0.531, loci PDAC
+  0.682 -> 0.698; entro paziente 0.540 (0.512-0.582) -> 0.557 (0.528-0.588). Presentazione:
+  0,825 -> 0,837, 31,7% -> 30,8%, 0,492 -> 0,531, 0,682 -> 0,698, 0,53 -> 0,557.
+- MEDIA (a2-a5, b1-b3, d2): docstring di majority_label (l'equivalenza con value_counts vale solo
+  con 2-3 etichette; nuovo test con >= 4), 05, 04; 20 senza soglie fisse (confronto con sim_d);
+  README: doppietti nel Tumor (maggioranza non sostenuta), docstring di 21, tabelle vecchie
+  cancellate in tutte le uscite anticipate di 08; README sezione 1 riscritta (il principio del
+  paziente spiega le righe 2 e 3; riga 1: circolarita' in entrambe le stime; riga 3: pooled vs
+  entro paziente, l'AUC LOPO spostata nelle note).
+- BASSA: corrette quasi tutte (impronta delle cache CNV, cache Scrublet controllata, colonne
+  `n_patients_across/within` in 06 e `ic_calibrato` in 09, `help` e default in tutti gli
+  argparse, `\\` nelle docstring, figure nel README, ruff su `revisione/`, comando del
+  generatore, test NB con k = 3, fonti delle coperture, p grezzi e selezione del migliore in 11,
+  asterisco per k > geni non nulli in 12).
+- Riesecuzioni: 04 (identico), 06-10, 21, 15-19, 20, 13 e 14 senza cache, simulazioni, 11 con
+  `--from-table`; tutti rc = 0 (`revisione/log/_status.txt`, blocco "chiusura 1").
+- Respinti: (a11) LogCPM/HVGSelector con matrici dense: gli script passano sempre CSR, e
+  cambiare queste classi invaliderebbe la verifica (AST identico) che permette di non rieseguire
+  05, 11 e 12; (a6) rinominare `model_comparison_{task}` e le figure con il tag: cambierebbe i
+  nomi pubblicati; dichiarato in docstring che dipendono solo dal task.
 
 ## Problemi respinti
 

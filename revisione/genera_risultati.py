@@ -187,10 +187,12 @@ def main() -> None:
             method=method,
         )
 
+    k_core = int(core_t1.k.min()) if not core_t1.empty else 50
+
     def core_n(method):
         if core_t1.empty:
             return np.nan
-        return float(((core_t1.method == method) & (core_t1.k == 50)).sum())
+        return float(((core_t1.method == method) & (core_t1.k == k_core)).sum())
 
     if not hyp.empty:
         hyp = hyp.rename(columns={hyp.columns[0]: "hypothesis"})
@@ -308,7 +310,7 @@ def main() -> None:
         (
             "geni comuni ai 5 fold (task1a, k = 50): HVG / chi2 / ANOVA",
             "26/50, 19/50, 20/50",
-            f"{core_n('hvg'):.0f}/50, {core_n('chi2'):.0f}/50, {core_n('anova'):.0f}/50",
+            f"{core_n('hvg'):.0f}/{k_core}, {core_n('chi2'):.0f}/{k_core}, {core_n('anova'):.0f}/{k_core}",
             "feature_core_genes_task1a_paired",
         ),
         (
@@ -460,12 +462,12 @@ def main() -> None:
     L.append("# Risultati finali della revisione\n")
     L.append(
         "Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di "
-        '`results/tables/` indicata accanto. "Prima" e\' il valore della presentazione.\n'
+        '`results/tables/` indicata accanto. "Prima" e\' il valore della presentazione (o del README '
+        "pubblicato, dove indicato); i metadati di esecuzione in fondo (tempi, memoria) vengono dai log "
+        "in `revisione/log/`, non da `results/tables/`.\n"
     )
     L.append("## Numeri della presentazione: prima e dopo\n")
-    L.append(
-        md_table(rows, ["Numero", "Prima (presentazione)", "Dopo", "Esito", "Tabella"])
-    )
+    L.append(md_table(rows, ["Numero", "Prima", "Dopo", "Esito", "Tabella"]))
     L.append(
         "\nNote: lo 0,53 e' l'AUC entro paziente dei loci PDAC (\"≈ 0,53\" nel README pubblicato; "
         "il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non "
@@ -536,7 +538,8 @@ def main() -> None:
 
     # --- modelli
     n_tr = zs.n_train_mean.max() if not zs.empty else np.nan
-    nf = pd.concat([zs.n_folds, z1.n_folds]) if not zs.empty else pd.Series([np.nan])
+    parts_nf = [d.n_folds for d in (zs, z1) if not d.empty]
+    nf = pd.concat(parts_nf) if parts_nf else pd.Series([np.nan])
     zs_folds = f"{nf.min():.0f}-{nf.max():.0f}"
     n_mod = zs[zs.task == "task2_v1"].model.nunique() if not zs.empty else 0
     L.append(
@@ -578,10 +581,17 @@ def main() -> None:
             f"- {task}: migliore macro-F1 {f(best)}; {n_sig} modelli su {len(df)} con p di Nadeau-Bengio < 0,05 "
             f"rispetto al migliore (`model_comparison_{task}`)."
         )
+    k_nb = (
+        ", ".join(f"{k:.0f}" for k in sorted(sa_nb.k.unique()))
+        if not sa_nb.empty
+        else "⟦n.d.⟧"
+    )
     L.append(
-        f"\nCon {zs_folds} fold la potenza e' bassa: un p non significativo non dimostra "
-        "l'equivalenza. La calibrazione di Nadeau-Bengio e' verificata in `sim_a` con 5 fold "
-        "stratificati di uguale dimensione, non con fold LOPO di dimensione diversa.\n"
+        f"\nFold per task: {zs_folds}. Con pochi fold (task1a_paired, {z1.n_folds.max() if not z1.empty else np.nan:.0f} fold) "
+        "la potenza e' bassa: un p non significativo non dimostra l'equivalenza. I p sono grezzi "
+        "(nessuna correzione per i confronti multipli) e il migliore e' scelto sugli stessi fold. "
+        f"La calibrazione di Nadeau-Bengio e' verificata in `sim_a` con k = {k_nb} fold stratificati "
+        "di uguale dimensione, non con fold LOPO di dimensione diversa.\n"
     )
 
     # --- feature selection
@@ -593,11 +603,22 @@ def main() -> None:
         if fs.empty:
             continue
         rr = []
+        ks = sorted(fs.k.unique())
+
+        def mark(m, k, txt):
+            # F1 e Jaccard a un k maggiore dei geni con punteggio > 0: pareggi arbitrari
+            gt = (
+                v(fs, "any_k_gt_nonzero", method=m, k=k)
+                if "any_k_gt_nonzero" in fs
+                else 0
+            )
+            return f"{txt}*" if gt == 1 else txt
+
         for m in ("l1_logreg", "rf_import", "chi2", "anova", "hvg", "random"):
             rr.append(
                 [m]
-                + [f(fsv(fs, m, k)) for k in (50, 200, 1000)]
-                + [f(stv(st, m, k)) for k in (50, 200, 1000)]
+                + [mark(m, k, f(fsv(fs, m, k))) for k in ks]
+                + [mark(m, k, f(stv(st, m, k))) for k in ks]
             )
         L.append(
             f"**{task}** (`feature_selection_summary_{task}`, `feature_stability_{task}`)\n"
@@ -605,16 +626,13 @@ def main() -> None:
         L.append(
             md_table(
                 rr,
-                [
-                    "Metodo",
-                    "F1 k=50",
-                    "F1 k=200",
-                    "F1 k=1000",
-                    "Jaccard 50",
-                    "Jaccard 200",
-                    "Jaccard 1000",
-                ],
+                ["Metodo"] + [f"F1 k={k}" for k in ks] + [f"Jaccard k={k}" for k in ks],
             )
+        )
+        L.append(
+            "\n\\* k maggiore dei geni con punteggio > 0 in almeno un fold "
+            "(`any_k_gt_nonzero`): i geni oltre quelli con punteggio > 0 sono scelti fra "
+            "pareggi in ordine arbitrario, quindi F1 e Jaccard a quel k non sono interpretabili."
         )
         if not dg.empty:
             l1 = dg[dg.method == "l1_logreg"]
@@ -625,9 +643,10 @@ def main() -> None:
             )
     if not core_t1.empty:
         for m in ("hvg", "chi2", "anova", "rf_import", "l1_logreg"):
-            g = core_t1[(core_t1.method == m) & (core_t1.k == 50)].gene.tolist()
+            g = core_t1[(core_t1.method == m) & (core_t1.k == k_core)].gene.tolist()
             L.append(
-                f"- {m}: {len(g)} geni in tutti i 5 fold LOPO di task1a_paired: {', '.join(g)}"
+                f"- {m}: {len(g)} geni in tutti i {fs_t1.n_folds.max():.0f} fold LOPO di task1a_paired "
+                f"(k = {k_core}): {', '.join(g)}"
             )
         L.append("\nFonte: `feature_core_genes_task1a_paired`.\n")
 
@@ -640,7 +659,7 @@ def main() -> None:
     else:
         jr = "⟦n.d.⟧"
     L.append(
-        f"Jaccard medio fra i top-50 dei 5 fold LOPO {f(v(xs, 'jaccard_lopo'))} ({jr} fra coppie, `xai_jaccard_task1a_paired`), "
+        f"Jaccard medio fra i top-{v(xs, 'top_k'):.0f} dei {len(xj)} fold LOPO {f(v(xs, 'jaccard_lopo'))} ({jr} fra coppie, `xai_jaccard_task1a_paired`), "
         f"controllo casuale {f(v(xs, 'jaccard_controllo'))}, differenza {f(v(xs, 'differenza'), sign=True)}, "
         f"Spearman medio {f(v(xs, 'spearman_lopo'))} (`xai_summary_task1a_paired`). "
         f"Geni comuni a tutti i fold ({len(xg)}): {', '.join(xg.gene_symbol.astype(str)) if not xg.empty else ''} "

@@ -54,9 +54,15 @@ NKT_LABELS = {
 def main() -> None:
     """Esegue la verifica di sovrapposizione dei barcode TCR/GEX entro libreria e il controllo delle etichette."""
     ap = argparse.ArgumentParser(
-        description="Allineamento dei barcode TCR e GEX sulla libreria pilota PDAC01-Tumor."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Allineamento dei barcode TCR e GEX sulla libreria pilota PDAC01-Tumor.",
     )
-    ap.add_argument("--probe", type=Path, default=Path("data/raw/probe"))
+    ap.add_argument(
+        "--probe",
+        type=Path,
+        default=Path("data/raw/probe"),
+        help="cartella prodotta da 01_probe_labels.py",
+    )
     args = ap.parse_args()
 
     sc = pd.read_csv(args.probe / "sc_metadata.csv.gz", index_col=0, low_memory=False)

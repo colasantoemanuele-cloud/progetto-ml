@@ -52,12 +52,14 @@ def paired_counts(obs: pd.DataFrame) -> pd.Series:
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="Cellule per paziente della coorte appaiata Tumor + Adjacent_normal."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Cellule per paziente della coorte appaiata Tumor + Adjacent_normal.",
     )
     ap.add_argument(
         "--metadata",
         type=Path,
         default=Path("data/raw/GSE278688/GSE278688_sc_metadata.csv.gz"),
+        help="metadati per cellula di GEO (paziente, tessuto)",
     )
     args = ap.parse_args()
     if not args.metadata.exists():

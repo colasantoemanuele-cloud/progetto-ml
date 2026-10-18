@@ -127,6 +127,13 @@ compatibile con doppietti NK + T (sotto il modello di miscela).
 d1 e d2 usano le stesse mediane di n_counts: il loro accordo non e' una
 conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati).
 
+[!!] strati con una stima o un limite inferiore dell'IC sotto 0,5:
+  median Adjacent_normal  d1 = 0.690 [0.233, 1.000]  d2 = 0.782 [0.051, 1.000]
+  median Tumor            d1 = 0.510 [0.186, 0.658]  d2 = 0.419 [0.289, 0.567]
+  mean   Adjacent_normal  d1 = 0.559 [0.299, 0.862]  d2 = 0.553 [0.126, 1.000]
+  mean   Tumor            d1 = 0.381 [0.170, 0.473]  d2 = 0.515 [0.325, 0.675]
+  In questi strati la maggioranza di doppietti non e' sostenuta dai dati.
+
 ==============================================================================
   naive  Tumor - Adjacent_normal = +0.035 [+0.005, +0.138]  IC non calibrato (5 pazienti)
   loco   Tumor - Adjacent_normal = +0.027 [-0.010, +0.124]  IC non calibrato (5 pazienti)

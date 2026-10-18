@@ -197,9 +197,15 @@ def load_filelist(outdir: Path) -> pd.DataFrame | None:
 def main() -> None:
     """Esegue la pipeline di acquisizione metadati, classificazione dei campioni GSM e verifica di fattibilita."""
     ap = argparse.ArgumentParser(
-        description="Metadati GEO di GSE278694 e verifica di fattibilita' del disegno."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Metadati GEO di GSE278694 e verifica di fattibilita' del disegno.",
     )
-    ap.add_argument("--outdir", type=Path, default=Path("data/raw/metadata"))
+    ap.add_argument(
+        "--outdir",
+        type=Path,
+        default=Path("data/raw/metadata"),
+        help="cartella dei metadati GEO (filelist.txt, tabelle dei campioni)",
+    )
     args = ap.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)
 

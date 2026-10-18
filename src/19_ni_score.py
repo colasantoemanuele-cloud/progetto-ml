@@ -28,7 +28,9 @@ Output
 ------
   results/tables/ni_score_joined.csv       outcome e variabili cliniche per paziente
   results/tables/ni_score_test.csv         rho, p grezzo e IC di H4
-  results/tables/ni_score_holm_joint.csv   p grezzo e p di Holm per H1-H4
+  results/tables/ni_score_holm_joint.csv   p grezzo e p di Holm per H1-H4 (colonna
+                                           p_holm_family_of_{n}, n = numero di test; 4 con
+                                           --previous-tests, 1 senza)
   results/figures/ni_score_vs_error.png
 
 Argomenti
@@ -37,8 +39,8 @@ Argomenti
 
 Uso
 ---
-    python src/19_ni_score.py --table-s1 data/raw/paper_supplement/mmc2.xlsx \
-        --arbitration results/tables/arbitration_blood.csv \
+    python src/19_ni_score.py --table-s1 data/raw/paper_supplement/mmc2.xlsx \\
+        --arbitration results/tables/arbitration_blood.csv \\
         --previous-tests results/tables/pseudobulk_hypothesis_tests.csv
 """
 
@@ -159,18 +161,26 @@ def main() -> None:
     """Orchestra l'allineamento dei metadati clinici NI score, il test di
     permutazione per H4 e il ricalcolo congiunto di Holm-Bonferroni su H1-H4."""
     ap = argparse.ArgumentParser(
-        description="Ipotesi H4: NI score contro errore di etichetta nel tumore."
+        description="Ipotesi H4: NI score contro errore di etichetta nel tumore.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     ap.add_argument(
-        "--table-s1", type=Path, default=Path("data/raw/paper_supplement/mmc2.xlsx")
+        "--table-s1",
+        type=Path,
+        default=Path("data/raw/paper_supplement/mmc2.xlsx"),
+        help="Table S1 del supplemento di Chen et al. 2025 (foglio Table S1A)",
     )
     ap.add_argument(
-        "--arbitration", type=Path, default=Path("results/tables/arbitration_blood.csv")
+        "--arbitration",
+        type=Path,
+        default=Path("results/tables/arbitration_blood.csv"),
+        help="identita' clonale e errore per (clone, compartimento), schema 'blood' (da 10_loco.py)",
     )
     ap.add_argument(
         "--previous-tests",
         type=Path,
         default=Path("results/tables/pseudobulk_hypothesis_tests.csv"),
+        help="test H1-H3 (da 16_pseudobulk_patient.py) per la correzione di Holm congiunta",
     )
     args = ap.parse_args()
 
@@ -265,9 +275,14 @@ def main() -> None:
         marker = "  [H4: questo script]" if k == "H4_ni_score" else ""
         print(f"  {k:20s} p_adj = {v:.4f}   {sig}{marker}")
 
-    pd.DataFrame(
-        {"p_raw": pd.Series(all_p), "p_holm_family_of_4": pd.Series(adj)}
-    ).rename_axis("hypothesis").to_csv(TAB / "ni_score_holm_joint.csv")
+    # il nome della colonna dichiara la dimensione della famiglia (4 con il comando del README)
+    col = f"p_holm_family_of_{len(all_p)}"
+    pd.DataFrame({"p_raw": pd.Series(all_p), col: pd.Series(adj)}).rename_axis(
+        "hypothesis"
+    ).to_csv(TAB / "ni_score_holm_joint.csv")
+    print(
+        f"[ok] ni_score_holm_joint.csv: famiglia di {len(all_p)} test (colonna {col})"
+    )
 
     print("\n" + "=" * 78)
     print(f"n={len(df)} pazienti: come per H1-H3, questo e' un test a bassa potenza.")

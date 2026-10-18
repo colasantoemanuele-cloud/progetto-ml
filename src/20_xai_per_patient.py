@@ -8,13 +8,17 @@ Se le cellule della coorte appaiata (task1a_paired: 67.662 cellule, 5 pazienti)
 fossero osservazioni indipendenti, togliere dal training un paziente (circa 13.000
 cellule) cambierebbe poco i coefficienti appresi. Lo script confronta quanto si
 somigliano le spiegazioni dei fold leave-one-patient-out (LOPO) con quanto si
-somigliano spiegazioni ottenute togliendo lo stesso numero di cellule a caso.
+somigliano spiegazioni ottenute da sottoinsiemi casuali di cellule della stessa
+dimensione dei training LOPO sottocampionati (20.000 cellule): e' uguale la dimensione
+del training, non il numero di cellule tolte.
 
 Metodo: logistica L1 (C = 0.1, liblinear, classi bilanciate) su log1p(CP10k) dei geni
 espressi in almeno 10 cellule di training, scalati senza centratura; importanza di
 un gene = |coefficiente|. Training di ogni fold sottocampionato a 20.000 cellule.
   1. Jaccard fra i top-50 geni di ogni coppia di fold LOPO;
-  2. Spearman fra i vettori completi dei coefficienti;
+  2. Spearman fra i vettori completi dei coefficienti (tutti i geni di `var`: i geni
+     esclusi dal prefiltro valgono 0 in ogni fold, quindi il valore dipende anche
+     dall'insieme dei geni considerati);
   3. geni presenti nei top-50 di tutti i fold (salvati con il simbolo) e geni
      esclusivi di un fold;
   4. controllo: 5 sottoinsiemi casuali di cellule della stessa dimensione, senza
@@ -34,6 +38,8 @@ Input
 -----
   --h5ad    data/interim/sc_raw.h5ad
   --splits  data/interim/splits_sc.csv (da 04_splits.py)
+  results/tables/sim_d_xai_stability.csv (facoltativo: se presente, il messaggio finale
+            confronta la differenza osservata con gli scenari simulati; nessuna soglia fissa)
 
 Output
 ------
@@ -42,6 +48,7 @@ Output
   results/tables/xai_summary_{task}.csv        Jaccard LOPO, controllo, differenza, Spearman, n geni comuni
   results/tables/xai_common_genes_{task}.csv   geni nei top-50 di tutti i fold (id e simbolo)
   results/figures/xai_per_patient_{task}.png
+  (i file dipendono solo da --task: un'esecuzione con un altro --scheme li sovrascrive)
 
 Argomenti
 ---------
@@ -49,7 +56,7 @@ Argomenti
 
 Uso
 ---
-    python src/20_xai_per_patient.py --h5ad data/interim/sc_raw.h5ad \
+    python src/20_xai_per_patient.py --h5ad data/interim/sc_raw.h5ad \\
         --splits data/interim/splits_sc.csv --task task1a_paired
 """
 
@@ -154,6 +161,8 @@ def lopo_explanations(X, y, folds, patients, genes, rng):
     coefs, tops, labels = {}, {}, {}
     for f in np.unique(folds):
         tr = np.where(folds != f)[0]
+        if len(np.unique(y[tr])) < 2:
+            raise SystemExit(f"[ERRORE] fold {f}: il training ha una sola classe")
         held_out = pd.Series(patients[folds == f]).mode()[0]
         if len(tr) > MAX_TRAIN:
             tr = np.sort(rng.choice(tr, MAX_TRAIN, replace=False))
@@ -185,12 +194,17 @@ def main() -> None:
     """Orchestra l'estrazione delle spiegazioni L1 sui 5 fold LOPO, il calcolo delle
     matrici di similarita' di Jaccard e Spearman e il confronto con il controllo casuale."""
     ap = argparse.ArgumentParser(
-        description="Stabilita' fra pazienti delle spiegazioni L1: fold LOPO contro controllo."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Stabilita' fra pazienti delle spiegazioni L1: fold LOPO contro controllo.",
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--splits", type=Path, required=True)
-    ap.add_argument("--task", default="task1a_paired")
-    ap.add_argument("--scheme", default="fold_lopo")
+    ap.add_argument("--h5ad", type=Path, required=True, help="AnnData scRNA-seq")
+    ap.add_argument(
+        "--splits", type=Path, required=True, help="split prodotti da 04_splits.py"
+    )
+    ap.add_argument("--task", default="task1a_paired", help="task da spiegare")
+    ap.add_argument(
+        "--scheme", default="fold_lopo", help="colonna dei fold (un fold per paziente)"
+    )
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)
@@ -309,51 +323,53 @@ def main() -> None:
     print(f"  differenza                                : {j_ctrl - j_mean:+.3f}")
     print()
     # Confronto tra la stabilita' osservata in LOPO e la baseline di campionamento casuale
-    if j_ctrl - j_mean > 0.05:
-        print(
-            "  LETTURA: le spiegazioni sono piu' simili quando si ignora il paziente."
-        )
-        print(
-            "  La variabilita' osservata in LOPO eccede quella di puro campionamento:"
-        )
-        print(
-            "  rimuovere UN paziente cambia cio' che il modello impara piu' di quanto"
-        )
-        print(
-            "  lo cambi rimuovere lo stesso numero di cellule prese a caso: e' cio' che"
-        )
-        print("  ci si aspetta se le cellule dello stesso paziente sono ridondanti fra")
-        print("  loro e l'unita' informativa e' il paziente, non la cellula.")
-        print(
-            "\n  CAUTELA: confrontare con results/tables/sim_d_xai_stability.csv (stessa"
-        )
-        print(
-            "  procedura su dati simulati con e senza effetto paziente): la grandezza e'"
-        )
-        print("  indicativa, non una stima calibrata dell'effetto.")
-        print(
-            "  Il controllo condivide piu' cellule fra repliche di due training LOPO:"
-        )
-        print("  parte della differenza c'e' anche senza effetto paziente.")
-    elif j_ctrl - j_mean > 0.02:
-        print("  LETTURA: differenza nella direzione attesa ma di entita' contenuta.")
-        print("  Compatibile sia con un effetto-paziente moderato sia con rumore di")
-        print("  campionamento: da riportare come indicazione, non come dimostrazione.")
+    # Lettura senza soglie fisse: confronto con gli scenari simulati di sim_d (stessa procedura)
+    diff = j_ctrl - j_mean
+    sim_path = TAB / "sim_d_xai_stability.csv"
+    if sim_path.exists():
+        sim = pd.read_csv(sim_path)
+        sim = sim[sim["rep"].astype(str) != "mean"]
+        rng_sim = {
+            c: (g.difference.min(), g.difference.max())
+            for c, g in sim.groupby("condition")
+        }
+        for c, (lo_s, hi_s) in rng_sim.items():
+            print(f"  simulazione {c}: differenza fra {lo_s:+.3f} e {hi_s:+.3f}")
+        lo0, hi0 = rng_sim.get("no_patient_effect", (np.nan, np.nan))
+        if diff > hi0:
+            print(
+                "  LETTURA: la differenza osservata e' sopra tutte le repliche simulate senza"
+            )
+            print(
+                "  effetto paziente: togliere un paziente cambia la regola appresa piu' che"
+            )
+            print(
+                "  togliere cellule a caso, come atteso se le cellule dello stesso paziente"
+            )
+            print(
+                "  sono ridondanti. La simulazione ha pochi pazienti e una sola forma di"
+            )
+            print("  effetto: e' un'indicazione, non una stima calibrata.")
+        elif diff >= lo0:
+            print(
+                "  LETTURA: la differenza e' nell'intervallo delle repliche senza effetto"
+            )
+            print(
+                "  paziente: non distingue un effetto paziente dal rumore di campionamento."
+            )
+        else:
+            print(
+                "  LETTURA: la differenza e' sotto le repliche senza effetto paziente."
+            )
     else:
         print(
-            "  LETTURA: nessuna differenza apprezzabile, o differenza di segno opposto."
-        )
-        print("  Le spiegazioni variano fra i fold quanto varierebbero ricampionando a")
-        print(
-            "  caso: la variabilita' e' rumore, non effetto-paziente. Questo risultato"
+            f"  {sim_path} assente: esegui src/sim/sim_d_xai_stability.py per una lettura"
         )
         print(
-            "  NON supporta l'argomento sulla pseudoreplicazione per questa via, e va"
+            "  confrontata con dati simulati; nessuna conclusione da questa sola differenza."
         )
-        print(
-            "  riportato come tale. L'argomento resta sostenuto dal divario fra split"
-        )
-        print("  casuale e split per paziente misurato da 05_baseline.py.")
+    print("  Il controllo condivide piu' cellule fra repliche di due training LOPO:")
+    print("  parte della differenza c'e' anche senza effetto paziente.")
 
     pd.DataFrame(
         [

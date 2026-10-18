@@ -20,7 +20,8 @@ errore su di esse).
 Input
 -----
   --h5ad    data/interim/sc_raw.h5ad (solo obs, modalita' backed)
-  --tcrdir  cartella con i file VDJ (si legge l'intestazione del primo)
+  --tcrdir  cartella con i file VDJ (si legge l'intestazione del primo file e si contano
+            i contig di tutti i file)
 
 Output
 ------
@@ -75,10 +76,21 @@ def confounding_with_patient(obs: pd.DataFrame, col: str) -> float:
 def main() -> None:
     """Esegue la ricognizione delle colonne di `obs` e dei file VDJ e salva `obs_inventory.csv`."""
     ap = argparse.ArgumentParser(
-        description="Inventario delle colonne di obs e dei file VDJ."
+        description="Inventario delle colonne di obs e dei file VDJ.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
+    ap.add_argument(
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--tcrdir",
+        type=Path,
+        default=Path("data/raw/tcr"),
+        help="cartella con i file VDJ filtered_contig_annotations",
+    )
     args = ap.parse_args()
 
     TAB.mkdir(parents=True, exist_ok=True)

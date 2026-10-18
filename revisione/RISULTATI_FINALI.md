@@ -1,10 +1,10 @@
 # Risultati finali della revisione
 
-Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di `results/tables/` indicata accanto. "Prima" e' il valore della presentazione.
+Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di `results/tables/` indicata accanto. "Prima" e' il valore della presentazione (o del README pubblicato, dove indicato); i metadati di esecuzione in fondo (tempi, memoria) vengono dai log in `revisione/log/`, non da `results/tables/`.
 
 ## Numeri della presentazione: prima e dopo
 
-| Numero | Prima (presentazione) | Dopo | Esito | Tabella |
+| Numero | Prima | Dopo | Esito | Tabella |
 | :--- | :--- | :--- | :--- | :--- |
 | macro-F1 task2_v1, 5 fold per paziente (logistica L2) | **0,954** | 0,954 | uguale | `baseline_summary_sc` |
 | macro-F1 task1a_paired, split casuale | **0,875±0,002** | 0,875±0,002 | uguale | `baseline_summary_sc` |
@@ -37,11 +37,11 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | H2: ρ, p_Holm (famiglia di 4) | **ρ -0,54, p_Holm 0,45** | ρ -0,54, p_Holm 0,45 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
 | H3: ρ, p_Holm (famiglia di 4) | **ρ -0,15, p_Holm 1,00** | ρ -0,15, p_Holm 1,00 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
 | H4: ρ, p_Holm (famiglia di 4) | **ρ -0,14, p_Holm 1,00** | ρ -0,14, p_Holm 1,00 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
-| AUC LOPO malignita' (13) | **0,825** | **0,829** | cambiato | `malignancy_lopo_summary` |
-| duttali adiacenti predette maligne | **31,7%** | **37,1%** | cambiato | `external_test_summary` |
-| AUC pooled score CNV medio | **0,492** | 0,492 | uguale | `cnv_loci_auc` |
-| AUC pooled loci PDAC | **0,682** | 0,682 | uguale | `cnv_loci_auc` |
-| AUC loci PDAC entro paziente (media dei 4 pazienti valutabili) | **0,53** | **0,540** | cambiato | `cnv_loci_auc_by_patient` |
+| AUC LOPO malignita' (13) | **0,825** | **0,837** | cambiato | `malignancy_lopo_summary` |
+| duttali adiacenti predette maligne | **31,7%** | **30,8%** | cambiato | `external_test_summary` |
+| AUC pooled score CNV medio | **0,492** | **0,531** | cambiato | `cnv_loci_auc` |
+| AUC pooled loci PDAC | **0,682** | **0,698** | cambiato | `cnv_loci_auc` |
+| AUC loci PDAC entro paziente (media dei 4 pazienti valutabili) | **0,53** | **0,557** | cambiato | `cnv_loci_auc_by_patient` |
 | sim (b): errore PBMC stimato da LOCO con artefatto (moderato / forte) | **0,24** | **0,126 / 0,385** | cambiato | `sim_b_reference_schemes` |
 
 Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato; il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
@@ -135,26 +135,28 @@ Fonte: `baseline_gap_sc` (per paziente = LOPO per task1a_paired, 5 fold per pazi
 - task2_hier3: migliore macro-F1 0,923; 12 modelli su 12 con p di Nadeau-Bengio < 0,05 rispetto al migliore (`model_comparison_task2_hier3`).
 - task1a_paired: migliore macro-F1 0,725; 0 modelli su 12 con p di Nadeau-Bengio < 0,05 rispetto al migliore (`model_comparison_task1a_paired`).
 
-Con 5-13 fold la potenza e' bassa: un p non significativo non dimostra l'equivalenza. La calibrazione di Nadeau-Bengio e' verificata in `sim_a` con 5 fold stratificati di uguale dimensione, non con fold LOPO di dimensione diversa.
+Fold per task: 5-13. Con pochi fold (task1a_paired, 5 fold) la potenza e' bassa: un p non significativo non dimostra l'equivalenza. I p sono grezzi (nessuna correzione per i confronti multipli) e il migliore e' scelto sugli stessi fold. La calibrazione di Nadeau-Bengio e' verificata in `sim_a` con k = 3, 5 fold stratificati di uguale dimensione, non con fold LOPO di dimensione diversa.
 
 ## Selezione delle feature (12)
 
 **task2_v1** (`feature_selection_summary_task2_v1`, `feature_stability_task2_v1`)
 
-| Metodo | F1 k=50 | F1 k=200 | F1 k=1000 | Jaccard 50 | Jaccard 200 | Jaccard 1000 |
+| Metodo | F1 k=50 | F1 k=200 | F1 k=1000 | Jaccard k=50 | Jaccard k=200 | Jaccard k=1000 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| l1_logreg | 0,936 | 0,955 | 0,953 | 0,514 | 0,480 | 0,568 |
+| l1_logreg | 0,936 | 0,955 | 0,953* | 0,514 | 0,480 | 0,568* |
 | rf_import | 0,926 | 0,950 | 0,953 | 0,534 | 0,595 | 0,662 |
 | chi2 | 0,908 | 0,944 | 0,950 | 0,787 | 0,842 | 0,851 |
 | anova | 0,908 | 0,938 | 0,949 | 0,816 | 0,794 | 0,846 |
 | hvg | 0,659 | 0,879 | 0,946 | 0,528 | 0,793 | 0,780 |
 | random | 0,367 | 0,648 | 0,874 | 0,001 | 0,003 | 0,025 |
 
+\* k maggiore dei geni con punteggio > 0 in almeno un fold (`any_k_gt_nonzero`): i geni oltre quelli con punteggio > 0 sono scelti fra pareggi in ordine arbitrario, quindi F1 e Jaccard a quel k non sono interpretabili.
+
 L1 (SAGA): 0/5 fold convergenti, 524-583 coefficienti non nulli (`feature_selection_diag_task2_v1`).
 
 **task1a_paired** (`feature_selection_summary_task1a_paired`, `feature_stability_task1a_paired`)
 
-| Metodo | F1 k=50 | F1 k=200 | F1 k=1000 | Jaccard 50 | Jaccard 200 | Jaccard 1000 |
+| Metodo | F1 k=50 | F1 k=200 | F1 k=1000 | Jaccard k=50 | Jaccard k=200 | Jaccard k=1000 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | l1_logreg | 0,712 | 0,751 | 0,751 | 0,273 | 0,264 | 0,254 |
 | rf_import | 0,735 | 0,744 | 0,748 | 0,469 | 0,539 | 0,646 |
@@ -163,13 +165,15 @@ L1 (SAGA): 0/5 fold convergenti, 524-583 coefficienti non nulli (`feature_select
 | hvg | 0,623 | 0,655 | 0,716 | 0,458 | 0,725 | 0,771 |
 | random | 0,589 | 0,678 | 0,675 | 0,000 | 0,004 | 0,027 |
 
+\* k maggiore dei geni con punteggio > 0 in almeno un fold (`any_k_gt_nonzero`): i geni oltre quelli con punteggio > 0 sono scelti fra pareggi in ordine arbitrario, quindi F1 e Jaccard a quel k non sono interpretabili.
+
 L1 (SAGA): 5/5 fold convergenti, 1616-1984 coefficienti non nulli (`feature_selection_diag_task1a_paired`).
 
-- hvg: 18 geni in tutti i 5 fold LOPO di task1a_paired: APOD, CCL19, CGA, CPA3, CST1, CXCL13, GNLY, IGFBP7, IGHV3-15, IGKV3-15, LUM, MGP, SFRP2, SPP1, TPSAB1, TPSB2, TPSD1, TRBV7-2
-- chi2: 19 geni in tutti i 5 fold LOPO di task1a_paired: C19orf33, CD69, CD9, CLDN4, CST3, CYSTM1, ELF3, FCMR, IFI27, IGFBP7, KRT18, KRT19, KRT7, KRT8, LMNA, LTB, S100P, SPINK1, TPM1
-- anova: 19 geni in tutti i 5 fold LOPO di task1a_paired: CD151, CD37, CD48, CD69, CD9, CORO1A, CXCR4, CYSTM1, EEF1A1, FCMR, GPSM3, HLA-E, KRT19, LGALS3, LIMD2, LMNA, LTB, S100A11, S100A6
-- rf_import: 16 geni in tutti i 5 fold LOPO di task1a_paired: CD69, CXCR4, EEF1A1, EEF1G, FAU, FCMR, HSPA1A, HSPA1B, LIMD2, LMNA, LTB, NACA, SELL, TAGAP, UBA52, VIM
-- l1_logreg: 4 geni in tutti i 5 fold LOPO di task1a_paired: CD69, DUSP4, MT-CO2, SPP1
+- hvg: 18 geni in tutti i 5 fold LOPO di task1a_paired (k = 50): APOD, CCL19, CGA, CPA3, CST1, CXCL13, GNLY, IGFBP7, IGHV3-15, IGKV3-15, LUM, MGP, SFRP2, SPP1, TPSAB1, TPSB2, TPSD1, TRBV7-2
+- chi2: 19 geni in tutti i 5 fold LOPO di task1a_paired (k = 50): C19orf33, CD69, CD9, CLDN4, CST3, CYSTM1, ELF3, FCMR, IFI27, IGFBP7, KRT18, KRT19, KRT7, KRT8, LMNA, LTB, S100P, SPINK1, TPM1
+- anova: 19 geni in tutti i 5 fold LOPO di task1a_paired (k = 50): CD151, CD37, CD48, CD69, CD9, CORO1A, CXCR4, CYSTM1, EEF1A1, FCMR, GPSM3, HLA-E, KRT19, LGALS3, LIMD2, LMNA, LTB, S100A11, S100A6
+- rf_import: 16 geni in tutti i 5 fold LOPO di task1a_paired (k = 50): CD69, CXCR4, EEF1A1, EEF1G, FAU, FCMR, HSPA1A, HSPA1B, LIMD2, LMNA, LTB, NACA, SELL, TAGAP, UBA52, VIM
+- l1_logreg: 4 geni in tutti i 5 fold LOPO di task1a_paired (k = 50): CD69, DUSP4, MT-CO2, SPP1
 
 Fonte: `feature_core_genes_task1a_paired`.
 
@@ -302,15 +306,15 @@ Fonti: `pseudobulk_hypothesis_tests`, `ni_score_test`, `ni_score_holm_joint`. n 
 
 ## CNV e malignita' (13, 14)
 
-AUC LOPO del Random Forest sull'etichetta CNV: 0,829 ± 0,069 (12 pazienti; `malignancy_lopo_summary`); duttali adiacenti predette maligne 37,1% di 334 (`external_test_summary`, non e' una validazione esterna). AUC tumore vs adiacente pooled: score CNV medio 0,492, loci PDAC 0,682 (`cnv_loci_auc`).
+AUC LOPO del Random Forest sull'etichetta CNV: 0,837 ± 0,071 (12 pazienti; `malignancy_lopo_summary`); duttali adiacenti predette maligne 30,8% di 334 (`external_test_summary`, non e' una validazione esterna). AUC tumore vs adiacente pooled: score CNV medio 0,531, loci PDAC 0,698 (`cnv_loci_auc`).
 
 | Paziente | Duttali Tumor | Duttali Adjacent | AUC loci PDAC | AUC score medio |
 | :--- | :--- | :--- | :--- | :--- |
-| PA06 | 2.354 | 26 | 0,548 | 0,394 |
-| PA08 | 809 | 210 | 0,582 | 0,430 |
-| PA09 | 981 | 14 | 0,517 | 0,754 |
-| PA10 | 726 | 83 | 0,512 | 0,555 |
-| _mean | 1.218 | 83 | 0,540 | 0,533 |
+| PA06 | 2.354 | 26 | 0,583 | 0,478 |
+| PA08 | 809 | 210 | 0,588 | 0,458 |
+| PA09 | 981 | 14 | 0,528 | 0,766 |
+| PA10 | 726 | 83 | 0,529 | 0,585 |
+| _mean | 4.870 | 333 | 0,557 | 0,572 |
 
 Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
@@ -380,46 +384,44 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
 ## Esecuzione finale (Fase 3)
 
-Codice: commit `61fb36b` (`revisione/log/_fase3_commit.txt`); comandi del README nell'ordine, log in `revisione/log/NN_nome.log` (stato e picchi di memoria in `revisione/log/_status.txt`, misurati con `/usr/bin/time -v`). Dopo 00-04 tre rami: TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria.
+Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni del giro di chiusura 1 sono stati rieseguiti 04, 06-10, 13-21 e le simulazioni (colonna "Esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
 
-| Script | Esito | Picco di memoria | Durata |
-| :--- | :--- | :--- | :--- |
-| 00_fetch_metadata | rc = 0 | 0,1 GB | 0:00,44 |
-| 00b_download_tcr | rc = 0 | 0,0 GB | 0:00,88 |
-| 01_probe_labels | rc = 0 | 0,2 GB | 0:01,02 |
-| 01b_tcr_check | rc = 0 | 0,2 GB | 0:00,98 |
-| 02_build_h5ad_sc | rc = 0 | 7,7 GB | 1:49,19 |
-| 02_build_h5ad_sn | rc = 0 | 1,0 GB | 0:11,34 |
-| 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,01 |
-| 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,75 |
-| 04_splits | rc = 0 | 0,4 GB | 0:04,63 |
-| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:52,10 |
-| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:44,19 |
-| 20_xai_per_patient | rc = 0 | 6,0 GB | 1:38,96 |
-| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:41,05 |
-| 08_disambiguate | rc = 0 | 3,5 GB | 0:36,27 |
-| 09_arbitrate | rc = 0 | 3,4 GB | 0:32,38 |
-| sim_a_calibration | rc = 0 | 0,2 GB | 3:13,13 |
-| sim_b_reference_schemes | rc = 0 | 0,3 GB | 1:40,64 |
-| 10_loco | rc = 0 | 3,4 GB | 3:44,39 |
-| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:02,35 |
-| 15_inventory | rc = 0 | 0,3 GB | 0:01,97 |
-| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:15,42 |
-| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:08,64 |
-| 18_loyo_check | rc = 0 | 1,2 GB | 0:18,91 |
-| 19_ni_score | rc = 0 | 0,2 GB | 0:02,51 |
-| sim_c_block_permutation | rc = 0 | 0,2 GB | 2:13,98 |
-| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:08,43 |
-| 13_infercnv | rc = 0 | 6,0 GB | 0:54,27 |
-| 14_cnv_loci | rc = 0 | 8,6 GB | 0:14,56 |
+| Script | Esito | Picco di memoria | Durata | Esecuzione |
+| :--- | :--- | :--- | :--- | :--- |
+| 00_fetch_metadata | rc = 0 | 0,1 GB | 0:00,44 | Fase 3 (61fb36b) |
+| 00b_download_tcr | rc = 0 | 0,0 GB | 0:00,88 | Fase 3 (61fb36b) |
+| 01_probe_labels | rc = 0 | 0,2 GB | 0:01,02 | Fase 3 (61fb36b) |
+| 01b_tcr_check | rc = 0 | 0,2 GB | 0:00,98 | Fase 3 (61fb36b) |
+| 02_build_h5ad_sc | rc = 0 | 7,7 GB | 1:49,19 | Fase 3 (61fb36b) |
+| 02_build_h5ad_sn | rc = 0 | 1,0 GB | 0:11,34 | Fase 3 (61fb36b) |
+| 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,01 | Fase 3 (61fb36b) |
+| 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,75 | Fase 3 (61fb36b) |
+| 04_splits | rc = 0 | 0,4 GB | 0:04,68 | chiusura 1 |
+| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:52,74 | chiusura 1 |
+| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:43,28 | chiusura 1 |
+| 20_xai_per_patient | rc = 0 | 6,0 GB | 1:41,59 | chiusura 1 |
+| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:40,71 | chiusura 1 |
+| 08_disambiguate | rc = 0 | 3,5 GB | 0:36,12 | chiusura 1 |
+| 09_arbitrate | rc = 0 | 3,4 GB | 0:31,90 | chiusura 1 |
+| sim_a_calibration | rc = 0 | 0,2 GB | 3:22,84 | chiusura 1 |
+| sim_b_reference_schemes | rc = 0 | 0,3 GB | 1:27,31 | chiusura 1 |
+| 10_loco | rc = 0 | 3,4 GB | 3:53,38 | chiusura 1 |
+| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:02,35 | chiusura 1 |
+| 15_inventory | rc = 0 | 0,3 GB | 0:01,98 | chiusura 1 |
+| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:14,47 | chiusura 1 |
+| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:07,46 | chiusura 1 |
+| 18_loyo_check | rc = 0 | 1,2 GB | 0:16,56 | chiusura 1 |
+| 19_ni_score | rc = 0 | 0,2 GB | 0:02,16 | chiusura 1 |
+| sim_c_block_permutation | rc = 0 | 0,2 GB | 2:29,86 | chiusura 1 |
+| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:09,31 | chiusura 1 |
+| 13_infercnv | rc = 0 | 10,8 GB | 1:37,31 | chiusura 1 |
+| 14_cnv_loci | rc = 0 | 12,1 GB | 1:01,56 | chiusura 1 |
 
-**Non rieseguiti** (codice di calcolo invariato dall'esecuzione precedente, verificato con `git diff`):
-- `05_baseline.py`: nessuna modifica dal commit `52ace44` (eseguito in Fase 1, picco 9,7 GB).
-- `12_feature_selection.py`: dal commit `52ace44` cambia solo il controllo sui `cell_id` assenti (eseguito in Fase 1, picco 6,1 GB).
-- `11_model_zoo.py`: dal commit `8058701` cambiano solo docstring e argomenti di `--from-table`; esecuzione finale in processi paralleli in `revisione/log/11_final/` (picchi 5,2-5,8 GB), unita e confrontata con un'esecuzione unica.
+**Non rieseguiti** (calcolo invariato dall'esecuzione precedente, verificato con `git diff`):
+- `05_baseline.py` (eseguito al commit `52ace44`, picco 9,7 GB), `12_feature_selection.py` (`52ace44`, 6,1 GB) e `11_model_zoo.py` (`8058701`, processi paralleli in `revisione/log/11_final/`, 5,2-5,8 GB): dopo quei commit cambiano solo controlli sugli argomenti e sugli input (fold con una sola classe, `cell_id` assenti, `nargs`), messaggi, docstring e `help`; per 11 riepilogo, confronti e figure sono stati rigenerati con `--from-table` (stesso codice).
 - Le funzioni di `scpipe.py` usate da 05, 11 e 12 (`LogCPM`, `HVGSelector`, `macro_f1`, `nadeau_bengio_ttest`, `jaccard`, `mean_pairwise_jaccard`) sono identiche a quelle del commit `52ace44` (confronto dell'AST senza docstring); `04_splits.py` e' cambiato solo nei controlli e ricrea `splits_sc.csv` identico byte per byte.
 
-**Scorciatoie usate:** download gia' presenti non ripetuti (00, `download_tcr.sh`, 01, 02); cache di Scrublet (`doublet_scores.csv`, 08); cache di inferCNV (`cnv_scores.csv`, `cnv_matrix.npz`), ricalcolate senza cache nel giro 1 con il codice attuale e risultate identiche byte per byte a quelle dell'11/07 (13 senza cache: picco 10,8 GB; 14: 11,4 GB).
+**Scorciatoie usate:** download gia' presenti non ripetuti (00, `download_tcr.sh`, 01, 02); cache di Scrublet (`doublet_scores.csv`, 08), ora riusata solo se contiene esattamente le cellule dell'h5ad (199.184, controllo passato). inferCNV ricalcolato senza cache nel giro di chiusura 1, dopo l'esclusione del cromosoma mitocondriale e dei contig non standard.
 
-**Riproducibilita':** `02_build_h5ad.py` ricrea `sc_raw.h5ad` identico byte per byte e `04_splits.py` ricrea `splits_sc.csv` identico; tutte le tabelle e figure rigenerate in Fase 3 coincidono byte per byte con quelle dell'ultimo giro, tranne l'ordine delle righe di `ni_score_holm_joint.csv` (stessi valori). Nessun numero del README e' cambiato.
+**Riproducibilita':** `02_build_h5ad.py` ricrea `sc_raw.h5ad` identico byte per byte e `04_splits.py` ricrea `splits_sc.csv` identico. Rispetto all'ultimo giro cambiano solo i risultati di 13 e 14 (cromosomi), le colonne aggiunte a `clone_switching_summary_clone_b` e `error_rate_by_compartment` e le figure di 11 (etichetta dell'asse).
 

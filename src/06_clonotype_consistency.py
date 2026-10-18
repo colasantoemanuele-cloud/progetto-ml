@@ -14,9 +14,13 @@ Adjacent_normal e Tumor dello stesso paziente.
      compartimento, stimata con 20 bipartizioni casuali (split-half) delle cellule
      di ciascun clone in ciascun tessuto. Soglie: un clone entra nel confronto fra
      compartimenti se ha almeno 2 cellule in ciascuno dei due compartimenti, e nello
-     split-half di un compartimento se vi ha almeno 4 cellule (2 per meta'). IC 95% con cluster bootstrap sui pazienti
-     (si ricampionano i pazienti, non le coppie ne' le repliche; 2.000 repliche,
-     intervallo "expanded percentile", vedi `scpipe.cluster_bootstrap`).
+     split-half di un compartimento se vi ha almeno 4 cellule (2 per meta').
+     I due termini non vengono dagli stessi pazienti: il basale usa anche i cloni non
+     condivisi, quindi include pazienti che non hanno coppie fra compartimenti
+     (`n_patients_across` e `n_patients_within` nel riepilogo). IC 95% con cluster
+     bootstrap sull'unione dei pazienti dei due termini (`n_patients`; si ricampionano i
+     pazienti, non le coppie ne' le repliche; 2.000 repliche, intervallo "expanded
+     percentile", vedi `scpipe.cluster_bootstrap`).
      E' la versione esplorativa: lo stimatore principale, non distorto, e' in
      `07_robustness.py`.
   2. Contaminazione da cellule T nella classe NK: c_hat = (f - q) / (pi - q), con f, pi
@@ -44,7 +48,8 @@ Output
   results/tables/tcr_rate_by_celltype.csv           frazione di cellule con TCR per etichetta (idem)
   results/tables/clone_switching_across_{cc}.csv    una riga per (clone, coppia di compartimenti)
   results/tables/clone_switching_within_{cc}.csv    repliche split-half (escluso da git: grande)
-  results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni e pazienti
+  results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni, pazienti
+                                                    (totali, del termine fra compartimenti, del basale)
   ({cc} = clone_b o clone_ab)
   results/figures/clone_label_switching_{cc}.png
 
@@ -56,7 +61,7 @@ Argomenti
 Uso
 ---
     bash src/download_tcr.sh data/raw/metadata/filelist.txt data/raw/tcr
-    python src/06_clonotype_consistency.py --h5ad data/interim/sc_raw.h5ad \
+    python src/06_clonotype_consistency.py --h5ad data/interim/sc_raw.h5ad \\
         --filelist data/raw/metadata/filelist.txt --outdir data/raw/tcr --skip-download
 """
 
@@ -347,12 +352,33 @@ def nk_contamination(gex: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     """Esegue l'intera pipeline di verifica dei clonotipi TCR e genera tabelle e figure."""
     ap = argparse.ArgumentParser(
-        description="Coerenza delle etichette entro i cloni TCR, fra e entro compartimenti."
+        description="Coerenza delle etichette entro i cloni TCR, fra e entro compartimenti.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--filelist", type=Path, required=True)
-    ap.add_argument("--outdir", type=Path, default=Path("data/raw/tcr"))
-    ap.add_argument("--clone-def", choices=["clone_b", "clone_ab"], default="clone_b")
+    ap.add_argument(
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--filelist",
+        type=Path,
+        required=True,
+        help="elenco dei file GEO (da 00_fetch_metadata.py)",
+    )
+    ap.add_argument(
+        "--outdir",
+        type=Path,
+        default=Path("data/raw/tcr"),
+        help="cartella in cui stanno (o vengono scaricati) i file VDJ",
+    )
+    ap.add_argument(
+        "--clone-def",
+        choices=["clone_b", "clone_ab"],
+        default="clone_b",
+        help="definizione di clone: catena TRB (clone_b) o coppia TRA+TRB (clone_ab)",
+    )
     ap.add_argument(
         "--skip-download", action="store_true", help="usa solo i file gia' su disco"
     )
@@ -481,7 +507,10 @@ def main() -> None:
     # Cluster bootstrap sui pazienti: coppie e repliche split-half non sono indipendenti
     lo, hi = cluster_excess_ci(across, within)
     n_pat = len(set(across.patient) | set(within.patient))
-    print(f"IC 95% cluster bootstrap (pazienti, n={n_pat}): [{lo:+.3f}, {hi:+.3f}]")
+    print(
+        f"IC 95% cluster bootstrap (pazienti, n={n_pat}: {across.patient.nunique()} nel "
+        f"termine fra compartimenti, {within.patient.nunique()} nel basale): [{lo:+.3f}, {hi:+.3f}]"
+    )
     pd.DataFrame(
         [
             {
@@ -489,6 +518,8 @@ def main() -> None:
                 "n_pairs_across": len(across),
                 "n_reps_within": len(within),
                 "n_patients": n_pat,
+                "n_patients_across": across.patient.nunique(),
+                "n_patients_within": within.patient.nunique(),
                 "discord_across": a_rate,
                 "discord_within": w_rate,
                 "excess": a_rate - w_rate,

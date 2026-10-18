@@ -138,9 +138,10 @@ def run(reps: int) -> pd.DataFrame:
 def main() -> None:
     """Esegue la simulazione e scrive la tabella."""
     ap = argparse.ArgumentParser(
-        description="Simulazione (d): stabilita' XAI LOPO contro controllo, con e senza effetto paziente."
+        description="Simulazione (d): stabilita' XAI LOPO contro controllo, con e senza effetto paziente.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--reps", type=int, default=5)
+    ap.add_argument("--reps", type=int, default=5, help="repliche per condizione")
     args = ap.parse_args()
     TAB.mkdir(parents=True, exist_ok=True)
     out = run(args.reps)

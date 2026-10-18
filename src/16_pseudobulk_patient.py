@@ -7,7 +7,10 @@ Scopo
 Usa il paziente come unita' (n = 10 pazienti con outcome e covariate nella versione
 pubblicata): l'outcome e' il tasso d'errore delle etichette T nel Tumor per paziente
 (schema `blood` di 10_loco.py, pazienti con almeno 5 cloni); le covariate sono
-calcolate dal compartimento tumorale. Un'analisi su tutti i ~20.000 geni con n = 10
+calcolate dal compartimento tumorale, sui pazienti con almeno MIN_CD8T_TUMOR = 30
+cellule CD8T tumorali (per H1). Servono almeno 6 pazienti con esito e covariate,
+altrimenti lo script si ferma e cancella le tabelle di un'esecuzione precedente.
+Un'analisi su tutti i ~20.000 geni con n = 10
 produrrebbe circa 1.000 p < 0.05 per caso: l'analisi si limita a tre ipotesi,
 formulate dopo i moduli 08-10 ma prima di calcolare le covariate.
 
@@ -49,7 +52,7 @@ Argomenti
 
 Uso
 ---
-    python src/16_pseudobulk_patient.py --h5ad data/interim/sc_raw.h5ad \
+    python src/16_pseudobulk_patient.py --h5ad data/interim/sc_raw.h5ad \\
         --arbitration results/tables/arbitration_blood.csv
 """
 
@@ -140,19 +143,10 @@ def build_outcome(arb_path: Path) -> pd.DataFrame:
         out = out[out.n_clones >= MIN_CLONES_OUTCOME]
         print(f"[ok] outcome da {arb_path.name} (schema 'blood', solo tessuto Tumor)")
         return out.reset_index()
-    # Ripiego automatico sull'eccesso di discordanza medio calcolato da 07_robustness.py
-    fb = TAB / "pairwise_discordance_clone_b.csv"
-    if fb.exists():
-        pw = pd.read_csv(fb)
-        out = pw.groupby("patient").agg(
-            error_rate=("excess", "mean"), n_clones=("excess", "size")
-        )
-        print(
-            f"[!] {arb_path.name} assente, fallback su {fb.name} (eccesso di discordanza, non tasso d'errore)"
-        )
-        return out.reset_index()
+    # Nessun ripiego su un altro esito (es. l'eccesso di 07): 19 combina questi test con H4
+    # sullo stesso tasso d'errore, quindi l'esito deve essere sempre lo stesso
     raise SystemExit(
-        f"[ERRORE] ne' {arb_path} ne' {fb} trovati. Esegui prima 10_loco.py (preferito) o 07_robustness.py."
+        f"[ERRORE] {arb_path} assente: esegui prima 10_loco.py (schema 'blood')."
     )
 
 
@@ -221,11 +215,20 @@ def main() -> None:
     """Orchestra la costruzione della tabella pseudobulk per paziente, l'esecuzione
     dei test di permutazione sulle tre ipotesi a priori e la PCA descrittiva."""
     ap = argparse.ArgumentParser(
-        description="Covariate per paziente (H1-H3) contro il tasso d'errore nel tumore."
+        description="Covariate per paziente (H1-H3) contro il tasso d'errore nel tumore.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
     ap.add_argument(
-        "--arbitration", type=Path, default=Path("results/tables/arbitration_blood.csv")
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--arbitration",
+        type=Path,
+        default=Path("results/tables/arbitration_blood.csv"),
+        help="identita' clonale e errore per (clone, compartimento), schema 'blood' (da 10_loco.py)",
     )
     args = ap.parse_args()
 
@@ -260,6 +263,9 @@ def main() -> None:
         print(
             "\n[!!] troppo pochi pazienti per un test con un minimo di senso. Fermo qui."
         )
+        # niente tabelle di un'esecuzione precedente: 19 le rileggerebbe come H1-H3
+        for name in ("pseudobulk_patient_table.csv", "pseudobulk_hypothesis_tests.csv"):
+            (TAB / name).unlink(missing_ok=True)
         return
 
     df.to_csv(TAB / "pseudobulk_patient_table.csv", index=False)

@@ -93,7 +93,8 @@ LINEAGE = {
 }
 LYMPHOID = ["CD4T", "CD8T", "NK"]
 
-# Task a supporto sparso per i quali la copertura in 5-fold non e' garantita (valutazione LOPO)
+# Task per cui la presenza di tutte le classi in ogni fold di fold_group_5 non e' garantita
+# (rare e' valutato in LOPO, task1a_all in 5 fold per paziente)
 EXPECT_INCOMPLETE = {"rare", "task1a_all"}
 LOPO_PRIMARY = {"task1a_paired", "rare"}
 
@@ -209,9 +210,10 @@ def audit(name: str, df: pd.DataFrame) -> bool:
     # Asserzione formale di assenza di data leakage: ogni paziente deve risiedere in un unico fold di test
     pat = pd.crosstab(df.patient, df.fold_group_5)
     leaks = (pat > 0).sum(axis=1)
-    assert (leaks == 1).all(), (
-        f"paziente in piu' fold: {leaks[leaks > 1].index.tolist()}"
-    )
+    if not (leaks == 1).all():
+        raise SystemExit(
+            f"[ERRORE] {name}: paziente in piu' fold: {leaks[leaks > 1].index.tolist()}"
+        )
     print("\n[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)")
 
     # Verifica della presenza di tutte le classi nei fold di test della partizione Stratificata per Gruppo
@@ -255,10 +257,17 @@ def audit(name: str, df: pd.DataFrame) -> bool:
 def main() -> None:
     """Punto di ingresso per la generazione e validazione delle tabelle di partizionamento."""
     ap = argparse.ArgumentParser(
-        description="Task di classificazione e partizioni di validazione (per paziente e casuali)."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Task di classificazione e partizioni di validazione (per paziente e casuali).",
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tag", default="sc")
+    ap.add_argument(
+        "--h5ad", type=Path, required=True, help="AnnData scRNA-seq (si legge solo obs)"
+    )
+    ap.add_argument(
+        "--tag",
+        default="sc",
+        help="suffisso di splits_{tag}.csv e task_summary_{tag}.csv",
+    )
     args = ap.parse_args()
 
     TAB.mkdir(parents=True, exist_ok=True)
@@ -279,10 +288,11 @@ def main() -> None:
     all_ok, frames, rows = True, [], []
     for name, df in tasks.items():
         # servono almeno 2 pazienti e 2 classi per uno split per paziente
-        if df.patient.nunique() < 2 or df.y.nunique() < 2:
+        if df.patient.nunique() < 2 or df.y.nunique() < 2 or len(df) < N_FOLDS:
             print(
-                f"[!!] {name}: {df.patient.nunique()} pazienti, {df.y.nunique()} classi: "
-                "task saltato (servono almeno 2 pazienti e 2 classi)"
+                f"[!!] {name}: {len(df)} cellule, {df.patient.nunique()} pazienti, "
+                f"{df.y.nunique()} classi: task saltato (servono almeno {N_FOLDS} cellule, "
+                "2 pazienti e 2 classi)"
             )
             continue
         df = assign_folds(df)

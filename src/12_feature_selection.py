@@ -39,12 +39,18 @@ Input
 Output
 ------
   results/tables/feature_selection_{task}.csv       macro-F1 e BA per metodo x k x fold
-  results/tables/feature_selection_summary_{task}.csv  media e sd sui fold per metodo x k
+  results/tables/feature_selection_summary_{task}.csv  per metodo x k: macro-F1 medio e sd,
+                                                    balanced accuracy media, n fold e
+                                                    any_k_gt_nonzero (k > geni con punteggio
+                                                    > 0 in almeno un fold: F1 e Jaccard a quel
+                                                    k dipendono da pareggi arbitrari)
   results/tables/feature_stability_{task}.csv       Jaccard medio fra fold per metodo x k
   results/tables/feature_selection_diag_{task}.csv  per metodo x fold: cellule usate, geni con
                                                     punteggio > 0, convergenza di SAGA, iterazioni
   results/tables/feature_core_genes_{task}.csv      geni scelti in tutti i fold (k = 50) per metodo
   results/figures/feature_selection_{task}.png
+  (i file dipendono solo da --task: un'esecuzione con un altro --scheme o con un
+  sottoinsieme di --methods li sovrascrive)
 
 Argomenti
 ---------
@@ -169,6 +175,7 @@ def run_fold(
 ) -> dict:
     """Esegue tutti i selettori e il classificatore a valle su un fold.
 
+    `classes` non e' usato (resta nella firma per compatibilita' con i test).
     `Xtr_raw` / `Xte_raw` sono conteggi grezzi delle cellule di training (gia'
     sottocampionate) e di test. Normalizzazione, prefiltro dei geni e selezione
     usano solo il training; il test serve solo per la predizione finale.
@@ -238,13 +245,25 @@ def run_fold(
 def main() -> None:
     """Esegue la cross-validation dei metodi di selezione e calcola la stabilita' di Jaccard."""
     ap = argparse.ArgumentParser(
-        description="Confronto di sei criteri di selezione dei geni (prestazione e Jaccard)."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Confronto di sei criteri di selezione dei geni (prestazione e Jaccard).",
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--splits", type=Path, required=True)
-    ap.add_argument("--task", default="task2_v1")
-    ap.add_argument("--scheme", default="fold_group_5")
-    ap.add_argument("--methods", nargs="*", default=list(SELECTORS))
+    ap.add_argument("--h5ad", type=Path, required=True, help="AnnData scRNA-seq")
+    ap.add_argument(
+        "--splits", type=Path, required=True, help="split prodotti da 04_splits.py"
+    )
+    ap.add_argument("--task", default="task2_v1", help="task da valutare")
+    ap.add_argument(
+        "--scheme",
+        default="fold_group_5",
+        help="colonna dei fold (decide anche i fold del Jaccard)",
+    )
+    ap.add_argument(
+        "--methods",
+        nargs="+",
+        default=list(SELECTORS),
+        help="criteri di selezione dei geni",
+    )
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)
@@ -277,6 +296,10 @@ def main() -> None:
     for f in np.unique(folds):
         rng = np.random.default_rng(SEED + int(f))
         tr, te = np.where(folds != f)[0], np.where(folds == f)[0]
+        if len(np.unique(y[tr])) < 2:
+            raise SystemExit(
+                f"[ERRORE] {args.task}, fold {f}: il training ha una sola classe"
+            )
         if len(tr) > MAX_TRAIN:
             # Sottocampione casuale uniforme del solo training, condiviso da tutti i selettori
             tr = np.sort(rng.choice(tr, MAX_TRAIN, replace=False))

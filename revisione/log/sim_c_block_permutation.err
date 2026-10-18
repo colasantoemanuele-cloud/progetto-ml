@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/sim/sim_c_block_permutation.py"
-	User time (seconds): 109.13
-	System time (seconds): 25.73
+	User time (seconds): 120.86
+	System time (seconds): 29.90
 	Percent of CPU this job got: 100%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:13.98
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:29.86
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 198400
+	Maximum resident set size (kbytes): 198244
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 18298398
+	Minor (reclaiming a frame) page faults: 18981605
 	Voluntary context switches: 20
-	Involuntary context switches: 1737
+	Involuntary context switches: 961
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 16

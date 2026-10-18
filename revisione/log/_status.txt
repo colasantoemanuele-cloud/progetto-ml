@@ -54,3 +54,45 @@
 [02:21:38] END 13_infercnv rc=0 peakKB=5964948 wall=0:54.27
 [02:21:38] START 14_cnv_loci
 [02:21:53] END 14_cnv_loci rc=0 peakKB=8583892 wall=0:14.56
+--- chiusura 1: riesecuzione (codice di lavoro dopo 79ef30e) ---
+[02:51:09] START 04_splits
+[02:51:13] END 04_splits rc=0 peakKB=414896 wall=0:04.68
+[02:51:13] START 06_clonotype_consistency
+[02:51:13] START 20_xai_per_patient
+[02:51:23] START sim_a_calibration
+[02:52:06] END 06_clonotype_consistency rc=0 peakKB=500708 wall=0:52.74
+[02:52:06] START 07_robustness_clone_ab
+[02:52:49] END 07_robustness_clone_ab rc=0 peakKB=3314440 wall=0:43.28
+[02:52:49] START 07_robustness_clone_b
+[02:52:55] END 20_xai_per_patient rc=0 peakKB=5969648 wall=1:41.59
+[02:53:30] END 07_robustness_clone_b rc=0 peakKB=3313332 wall=0:40.71
+[02:53:30] START 08_disambiguate
+[02:54:06] END 08_disambiguate rc=0 peakKB=3469784 wall=0:36.12
+[02:54:06] START 09_arbitrate
+[02:54:38] END 09_arbitrate rc=0 peakKB=3379196 wall=0:31.90
+[02:54:38] START 10_loco
+[02:54:46] END sim_a_calibration rc=0 peakKB=192552 wall=3:22.84
+[02:54:46] START sim_b_reference_schemes
+[02:56:13] END sim_b_reference_schemes rc=0 peakKB=256784 wall=1:27.31
+[02:56:13] START sim_c_block_permutation
+[02:58:31] END 10_loco rc=0 peakKB=3391288 wall=3:53.38
+[02:58:31] START 21_fig_blood_scheme
+[02:58:34] END 21_fig_blood_scheme rc=0 peakKB=251984 wall=0:02.35
+[02:58:34] START 15_inventory
+[02:58:36] END 15_inventory rc=0 peakKB=276480 wall=0:01.98
+[02:58:36] START 16_pseudobulk_patient
+[02:58:43] END sim_c_block_permutation rc=0 peakKB=198244 wall=2:29.86
+[02:58:43] START sim_d_xai_stability
+[02:58:50] END 16_pseudobulk_patient rc=0 peakKB=3554000 wall=0:14.47
+[02:58:50] START 17_clonal_expansion
+[02:58:52] END sim_d_xai_stability rc=0 peakKB=285820 wall=0:09.31
+[02:58:58] END 17_clonal_expansion rc=0 peakKB=1191104 wall=0:07.46
+[02:58:58] START 18_loyo_check
+[02:59:14] END 18_loyo_check rc=0 peakKB=1170824 wall=0:16.56
+[02:59:14] START 19_ni_score
+[02:59:17] END 19_ni_score rc=0 peakKB=225728 wall=0:02.16
+[02:59:17] START 13_infercnv
+[03:00:54] END 13_infercnv rc=0 peakKB=10788956 wall=1:37.31
+[03:00:54] START 14_cnv_loci
+[03:01:55] END 14_cnv_loci rc=0 peakKB=12100440 wall=1:01.56
+[03:02:00] END chiusura1_rerun

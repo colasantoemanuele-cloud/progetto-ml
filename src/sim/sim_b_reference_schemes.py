@@ -42,7 +42,10 @@ Input
 Output
 ------
   results/tables/sim_b_reference_schemes.csv  condizione x schema x compartimento:
-                                              errore stimato medio, errore vero medio, repliche
+                                              est_error (errore stimato medio), est_error_max
+                                              (massimo sulle repliche), true_error (errore vero
+                                              medio), reps, mean_n (cloni giudicati, media),
+                                              bias (est_error - true_error)
 
 Argomenti
 ---------
@@ -186,9 +189,10 @@ def run(reps: int) -> pd.DataFrame:
 def main() -> None:
     """Esegue la simulazione e scrive la tabella."""
     ap = argparse.ArgumentParser(
-        description="Simulazione (b): schemi di riferimento naive, LOCO e blood."
+        description="Simulazione (b): schemi di riferimento naive, LOCO e blood.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--reps", type=int, default=30)
+    ap.add_argument("--reps", type=int, default=30, help="repliche per condizione")
     args = ap.parse_args()
     TAB.mkdir(parents=True, exist_ok=True)
     out = run(args.reps)

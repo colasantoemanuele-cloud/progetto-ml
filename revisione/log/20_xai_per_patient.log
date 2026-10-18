@@ -65,16 +65,13 @@ della stessa dimensione, campionati da tutte le cellule mescolate.
   Jaccard medio SENZA struttura (controllo): 0.459
   differenza                                : +0.159
 
-  LETTURA: le spiegazioni sono piu' simili quando si ignora il paziente.
-  La variabilita' osservata in LOPO eccede quella di puro campionamento:
-  rimuovere UN paziente cambia cio' che il modello impara piu' di quanto
-  lo cambi rimuovere lo stesso numero di cellule prese a caso: e' cio' che
-  ci si aspetta se le cellule dello stesso paziente sono ridondanti fra
-  loro e l'unita' informativa e' il paziente, non la cellula.
-
-  CAUTELA: confrontare con results/tables/sim_d_xai_stability.csv (stessa
-  procedura su dati simulati con e senza effetto paziente): la grandezza e'
-  indicativa, non una stima calibrata dell'effetto.
+  simulazione no_patient_effect: differenza fra -0.013 e +0.052
+  simulazione patient_effect: differenza fra +0.116 e +0.181
+  LETTURA: la differenza osservata e' sopra tutte le repliche simulate senza
+  effetto paziente: togliere un paziente cambia la regola appresa piu' che
+  togliere cellule a caso, come atteso se le cellule dello stesso paziente
+  sono ridondanti. La simulazione ha pochi pazienti e una sola forma di
+  effetto: e' un'indicazione, non una stima calibrata.
   Il controllo condivide piu' cellule fra repliche di due training LOPO:
   parte della differenza c'e' anche senza effetto paziente.
 

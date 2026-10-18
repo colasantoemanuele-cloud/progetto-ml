@@ -10,8 +10,9 @@ loci con alterazioni ricorrenti nell'adenocarcinoma duttale pancreatico e misura
 l'AUC tumore-vs-adiacente delle duttali, sia pooled sia entro paziente:
   - perdite attese (`direction = -1`): 9p21 (`CDKN2A`), 17p13 (`TP53`), 18q21 (`SMAD4`), 1p, 6q
   - guadagni attesi (`direction = +1`): 8q24 (`MYC`), 12p12 (`KRAS`), 20q
-Calcola uno score direzionale per locus e un indice composito (somma degli z-score,
-`PDAC_COMPOSITE`).
+Calcola uno score direzionale per locus e un indice composito (`PDAC_COMPOSITE`):
+la somma degli z-score dei loci, con media e deviazione standard di ciascun locus
+stimate su tutte le cellule di `X_cnv` (duttali e immunitarie di riferimento).
 
 Come in `13_infercnv.py`, inferCNV gira una sola volta con il riferimento formato
 dalle immunitarie di TUTTI i pazienti. Le coordinate delle finestre di `X_cnv` non
@@ -25,30 +26,40 @@ entro paziente non e' attribuita ai loci.
 
 Coordinate dei geni e metodo: le stesse di `13_infercnv.py` (Ensembl release 116,
 tabella in `data/interim/gene_positions_ensembl116.csv`, funzioni importate da 13);
-senza coordinate lo script si ferma, `copykat` si usa solo con `--method copykat`
-e richiede `rpy2` e R (assenti dall'ambiente).
+senza coordinate lo script si ferma (anche con copykat, perche' servono per mappare
+le finestre sui loci); `copykat` si usa solo con `--method copykat` e richiede
+`rpy2` e R (assenti dall'ambiente). Cromosomi: come in 13, entrano solo i geni dei
+cromosomi 1-22, X e Y (esclusi `MT`, la cui espressione segue la frazione
+mitocondriale `pct_mt`, e i contig non standard); infercnvpy esclude X e Y, e lo
+script si ferma se `X_cnv` contiene finestre fuori da chr1-22. La cache e' riusata solo
+se la sua impronta (voce `cnv_matrix.npz` di `data/interim/cnv_cache_fingerprint.json`,
+stesso calcolo di 13) coincide.
 
 Input
 -----
   --h5ad  data/interim/sc_raw.h5ad
-  cache   data/interim/cnv_matrix.npz (letta se esiste e copre tutte le cellule, altrimenti
-          calcolata e scritta; una cache con cellule diverse ferma lo script)
+  cache   data/interim/cnv_matrix.npz (letta se esiste, contiene esattamente le cellule
+          selezionate e ha l'impronta attesa; se manca e' calcolata e scritta, una cache
+          diversa ferma lo script)
+  data/interim/cnv_cache_fingerprint.json (impronte delle cache di 13 e 14)
   data/interim/gene_positions_ensembl116.csv (letta se esiste, altrimenti scaricata da BioMart)
 
 Output
 ------
   data/interim/cnv_matrix.npz                    matrice X_cnv e coordinate delle finestre (cache)
+  data/interim/cnv_cache_fingerprint.json        impronta della cache (voce `cnv_matrix.npz`)
   data/interim/gene_positions_ensembl116.csv     coordinate dei geni (solo se scaricate)
   results/tables/cnv_loci_auc.csv                AUC pooled per segnale (score medio, loci, composito);
                                                  n_windows = finestre usate, n_loci = loci nel segnale
   results/tables/cnv_loci_auc_by_patient.csv     AUC entro paziente di PDAC_COMPOSITE e dello score medio
-                                                 (ultima riga `_mean`: media sui pazienti valutabili)
+                                                 (ultima riga `_mean`: media delle AUC sui pazienti
+                                                 valutabili; n_tumor e n_normal sono le somme)
   results/figures/cnv_loci_separation.png, results/figures/cnv_loci_auc.png
 
 Argomenti
 ---------
   --h5ad (obbligatorio), --method {infercnv,copykat,auto} (default auto = infercnv,
-  senza ripiego automatico su copykat)
+  senza ripiego automatico su copykat), --cache (default data/interim/cnv_matrix.npz)
 
 Uso
 ---
@@ -102,9 +113,22 @@ def _infercnv13():
     return m
 
 
-def compute_cnv(sub: ad.AnnData, method: str):
-    """Calcola la matrice completa `X_cnv` e ricostruisce la mappa genomica (cromosoma, posizione) delle finestre."""
+def compute_cnv(
+    sub: ad.AnnData, method: str, window_size: int = 100, check_windows=None
+):
+    """Calcola la matrice completa `X_cnv` e ricostruisce la mappa genomica (cromosoma, posizione) delle finestre.
+
+    `sub.var` deve avere le coordinate (`chromosome`, `start`) di `add_positions` di 13,
+    anche con copykat: servono a mappare le finestre sui loci. `check_windows` (da 13)
+    controlla che le finestre di inferCNV siano solo autosomiche.
+    """
     import infercnvpy as cnv
+
+    if "chromosome" not in sub.var:
+        raise SystemExit(
+            "[ERRORE] coordinate dei geni assenti: chiamare add_positions di 13."
+        )
+    check_windows = check_windows or (lambda _chr_pos: None)
 
     a = sub.copy()
     if method == "infercnv":
@@ -115,8 +139,9 @@ def compute_cnv(sub: ad.AnnData, method: str):
         ref = [c for c in IMMUNE_REF if c in a.obs["ref_group"].unique()]
         print(f"[..] infercnv, riferimento = {ref} di tutti i pazienti (lento) ...")
         cnv.tl.infercnv(
-            a, reference_key="ref_group", reference_cat=ref, window_size=100
+            a, reference_key="ref_group", reference_cat=ref, window_size=window_size
         )
+        check_windows(a.uns["cnv"]["chr_pos"])
     else:
         print("[..] copykat (lento) ...")
         cnv.tl.copykat(a, n_jobs=-1)
@@ -166,11 +191,26 @@ def locus_score(X, windows, locus) -> np.ndarray:
 def main() -> None:
     """Punto di ingresso principale per la valutazione citogenetica locus-specifica."""
     ap = argparse.ArgumentParser(
-        description="Score CNV sui loci PDAC: AUC tumore vs adiacente, pooled ed entro paziente."
+        description="Score CNV sui loci PDAC: AUC tumore vs adiacente, pooled ed entro paziente.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--method", choices=["infercnv", "copykat", "auto"], default="auto")
+    ap.add_argument(
+        "--h5ad", type=Path, required=True, help="AnnData con conteggi grezzi (da 02)"
+    )
+    ap.add_argument(
+        "--method",
+        choices=["infercnv", "copykat", "auto"],
+        default="auto",
+        help="auto = infercnv, senza ripiego su copykat (che richiede rpy2 e R)",
+    )
+    ap.add_argument(
+        "--cache",
+        type=Path,
+        default=CACHE,
+        help="cache di X_cnv (con impronta in cnv_cache_fingerprint.json)",
+    )
     args = ap.parse_args()
+    cache = args.cache
 
     FIG.mkdir(parents=True, exist_ok=True)
     TAB.mkdir(parents=True, exist_ok=True)
@@ -189,41 +229,46 @@ def main() -> None:
     )
 
     # Caricamento o calcolo con salvataggio compresso (.npz) della matrice delle finestre genomiche X_cnv
-    if CACHE.exists():
-        print(f"[ok] X_cnv da cache {CACHE}")
-        npz = np.load(CACHE, allow_pickle=True)
+    m13 = _infercnv13()
+    method = "infercnv" if args.method == "auto" else args.method
+    if cache.exists():
+        print(f"[ok] X_cnv da cache {cache}")
+        npz = np.load(cache, allow_pickle=True)
         X, obs_names = npz["X"], npz["obs_names"]
         windows = pd.DataFrame({"chrom": npz["win_chrom"], "pos": npz["win_pos"]})
         cached, wanted = pd.Index(obs_names), sub.obs_names
         if len(cached.difference(wanted)) or len(wanted.difference(cached)):
             raise SystemExit(
-                f"[ERRORE] la cache {CACHE} non corrisponde alle cellule selezionate "
+                f"[ERRORE] la cache {cache} non corrisponde alle cellule selezionate "
                 f"({len(wanted.difference(cached)):,} mancanti, "
                 f"{len(cached.difference(wanted)):,} in piu'): cancellala per ricalcolare."
             )
+        m13.check_fingerprint(cache.name, m13.cnv_fingerprint(sub, method), cache)
         sub = sub[obs_names].copy()
     else:
-        m13 = _infercnv13()
-        method = "infercnv" if args.method == "auto" else args.method
-        if method == "infercnv":
-            if not m13.add_positions(sub):
-                raise SystemExit(
-                    f"[ERRORE] coordinate dei geni (Ensembl {m13.ENSEMBL_RELEASE}) non "
-                    f"disponibili: nessun host BioMart risponde e {m13.GENE_POS} non esiste. "
-                    "copykat non e' usato come ripiego (richiede rpy2 e R)."
-                )
-        else:
+        if method == "copykat":
             m13.require_copykat()
+        # coordinate necessarie con entrambi i metodi (mappa finestre -> loci)
+        if not m13.add_positions(sub):
+            raise SystemExit(
+                f"[ERRORE] coordinate dei geni (Ensembl {m13.ENSEMBL_RELEASE}) non "
+                f"disponibili: nessun host BioMart risponde e {m13.GENE_POS} non esiste. "
+                "copykat non e' usato come ripiego (richiede rpy2 e R)."
+            )
         t0 = time.time()
-        X, windows, obs_names = compute_cnv(sub, method)
+        X, windows, obs_names = compute_cnv(
+            sub, method, m13.WINDOW_SIZE, m13.check_autosomal_windows
+        )
         print(f"[ok] X_cnv {X.shape} in {time.time() - t0:.0f}s")
+        cache.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(
-            CACHE,
+            cache,
             X=X,
             obs_names=np.array(obs_names),
             win_chrom=windows.chrom.values,
             win_pos=windows.pos.values,
         )
+        m13.save_fingerprint(cache.name, m13.cnv_fingerprint(sub, method))
         sub = sub[obs_names].copy()
 
     obs = sub.obs
@@ -282,7 +327,8 @@ def main() -> None:
             }
         )
 
-    # Somma standardizzata (z-score) dei contributi direzionali dei singoli loci PDAC
+    # Somma standardizzata (z-score) dei contributi direzionali dei singoli loci PDAC:
+    # media e deviazione standard di ogni locus su tutte le righe di X (duttali e immuni)
     valid_names = [k for k, s in loci_scores.items() if not np.all(np.isnan(s))]
     valid = [loci_scores[k] for k in valid_names]
     if not valid:
@@ -337,8 +383,10 @@ def main() -> None:
         )
     by_pat = pd.DataFrame(by_pat)
     if not by_pat.empty:
-        # riga di riepilogo: media delle AUC entro paziente
+        # riga di riepilogo: media delle AUC entro paziente, somma delle cellule
         mean_row = by_pat.drop(columns="patient").mean(numeric_only=True).to_dict()
+        mean_row["n_tumor"] = int(by_pat.n_tumor.sum())
+        mean_row["n_normal"] = int(by_pat.n_normal.sum())
         by_pat = pd.concat(
             [by_pat, pd.DataFrame([{"patient": "_mean", **mean_row}])],
             ignore_index=True,
@@ -372,6 +420,14 @@ def main() -> None:
                 "ESITO: i loci PDAC separano le duttali tumorali dalle adiacenti anche"
             )
             print("  entro paziente, meglio dello score medio.")
+        elif within >= 0.65:
+            print(
+                "ESITO: entro paziente le duttali tumorali e adiacenti si separano, ma i"
+            )
+            print(
+                "  loci PDAC non fanno meglio dello score medio: la separazione non e'"
+            )
+            print("  attribuibile ai loci.")
         elif within < 0.6:
             print(
                 "ESITO: entro paziente le duttali tumorali e adiacenti si sovrappongono"

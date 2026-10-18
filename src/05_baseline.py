@@ -7,8 +7,8 @@ Scopo
 Addestra due modelli di riferimento (DummyClassifier stratificato e LogisticRegression
 L2 con pesi di classe bilanciati) in una Pipeline che contiene tutte le
 trasformazioni dipendenti dai dati: `LogCPM` (log1p di CP10k, non CPM, nonostante il
-nome; non stima parametri), `HVGSelector` (geni piu' dispersi) e `StandardScaler`
-senza centratura, tutti da `scpipe.py`. Le trasformazioni sono stimate solo sul
+nome; non stima parametri) e `HVGSelector` (geni piu' dispersi) da `scpipe.py`, e
+`StandardScaler(with_mean=False)` di scikit-learn. Le trasformazioni sono stimate solo sul
 training di ciascun fold.
 
 Ogni task e' valutato due volte: con lo split per paziente (`fold_group_5`, oppure
@@ -38,7 +38,7 @@ Argomenti
 
 Uso
 ---
-    python src/05_baseline.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv \
+    python src/05_baseline.py --h5ad data/interim/sc_raw.h5ad --splits data/interim/splits_sc.csv \\
         --tasks task2_hier1 task2_hier3 task2_v1 task2_v2 task1a_paired task1a_all
 """
 
@@ -177,6 +177,10 @@ def run_task(
                     tr = np.zeros_like(tr)
                     tr[keep] = True
 
+                if len(np.unique(y[tr])) < 2:
+                    raise SystemExit(
+                        f"[ERRORE] {task}, {scheme}, fold {f}: il training ha una sola classe"
+                    )
                 pipe = make_pipeline(model, len(classes))
                 pipe.set_params(hvg__n_top=n_hvg)
                 pipe.fit(X[tr], y[tr])
@@ -267,13 +271,21 @@ def plot_gap(res: pd.DataFrame, tag: str) -> None:
 def main() -> None:
     """Punto di ingresso principale per l'addestramento e la valutazione dei modelli baseline."""
     ap = argparse.ArgumentParser(
-        description="Modelli di riferimento: split casuale contro split per paziente."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Modelli di riferimento: split casuale contro split per paziente.",
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--splits", type=Path, required=True)
-    ap.add_argument("--tag", default="sc")
-    ap.add_argument("--tasks", nargs="*", default=ALL_TASKS)
-    ap.add_argument("--n-hvg", type=int, default=2000)
+    ap.add_argument("--h5ad", type=Path, required=True, help="AnnData scRNA-seq")
+    ap.add_argument(
+        "--splits", type=Path, required=True, help="split prodotti da 04_splits.py"
+    )
+    ap.add_argument("--tag", default="sc", help="suffisso dei file di output")
+    ap.add_argument("--tasks", nargs="+", default=ALL_TASKS, help="task da valutare")
+    ap.add_argument(
+        "--n-hvg",
+        type=int,
+        default=2000,
+        help="numero di geni piu' dispersi (HVGSelector)",
+    )
     ap.add_argument(
         "--quick", action="store_true", help="sottocampiona il TRAIN a 20k cellule"
     )

@@ -44,10 +44,13 @@ Output
   results/tables/triple_clones_summary.csv      medie, IC, differenze appaiate, ricampionature distinte, frazione > 0
   results/tables/markers_disc_vs_conc.csv       marcatori medi per gruppo x tessuto x etichetta
   results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, CD4, rapporto CD4, pazienti concordi
-  results/tables/doublet_scores.csv             punteggio Scrublet per cellula (cache, escluso da git)
+  results/tables/doublet_scores.csv             punteggio Scrublet per cellula (cache, escluso da git;
+                                                riusata solo se contiene esattamente le cellule
+                                                dell'h5ad, altrimenti lo script si ferma)
   results/tables/doublet_tcr_pos_vs_neg.csv     Scrublet TCR+ vs TCR- per classe, pazienti concordi
-  (se un'analisi non ha dati, la sua tabella non viene scritta e quella di un'esecuzione
-  precedente viene cancellata)
+  (se una delle parti 1-3 non viene eseguita per mancanza di dati o di input, le sue
+  tabelle e figure non vengono scritte e quelle di un'esecuzione precedente vengono
+  cancellate)
   results/figures/doublet_by_tcr_status.png
 
 Argomenti
@@ -182,6 +185,19 @@ def triple_clones(lym: pd.DataFrame, min_cells: int = 2) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+PART2_FILES = ("markers_disc_vs_conc.csv", "marker_test_disc_vs_conc.csv")
+PART3_FILES = ("doublet_tcr_pos_vs_neg.csv",)
+
+
+def drop_stale(names, figs=()) -> None:
+    """Cancella le tabelle (e figure) di un'analisi non eseguita, per non lasciare in
+    results/ i file di un'esecuzione precedente."""
+    for name in names:
+        (TAB / name).unlink(missing_ok=True)
+    for name in figs:
+        (FIG / name).unlink(missing_ok=True)
+
+
 def part1(lym: pd.DataFrame) -> None:
     """Esegue l'analisi appaiata sui cloni condivisi tra tutti e tre i compartimenti."""
     print("\n" + "=" * 78)
@@ -192,9 +208,7 @@ def part1(lym: pd.DataFrame) -> None:
         print(
             "Nessun clone in tutti e tre i compartimenti. Confronto appaiato impossibile."
         )
-        # niente tabelle di un'esecuzione precedente in results/
-        for name in ("triple_clones.csv", "triple_clones_summary.csv"):
-            (TAB / name).unlink(missing_ok=True)
+        drop_stale(("triple_clones.csv", "triple_clones_summary.csv"))
         return
     tri.to_csv(TAB / "triple_clones.csv", index=False)
 
@@ -284,7 +298,8 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
         f"concordanti (excess<{CONCORDANT_MAX}): {len(conc):,}"
     )
     if not disc or not conc:
-        print("gruppi insufficienti.")
+        print("gruppi insufficienti: (2) non eseguito.")
+        drop_stale(PART2_FILES)
         return
 
     key = list(zip(lym.patient, lym.clone_b))
@@ -365,10 +380,11 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
             row["mean_GNLY_conc"] = dc.g_GNLY.mean()
         rows.append(row)
     res = pd.DataFrame(rows)
-    res.to_csv(TAB / "marker_test_disc_vs_conc.csv", index=False)
     if res.empty:
         print("nessun tessuto con abbastanza cellule CD8T in entrambi i gruppi.")
+        drop_stale(("marker_test_disc_vs_conc.csv",))
         return
+    res.to_csv(TAB / "marker_test_disc_vs_conc.csv", index=False)
     tum = res[res.tissue == "Tumor"]
     if len(tum):
         t = tum.iloc[0]
@@ -409,8 +425,15 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
 def run_scrublet(adata: ad.AnnData, cache: Path) -> pd.Series:
     """Calcola o recupera da cache il punteggio Scrublet per ciascuna libreria 10x."""
     if cache.exists():
+        s = pd.read_csv(cache, index_col=0).iloc[:, 0]
+        # la cache deve contenere esattamente le cellule dell'h5ad attuale
+        if set(s.index) != set(adata.obs_names):
+            raise SystemExit(
+                f"[ERRORE] la cache {cache} non corrisponde alle cellule dell'h5ad "
+                f"({len(s):,} contro {adata.n_obs:,}): cancellala per ricalcolare Scrublet."
+            )
         print(f"[ok] doublet score da cache {cache}")
-        return pd.read_csv(cache, index_col=0).iloc[:, 0]
+        return s
     print("[..] scrublet per libreria (lento) ...")
     a = adata.copy()
     sc.pp.scrublet(a, batch_key="library", random_state=SEED)
@@ -468,7 +491,7 @@ def part3(gex: pd.DataFrame) -> None:
     out = pd.DataFrame(rows)
     if out.empty:
         print("nessuna classe con almeno 20 cellule TCR+ e 20 TCR-: (3) non eseguito.")
-        (TAB / "doublet_tcr_pos_vs_neg.csv").unlink(missing_ok=True)
+        drop_stale(PART3_FILES, ("doublet_by_tcr_status.png",))
         return
     print("(medie per cellula, descrittive; ultime colonne: pazienti concordi)")
     print(out.round(4).to_string(index=False))
@@ -498,16 +521,32 @@ def part3(gex: pd.DataFrame) -> None:
 def main() -> None:
     """Punto di ingresso principale per le tre verifiche di disambiguazione."""
     ap = argparse.ArgumentParser(
-        description="Cloni in tre compartimenti, marcatori nei cloni discordanti e doppietti."
+        description="Cloni in tre compartimenti, marcatori nei cloni discordanti e doppietti.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
+    ap.add_argument(
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--tcrdir",
+        type=Path,
+        default=Path("data/raw/tcr"),
+        help="cartella con i file VDJ filtered_contig_annotations",
+    )
     ap.add_argument(
         "--pairwise",
         type=Path,
         default=Path("results/tables/pairwise_discordance_clone_b.csv"),
+        help="discordanze a coppie per clone (da 07_robustness.py, clone_b)",
     )
-    ap.add_argument("--skip-scrublet", action="store_true")
+    ap.add_argument(
+        "--skip-scrublet",
+        action="store_true",
+        help="non calcola Scrublet: usa la cache doublet_scores.csv se c'e'",
+    )
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)
@@ -552,6 +591,7 @@ def main() -> None:
         print(
             f"\n[!] {args.pairwise} assente: salto (2). Esegui prima 07_robustness.py"
         )
+        drop_stale(PART2_FILES)
 
     if not args.skip_scrublet:
         adata.obs["library"] = obs.library.values
@@ -561,12 +601,18 @@ def main() -> None:
     else:
         cache = TAB / "doublet_scores.csv"
         if cache.exists():
-            gex["doublet_score"] = (
-                pd.read_csv(cache, index_col=0).iloc[:, 0].reindex(gex.index).values
-            )
+            ds = pd.read_csv(cache, index_col=0).iloc[:, 0]
+            missing = gex.index.difference(ds.index)
+            if len(missing):
+                raise SystemExit(
+                    f"[ERRORE] la cache {cache} non copre {len(missing):,} cellule: "
+                    "cancellala e riesegui senza --skip-scrublet."
+                )
+            gex["doublet_score"] = ds.reindex(gex.index).values
             part3(gex)
         else:
             print("\n[!] scrublet saltato e nessuna cache: (3) non eseguito.")
+            drop_stale(PART3_FILES, ("doublet_by_tcr_status.png",))
 
 
 if __name__ == "__main__":

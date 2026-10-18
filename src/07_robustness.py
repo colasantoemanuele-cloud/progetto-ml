@@ -336,11 +336,27 @@ def plot_pairs(per_pair: pd.DataFrame, cc: str) -> None:
 def main() -> None:
     """Punto di ingresso principale per i test di robustezza statistica e biologica."""
     ap = argparse.ArgumentParser(
-        description="Discordanza clonale a coppie, cluster bootstrap e controlli di robustezza."
+        description="Discordanza clonale a coppie, cluster bootstrap e controlli di robustezza.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
-    ap.add_argument("--clone-def", choices=["clone_b", "clone_ab"], default="clone_b")
+    ap.add_argument(
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--tcrdir",
+        type=Path,
+        default=Path("data/raw/tcr"),
+        help="cartella con i file VDJ filtered_contig_annotations",
+    )
+    ap.add_argument(
+        "--clone-def",
+        choices=["clone_b", "clone_ab"],
+        default="clone_b",
+        help="definizione di clone: catena TRB (clone_b) o coppia TRA+TRB (clone_ab)",
+    )
     ap.add_argument(
         "--umi-min",
         type=int,
@@ -520,7 +536,7 @@ def main() -> None:
     print("\nper paziente (eccesso medio):")
     print(pw.groupby("patient").excess.agg(["mean", "size"]).round(4).to_string())
 
-    # Sezione (D): verifica dell'espressione proteica/trascrizionale di CD4 e CD8A/CD8B nei cloni discordanti
+    # Sezione (D): verifica dell'espressione (RNA, CP10k) di CD4 e CD8A/CD8B nei cloni discordanti
     if not args.no_markers and "g_CD8A" in gex.columns:
         print("\n" + "=" * 78)
         print("(D) TRANSIZIONE CD4T -> CD8T: verifica sui marcatori canonici")

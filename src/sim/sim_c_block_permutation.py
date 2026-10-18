@@ -89,10 +89,11 @@ def run(conf: float, reps: int, n_perm: int, seed: int) -> dict:
 def main() -> None:
     """Esegue la simulazione e scrive la tabella."""
     ap = argparse.ArgumentParser(
-        description="Simulazione (c): block permutation test sotto H0 con confondente di paziente."
+        description="Simulazione (c): block permutation test sotto H0 con confondente di paziente.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--n-perm", type=int, default=2000)
-    ap.add_argument("--reps", type=int, default=1000)
+    ap.add_argument("--n-perm", type=int, default=2000, help="permutazioni per replica")
+    ap.add_argument("--reps", type=int, default=1000, help="repliche per livello")
     args = ap.parse_args()
     TAB.mkdir(parents=True, exist_ok=True)
     rows = [

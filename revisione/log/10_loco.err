@@ -1,20 +1,20 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/10_loco.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr"
-	User time (seconds): 224.78
-	System time (seconds): 0.52
+	User time (seconds): 233.76
+	System time (seconds): 0.53
 	Percent of CPU this job got: 100%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:44.39
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:53.38
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 3392984
+	Maximum resident set size (kbytes): 3391288
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 150987
-	Voluntary context switches: 21
-	Involuntary context switches: 1190
+	Minor (reclaiming a frame) page faults: 157517
+	Voluntary context switches: 20
+	Involuntary context switches: 1536
 	Swaps: 0
-	File system inputs: 16
+	File system inputs: 0
 	File system outputs: 840
 	Socket messages sent: 0
 	Socket messages received: 0

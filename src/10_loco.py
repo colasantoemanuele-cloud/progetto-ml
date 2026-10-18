@@ -570,15 +570,43 @@ def mixture(gex: pd.DataFrame) -> None:
         print(
             "conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati)."
         )
+    # Strati (compartimenti, mediane e medie) in cui la maggioranza non e' sostenuta:
+    # la conclusione pooled non vale per ogni compartimento
+    low = out[(out.stratum != "all") | (out.statistic != "median")]
+    low = low[
+        (low[["d1", "d2"]].min(axis=1) < 0.5)
+        | (low[["d1_lo", "d2_lo"]].min(axis=1) < 0.5)
+    ]
+    if len(low):
+        print("\n[!!] strati con una stima o un limite inferiore dell'IC sotto 0,5:")
+        for r in low.itertuples():
+            print(
+                f"  {r.statistic:6s} {r.stratum:16s} d1 = {r.d1:.3f} [{r.d1_lo:.3f}, {r.d1_hi:.3f}]  "
+                f"d2 = {r.d2:.3f} [{r.d2_lo:.3f}, {r.d2_hi:.3f}]"
+            )
+        print(
+            "  In questi strati la maggioranza di doppietti non e' sostenuta dai dati."
+        )
 
 
 def main() -> None:
     """Punto di ingresso principale per l'arbitrato naive/LOCO/blood e i controlli di robustezza."""
     ap = argparse.ArgumentParser(
-        description="Errore delle etichette T con tre schemi di riferimento e doppietti NK-TCR+."
+        description="Errore delle etichette T con tre schemi di riferimento e doppietti NK-TCR+.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tcrdir", type=Path, default=Path("data/raw/tcr"))
+    ap.add_argument(
+        "--h5ad",
+        type=Path,
+        required=True,
+        help="AnnData con conteggi grezzi (da 02_build_h5ad.py)",
+    )
+    ap.add_argument(
+        "--tcrdir",
+        type=Path,
+        default=Path("data/raw/tcr"),
+        help="cartella con i file VDJ filtered_contig_annotations",
+    )
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)

@@ -227,9 +227,15 @@ def check_tcr_overlap(sc: pd.DataFrame | None, tcr_path: Path) -> None:
 def main() -> None:
     """Orchestra il download dei file pilota e l'analisi esplorativa delle etichette e dei barcode."""
     ap = argparse.ArgumentParser(
-        description="Verifica preliminare di etichette e barcode nelle SubSeries GEO."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Verifica preliminare di etichette e barcode nelle SubSeries GEO.",
     )
-    ap.add_argument("--outdir", type=Path, default=Path("data/raw/probe"))
+    ap.add_argument(
+        "--outdir",
+        type=Path,
+        default=Path("data/raw/probe"),
+        help="cartella dei file scaricati per la verifica delle etichette",
+    )
     args = ap.parse_args()
     args.outdir.mkdir(parents=True, exist_ok=True)
 

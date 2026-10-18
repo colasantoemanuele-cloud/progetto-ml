@@ -242,10 +242,13 @@ def patient_support(obs: pd.DataFrame, tag: str, thresholds=(1, 10, 50, 100)) ->
 def main() -> None:
     """Apre l'archivio AnnData in modalita backed='r' (sola lettura dei metadati) ed esegue l'intera suite QC/EDA."""
     ap = argparse.ArgumentParser(
-        description="QC descrittivo per libreria, composizione e supporto per paziente (nessun filtro)."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="QC descrittivo per libreria, composizione e supporto per paziente (nessun filtro).",
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--tag", default="sc")
+    ap.add_argument(
+        "--h5ad", type=Path, required=True, help="AnnData prodotto da 02_build_h5ad.py"
+    )
+    ap.add_argument("--tag", default="sc", help="suffisso dei file di output (sc o sn)")
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)

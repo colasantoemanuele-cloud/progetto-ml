@@ -25,6 +25,11 @@ Verifica su dati simulati i due stimatori usati per l'inferenza nella pipeline.
    - effetto noto: media vera 0.06 (continuo); frazione di IC che escludono 0 (potenza).
    400 repliche per scenario, 1.000 repliche bootstrap ciascuna (le analisi ne usano
    2.000: l'effetto sulla copertura e' trascurabile).
+   Gli scenari continui non sono simulazioni indipendenti: per ogni k il generatore
+   riparte dallo stesso seme (1000 + k), quindi `H0_mean0` ed `effect_mean006` usano
+   gli stessi dati di `coverage_continuous`, traslati. Per costruzione la frazione di
+   IC che escludono 0 sotto H0 e' 1 - copertura (es. 0,18 = 1 - 0,82 con 4 pazienti):
+   non e' una verifica separata della copertura.
 
 Input
 -----
@@ -37,7 +42,8 @@ Output
 
 Argomenti
 ---------
-  --reps-nb (default 1000), --reps-cb (default 400), --quick (repliche ridotte a 1/10)
+  --reps-nb (default 1000), --reps-cb (default 400), --quick (repliche ridotte a 1/10);
+  i default sono anche in `--help`
 
 Uso
 ---
@@ -190,10 +196,21 @@ def sim_cb(reps: int, n_boot: int = 1000) -> pd.DataFrame:
 def main() -> None:
     """Esegue le due simulazioni e scrive le tabelle."""
     ap = argparse.ArgumentParser(
-        description="Simulazione (a): Nadeau-Bengio e cluster bootstrap sotto H0 e con effetto."
+        description="Simulazione (a): Nadeau-Bengio e cluster bootstrap sotto H0 e con effetto.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--reps-nb", type=int, default=1000)
-    ap.add_argument("--reps-cb", type=int, default=400)
+    ap.add_argument(
+        "--reps-nb",
+        type=int,
+        default=1000,
+        help="repliche per k nel test di Nadeau-Bengio",
+    )
+    ap.add_argument(
+        "--reps-cb",
+        type=int,
+        default=400,
+        help="repliche per scenario del cluster bootstrap",
+    )
     ap.add_argument("--quick", action="store_true", help="repliche ridotte a 1/10")
     args = ap.parse_args()
     if args.quick:

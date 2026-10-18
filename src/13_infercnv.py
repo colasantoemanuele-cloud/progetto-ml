@@ -31,6 +31,17 @@ trascrittoma stesso, in tre stadi:
    Se non e' disponibile lo script si ferma: `copykat` non e' un ripiego automatico
    (richiede `rpy2` e i pacchetti R `copykat` e `stringr`, assenti da
    `envs/environment.yml`) e si usa solo con `--method copykat`.
+   Cromosomi: entrano in inferCNV solo i geni dei cromosomi 1-22, X e Y (`add_positions`
+   scarta il genoma mitocondriale `MT` e i contig non standard come `GL000194.1`);
+   infercnvpy esclude poi X e Y (`exclude_chromosomes` di default), quindi le finestre
+   sono solo autosomiche, e lo script si ferma se ne trova altre. Il genoma
+   mitocondriale non e' una copia del DNA nucleare e la sua espressione segue la
+   frazione di letture mitocondriali (metrica di QC, `pct_mt`): includerlo farebbe
+   dipendere lo score CNV dalla qualita' delle cellule.
+   Cache: `cnv_scores.csv` e' riusata solo se la sua impronta, salvata in
+   `data/interim/cnv_cache_fingerprint.json`, coincide con quella calcolata ora
+   (hash delle cellule, dei conteggi, dei geni, della tabella delle coordinate, del
+   gruppo di riferimento e dei parametri di inferCNV); altrimenti lo script si ferma.
 
 2. Classificazione Leave-One-Patient-Out: Random Forest bilanciato sulle duttali del
    tessuto `Tumor` dei pazienti con almeno 150 duttali. Normalizzazione (log1p CP10k)
@@ -47,13 +58,16 @@ trascrittoma stesso, in tre stadi:
 Input
 -----
   --h5ad       data/interim/sc_raw.h5ad (conteggi grezzi; obs: tissue, patients, all_celltype)
-  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste e contiene esattamente le cellule
-               selezionate, altrimenti calcolato e scritto; una cache diversa ferma lo script)
+  --cnv-cache  data/interim/cnv_scores.csv (letto se esiste, contiene esattamente le cellule
+               selezionate e ha l'impronta attesa; altrimenti calcolato e scritto se manca,
+               mentre una cache diversa ferma lo script)
+  data/interim/cnv_cache_fingerprint.json (impronte delle cache di 13 e 14)
   data/interim/gene_positions_ensembl116.csv (letta se esiste, altrimenti scaricata da BioMart)
 
 Output
 ------
   data/interim/cnv_scores.csv                   score CNV per cellula (cache)
+  data/interim/cnv_cache_fingerprint.json       impronta della cache (voce `cnv_scores.csv`)
   data/interim/gene_positions_ensembl116.csv    coordinate dei geni (solo se scaricate)
   results/tables/malignancy_labels.csv          duttali maligne per paziente x tessuto
   results/tables/malignancy_lopo.csv            metriche LOPO per paziente (BA, F1, AUC)
@@ -75,8 +89,11 @@ Uso
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import io
+import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -121,6 +138,13 @@ BIOMART_QUERY = (
     "</Dataset></Query>"
 )
 POS_COLS = ["hgnc_symbol", "start_position", "end_position", "chromosome_name"]
+# cromosomi annotati: 1-22, X, Y (esclusi MT e i contig non standard; vedi docstring)
+STANDARD_CHROM = re.compile(r"^(\d{1,2}|X|Y)$")
+AUTOSOMES = {f"chr{i}" for i in range(1, 23)}
+# parametri di inferCNV, comuni a 13 e 14 e registrati nell'impronta delle cache
+WINDOW_SIZE = 100
+FINGERPRINT = Path("data/interim/cnv_cache_fingerprint.json")
+CHROM_RULE = "1-22, X, Y in add_positions; X e Y esclusi da infercnvpy"
 
 
 def gene_positions(path: Path = GENE_POS) -> pd.DataFrame | None:
@@ -179,6 +203,8 @@ def add_positions(adata: ad.AnnData) -> bool:
 
     Stessa regola di `infercnvpy.io.genomic_position_from_biomart`: i simboli HGNC
     duplicati nella tabella sono scartati e il cromosoma prende il prefisso `chr`.
+    Restano solo i cromosomi 1-22, X e Y (STANDARD_CHROM): i geni mitocondriali e
+    dei contig non standard restano senza coordinate e non entrano in inferCNV.
     """
     adata.var_names = (
         adata.var["gene_symbol"].astype(str).values
@@ -192,6 +218,10 @@ def add_positions(adata: ad.AnnData) -> bool:
         return False
     tab = tab.dropna(subset=["hgnc_symbol"])
     tab = tab[~tab.hgnc_symbol.duplicated(keep=False)].set_index("hgnc_symbol")
+    standard = tab.chromosome_name.astype(str).str.match(STANDARD_CHROM)
+    n_out = int((~standard & tab.index.isin(adata.var_names)).sum())
+    tab = tab[standard]
+    print(f"[ok] {n_out} geni su cromosomi non standard (MT, contig) esclusi")
     adata.var["chromosome"] = (
         ("chr" + tab.chromosome_name).reindex(adata.var_names).values
     )
@@ -218,9 +248,82 @@ def run_infercnv(adata: ad.AnnData) -> np.ndarray:
 
     ref = [c for c in IMMUNE_REF if c in a.obs["ref_group"].unique()]
     print(f"[..] infercnv: riferimento = {ref} (tutti i pazienti)")
-    cnv.tl.infercnv(a, reference_key="ref_group", reference_cat=ref, window_size=100)
+    cnv.tl.infercnv(
+        a, reference_key="ref_group", reference_cat=ref, window_size=WINDOW_SIZE
+    )
+    check_autosomal_windows(a.uns["cnv"]["chr_pos"])
     score = np.asarray(np.abs(a.obsm["X_cnv"]).mean(axis=1)).ravel()
     return score
+
+
+def check_autosomal_windows(chr_pos: dict) -> None:
+    """Si ferma se `X_cnv` contiene finestre fuori dai cromosomi 1-22."""
+    other = sorted(set(chr_pos) - AUTOSOMES)
+    if other:
+        raise SystemExit(
+            f"[ERRORE] finestre inferCNV su cromosomi non autosomici: {other} "
+            "(attesi solo chr1-chr22; vedi add_positions)"
+        )
+
+
+def _digest(*parts: bytes) -> str:
+    h = hashlib.blake2b(digest_size=16)
+    for b in parts:
+        h.update(b)
+    return h.hexdigest()
+
+
+def cnv_fingerprint(sub: ad.AnnData, method: str) -> dict:
+    """Impronta di una cache CNV: cellule, conteggi, geni, coordinate, riferimento, parametri.
+
+    Va calcolata sullo stesso sottoinsieme `sub` quando la cache viene scritta e quando
+    viene riletta; i geni sono presi da `gene_symbol` (se presente), quindi l'impronta non
+    dipende dalla rinomina fatta da `add_positions`.
+    """
+    X = sp.csr_matrix(sub.X)
+    genes = (
+        sub.var["gene_symbol"].astype(str)
+        if "gene_symbol" in sub.var
+        else sub.var_names
+    )
+    return {
+        "method": method,
+        "ensembl_release": ENSEMBL_RELEASE,
+        "chromosomes": CHROM_RULE,
+        "window_size": WINDOW_SIZE,
+        "reference": IMMUNE_REF,
+        "cells": _digest("\n".join(sub.obs_names).encode()),
+        "ref_group": _digest("\n".join(sub.obs["ref_group"].astype(str)).encode()),
+        "counts": _digest(X.data.tobytes(), X.indices.tobytes(), X.indptr.tobytes()),
+        "genes": _digest("\n".join(map(str, genes)).encode()),
+        "gene_positions": _digest(GENE_POS.read_bytes()) if GENE_POS.exists() else None,
+    }
+
+
+def check_fingerprint(key: str, fp: dict, cache: Path) -> None:
+    """Si ferma se l'impronta salvata per la cache `key` manca o non coincide con `fp`."""
+    saved = (
+        json.loads(FINGERPRINT.read_text()).get(key) if FINGERPRINT.exists() else None
+    )
+    if saved is None:
+        raise SystemExit(
+            f"[ERRORE] la cache {cache} non ha un'impronta in {FINGERPRINT}: "
+            "cancellala per ricalcolare inferCNV."
+        )
+    diff = sorted(k for k in fp if saved.get(k) != fp[k])
+    if diff:
+        raise SystemExit(
+            f"[ERRORE] la cache {cache} e' stata calcolata con input o parametri diversi "
+            f"({', '.join(diff)}): cancellala per ricalcolare inferCNV."
+        )
+
+
+def save_fingerprint(key: str, fp: dict) -> None:
+    """Registra l'impronta della cache `key` in FINGERPRINT (le altre voci restano)."""
+    allfp = json.loads(FINGERPRINT.read_text()) if FINGERPRINT.exists() else {}
+    allfp[key] = fp
+    FINGERPRINT.parent.mkdir(parents=True, exist_ok=True)
+    FINGERPRINT.write_text(json.dumps(allfp, indent=2) + "\n")
 
 
 def run_copykat(adata: ad.AnnData) -> np.ndarray:
@@ -304,14 +407,30 @@ def fit_final(X, y, n_hvg: int = N_HVG) -> Pipeline:
 def main() -> None:
     """Punto di ingresso principale per l'inferenza CNV, la sogliatura per paziente e il test LOPO."""
     ap = argparse.ArgumentParser(
-        description="Score CNV, etichetta di malignita' e classificazione LOPO delle duttali."
+        description="Score CNV, etichetta di malignita' e classificazione LOPO delle duttali.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--h5ad", type=Path, required=True)
-    ap.add_argument("--method", choices=["infercnv", "copykat", "auto"], default="auto")
     ap.add_argument(
-        "--cnv-cache", type=Path, default=Path("data/interim/cnv_scores.csv")
+        "--h5ad", type=Path, required=True, help="AnnData con conteggi grezzi (da 02)"
     )
-    ap.add_argument("--n-hvg", type=int, default=N_HVG)
+    ap.add_argument(
+        "--method",
+        choices=["infercnv", "copykat", "auto"],
+        default="auto",
+        help="auto = infercnv, senza ripiego su copykat (che richiede rpy2 e R)",
+    )
+    ap.add_argument(
+        "--cnv-cache",
+        type=Path,
+        default=Path("data/interim/cnv_scores.csv"),
+        help="cache dello score CNV per cellula (con impronta in cnv_cache_fingerprint.json)",
+    )
+    ap.add_argument(
+        "--n-hvg",
+        type=int,
+        default=N_HVG,
+        help="geni piu' dispersi nella pipeline LOPO",
+    )
     args = ap.parse_args()
 
     FIG.mkdir(parents=True, exist_ok=True)
@@ -359,6 +478,10 @@ def main() -> None:
                 f"[ERRORE] la cache {args.cnv_cache} contiene {extra:,} cellule non selezionate "
                 "(altro sottoinsieme o riferimento): cancellala per ricalcolare inferCNV."
             )
+        method = "infercnv" if args.method == "auto" else args.method
+        check_fingerprint(
+            args.cnv_cache.name, cnv_fingerprint(sub, method), args.cnv_cache
+        )
         sub.obs["cnv_score"] = score.values
     else:
         method = "infercnv" if args.method == "auto" else args.method
@@ -376,6 +499,7 @@ def main() -> None:
         sub.obs["cnv_score"] = score
         print(f"[ok] CNV in {time.time() - t0:.0f}s")
         sub.obs[["cnv_score"]].to_csv(args.cnv_cache)
+        save_fingerprint(args.cnv_cache.name, cnv_fingerprint(sub, method))
 
     # Soglia per paziente: mediana + 3 * MAD normalizzata sulle immunitarie del paziente.
     # Le immunitarie sono anche il riferimento su cui inferCNV centra lo score: le duttali

@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/sim/sim_b_reference_schemes.py"
-	User time (seconds): 101.44
-	System time (seconds): 0.13
+	User time (seconds): 88.00
+	System time (seconds): 0.12
 	Percent of CPU this job got: 100%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:40.64
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:27.31
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 256768
+	Maximum resident set size (kbytes): 256784
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 46956
-	Voluntary context switches: 17
-	Involuntary context switches: 781
+	Minor (reclaiming a frame) page faults: 46912
+	Voluntary context switches: 18
+	Involuntary context switches: 610
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 16

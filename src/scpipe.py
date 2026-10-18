@@ -23,6 +23,11 @@ Metriche e test per il confronto di modelli:
   - `nadeau_bengio_ttest`  : t appaiato corretto di Nadeau & Bengio (2003).
   - `jaccard`, `mean_pairwise_jaccard`.
 
+Intervalli bootstrap:
+  - `expanded_alpha`, `percentile_ci`  : livello corretto e IC "expanded percentile"
+                                         (Hesterberg 2015) da repliche gia' calcolate;
+  - `cluster_bootstrap_replicates`     : repliche della media ricampionando i pazienti.
+
 Stimatori con il paziente come unita' (calibrazione in `tests/test_stats.py`):
   - `cluster_bootstrap`      : IC 95% della media pooled ricampionando i pazienti,
                                con intervallo "expanded percentile". La copertura e'
@@ -32,7 +37,7 @@ Stimatori con il paziente come unita' (calibrazione in `tests/test_stats.py`):
                                (Spearman in 16, 17, 19; d1/d2 in 10) ne' con 4-5
                                pazienti, dove in simulazione resta sotto il 95%
                                (`src/sim/sim_a_calibration.py`).
-  - `small_k_diagnostics`    : con <= `SMALL_K` pazienti, ricampionature distinte e
+  - `small_k_diagnostics`    : con <= `SMALL_K` (= 5) pazienti, ricampionature distinte e
                                frazione di repliche > 0 (descrittive, non un test).
   - `block_permutation_test` : correlazione di Spearman pooled, permutando l'esito
                                solo entro paziente; p grezzo e p sulla statistica centrata.
@@ -41,6 +46,9 @@ Test con unita' = righe (una riga per osservazione, es. un paziente in H1-H4):
   - `permutation_corr_test`  : Spearman con permutazione Monte Carlo; frazione di
                                p < 0.05 sotto H0 verificata in `tests/test_stats.py`.
   - `holm_bonferroni`        : correzione step-down di Holm.
+
+Altro:
+  - `majority_label`         : etichetta di maggioranza con regola esplicita dei pareggi.
 
 Uso
 ---
@@ -181,8 +189,9 @@ def mean_pairwise_jaccard(sets: list[set]) -> float:
 def expanded_alpha(k: int, alpha: float = 0.05) -> float:
     """Livello corretto dell'intervallo "expanded percentile" (Hesterberg, 2015).
 
-    Il percentile bootstrap con pochi cluster e' troppo stretto (in simulazione
-    con 10-11 pazienti copre ~87-89% invece del 95%). L'intervallo espanso usa i
+    Il percentile bootstrap con pochi cluster e' troppo stretto (con 10-11 pazienti
+    copre l'88,8-92,3% in `results/tables/sim_a_cluster_bootstrap.csv` e l'87,7-89,2%
+    nel test lento della Fase 0, invece del 95%). L'intervallo espanso usa i
     quantili alpha'/2 e 1 - alpha'/2 della distribuzione bootstrap, con
         alpha'/2 = Phi( sqrt(k / (k - 1)) * t_{alpha/2, k-1} ),
     che compensa sia il fattore (k-1)/k della varianza plug-in sia la coda t.
@@ -229,7 +238,8 @@ def cluster_bootstrap(by_pat: dict, n_boot: int = 2000, seed: int = 0) -> tuple:
     "expanded percentile" (vedi `expanded_alpha`) con k = numero di pazienti.
     Copertura verificata in `tests/test_stats.py` con 10 e 11 pazienti; con 4-5
     pazienti l'intervallo resta troppo stretto (vedi `src/sim/sim_a_calibration.py`).
-    Restituisce (media, lo, hi); NaN se ci sono meno di 2 pazienti.
+    Restituisce (media, lo, hi); con meno di 2 pazienti lo e hi sono NaN (la media
+    resta quella delle osservazioni disponibili, NaN se non ce ne sono).
     """
     by_pat = {p: np.asarray(v, dtype=float) for p, v in by_pat.items() if len(v)}
     if len(by_pat) < 2:
@@ -384,9 +394,11 @@ def majority_label(labels) -> str:
 
     Regola dei pareggi: a parita' di conteggio vince l'etichetta che compare per
     prima nell'ordine delle cellule passato in ingresso (per gli script TCR:
-    l'ordine delle righe di `obs` dopo il merge con i contig). E' la stessa regola
-    di `pd.Series.value_counts().index[0]` in pandas >= 2, usata nelle versioni
-    precedenti degli script, resa esplicita e indipendente dalla versione.
+    l'ordine delle righe di `obs` dopo il merge con i contig). Le versioni
+    precedenti degli script usavano `pd.Series.value_counts().index[0]`, che in
+    pandas 2.3 risolve i pareggi per prima comparsa solo con 2-3 etichette distinte
+    (con 4 o piu' l'ordine dei pareggi non e' garantito); passando a questa regola
+    esplicita i numeri pubblicati non sono cambiati (riesecuzione della Fase 1).
     """
     labels = list(labels)
     vc = pd.Series(labels).value_counts()

@@ -6,9 +6,12 @@ banda si corregge lo stimatore):
 1. Cluster bootstrap sui pazienti (IC 95% della media pooled), con 10 e con 11
    pazienti di numerosita' diseguale come nei dati (5-59 cloni per paziente),
    esito continuo e binario: copertura empirica dell'IC in [0.90, 0.99].
-   400 repliche per scenario. (Fase 0: l'intervallo percentile semplice dava
+   400 repliche per scenario. (Fase 0, questo test con i semi 100 + k, log in
+   `revisione/log/fase0_pytest_slow.log`: l'intervallo percentile semplice dava
    0.877-0.892, fuori banda; lo stimatore e' stato corretto con l'intervallo
-   "expanded percentile", la banda e' rimasta invariata.)
+   "expanded percentile", la banda e' rimasta invariata. I valori 0,8875-0,9225 del
+   README vengono invece da `src/sim/sim_a_calibration.py`, semi 1000 + k:
+   simulazione diversa, stesso disegno.)
 2. Block permutation test (permutazione dell'esito entro paziente) sotto H0 con
    confondente di paziente (x e y dipendono entrambi da un effetto di paziente,
    nessuna associazione entro paziente): frazione di p < 0.05 in [0.02, 0.08],
@@ -21,15 +24,16 @@ banda si corregge lo stimatore):
    esattamente 0 quando i due compartimenti hanno la stessa distribuzione
    (tolleranza numerica 1e-12, nessuna banda).
 5. t di Nadeau-Bengio (disegno ripreso da genomic-audit-mvp): sotto H0 (due
-   DummyClassifier stratificati con semi diversi, StratifiedKFold k = 5, n = 90)
-   frazione di p < 0.05 in [0.00, 0.08] (il test puo' essere conservativo, non
+   DummyClassifier stratificati con semi diversi, StratifiedKFold k = 3 e k = 5,
+   n = 90) frazione di p < 0.05 in [0.00, 0.08] per ciascun k (il test puo' essere conservativo, non
    deve superare il livello); con effetto noto (logistica contro Dummy, n = 120)
-   frazione di p < 0.05 >= 0.50. 400 e 100 repliche.
+   frazione di p < 0.05 >= 0.50 (k = 5). 400 repliche per k sotto H0, 100 con effetto.
 6. Regola della maggioranza, macro-F1 sulle classi presenti, livello espanso:
    proprieta' esatte (nessuna banda).
 7. Test di permutazione di Spearman (`scpipe.permutation_corr_test`, unita' = righe,
    usato per H1-H4 in 16 e 19 e per le medie per paziente in 17, con n = 10
-   pazienti): sotto H0 (x e y indipendenti, n = 10) frazione di p < 0.05 in [0.02, 0.08]. 400 repliche, 2.000 permutazioni.
+   pazienti): sotto H0 (x e y indipendenti, n = 10) frazione di p < 0.05 in
+   [0.02, 0.08]. 400 repliche, 2.000 permutazioni.
 """
 
 from __future__ import annotations
@@ -222,10 +226,15 @@ def test_d_within_08_unbiased(n):
 @pytest.mark.slow
 def test_nadeau_bengio_calibration_and_power():
     sim = load_script("sim_a_calibration")
-    p0 = np.array([sim.nb_replicate(r, 55_005, 90, 5, False)[0] for r in range(400)])
-    p0 = p0[~np.isnan(p0)]
-    fpr = float(np.mean(p0 < 0.05))
-    assert 0.0 <= fpr <= 0.08, f"falsi positivi {fpr:.3f} fuori banda [0, 0.08]"
+    for k in (3, 5):
+        p0 = np.array(
+            [sim.nb_replicate(r, 55_000 + k, 90, k, False)[0] for r in range(400)]
+        )
+        p0 = p0[~np.isnan(p0)]
+        fpr = float(np.mean(p0 < 0.05))
+        assert 0.0 <= fpr <= 0.08, (
+            f"k = {k}: falsi positivi {fpr:.3f} fuori banda [0, 0.08]"
+        )
     p1 = np.array([sim.nb_replicate(r, 51_005, 120, 5, True)[0] for r in range(100)])
     power = float(np.mean(p1[~np.isnan(p1)] < 0.05))
     assert power >= 0.5, f"potenza {power:.3f} < 0.50"
@@ -235,11 +244,23 @@ def test_majority_label_ties_first_appearance():
     assert scpipe.majority_label(["NK", "CD8T", "CD8T", "NK"]) == "NK"
     assert scpipe.majority_label(["CD8T", "NK", "NK", "CD8T"]) == "CD8T"
     assert scpipe.majority_label(["CD4T", "CD8T", "CD8T"]) == "CD8T"
-    # stessa regola di pandas value_counts().index[0] (versione precedente degli script)
+    # pareggio fra 4 etichette distinte: vince quella che compare per prima
+    lab = ["Endothelial", "CD8T", "Ductal", "Ductal", "Ductal", "NK", "NK", "NK", "B",
+           "CD4T", "Endothelial", "B", "CD8T", "CD4T"]  # fmt: skip
+    assert scpipe.majority_label(lab) == "Ductal"
+
+    def reference(labels):
+        counts = {}
+        for x in labels:
+            counts[x] = counts.get(x, 0) + 1
+        top = max(counts.values())
+        return next(x for x in labels if counts[x] == top)
+
     rng = np.random.default_rng(0)
-    for _ in range(300):
-        lab = list(rng.choice(["CD4T", "CD8T", "NK"], rng.integers(1, 8)))
-        assert scpipe.majority_label(lab) == pd.Series(lab).value_counts().index[0]
+    names = ["CD4T", "CD8T", "NK", "B", "Ductal", "Myeloid"]
+    for _ in range(500):
+        lab = list(rng.choice(names, rng.integers(1, 15)))
+        assert scpipe.majority_label(lab) == reference(lab)
 
 
 def test_macro_f1_uses_classes_present_in_test():

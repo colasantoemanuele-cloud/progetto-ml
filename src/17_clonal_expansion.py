@@ -45,8 +45,8 @@ Argomenti
 
 Uso
 ---
-    python src/17_clonal_expansion.py \
-        --arbitration results/tables/arbitration_blood.csv \
+    python src/17_clonal_expansion.py \\
+        --arbitration results/tables/arbitration_blood.csv \\
         --pairwise results/tables/pairwise_discordance_clone_b.csv
 """
 
@@ -279,15 +279,20 @@ def make_figure(
 def main() -> None:
     """Unisce arbitrato ed espansione clonale ed esegue i test su errore ed eccesso."""
     ap = argparse.ArgumentParser(
-        description="Espansione clonale T contro errore di etichetta nel tumore."
+        description="Espansione clonale T contro errore di etichetta nel tumore.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     ap.add_argument(
-        "--arbitration", type=Path, default=Path("results/tables/arbitration_blood.csv")
+        "--arbitration",
+        type=Path,
+        default=Path("results/tables/arbitration_blood.csv"),
+        help="identita' clonale e errore per (clone, compartimento), schema 'blood' (da 10_loco.py)",
     )
     ap.add_argument(
         "--pairwise",
         type=Path,
         default=Path("results/tables/pairwise_discordance_clone_b.csv"),
+        help="discordanze a coppie per clone (da 07_robustness.py, clone_b)",
     )
     args = ap.parse_args()
 

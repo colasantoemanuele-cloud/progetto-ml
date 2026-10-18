@@ -27,9 +27,12 @@ Scelte del disegno:
    (fattore n_test / n_train) e test di Wilcoxon appaiato sui fold. Con pochi fold la
    potenza e' bassa: un p non significativo NON dimostra che due modelli siano
    equivalenti. La calibrazione di Nadeau-Bengio e' verificata in
-   `src/sim/sim_a_calibration.py` con StratifiedKFold a 5 fold di dimensione uguale;
+   `src/sim/sim_a_calibration.py` con StratifiedKFold a 3 e 5 fold di dimensione uguale;
    qui e' applicato a fold LOPO di dimensione diversa con training sottocampionato,
    caso non coperto da quella verifica.
+   I p sono grezzi (nessuna correzione per i 12 confronti) e il migliore e' scelto sugli
+   stessi fold su cui e' confrontato con gli altri: il numero di p < 0,05 risente di
+   questa selezione.
 Il macro-F1 di ogni fold e' calcolato sulle sole classi presenti nel fold di test.
 Se un modello fallisce in un fold, tutti i suoi fold vengono scartati.
 Riproducibilita': `knn`, `svm_rbf` e `mlp` (proiezione densa) sono addestrati con BLAS a
@@ -51,6 +54,8 @@ Output
                                                 fold non convergenti per task x modello
   results/tables/model_comparison_{task}.csv    differenze dal migliore e p (Nadeau-Bengio, Wilcoxon)
   results/figures/model_zoo_{task}.png
+  (model_comparison e la figura dipendono solo dal task, non da --tag: un'esecuzione
+  dello stesso task con un altro tag o schema li sovrascrive)
 
 Argomenti
 ---------
@@ -62,9 +67,9 @@ Argomenti
 
 Uso
 ---
-    python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad \
+    python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad \\
         --splits data/interim/splits_sc.csv --tasks task2_v1 task2_hier3 --scheme fold_lopo
-    python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad \
+    python src/11_model_zoo.py --h5ad data/interim/sc_raw.h5ad \\
         --splits data/interim/splits_sc.csv --tasks task1a_paired --tag task1 --scheme fold_lopo
     # rieseguire un solo modello senza perdere gli altri:
     python src/11_model_zoo.py ... --models lightgbm --update
@@ -390,22 +395,29 @@ def compare(res: pd.DataFrame, task: str) -> None:
 def main() -> None:
     """Punto di ingresso principale per l'esecuzione del benchmark multi-modello."""
     ap = argparse.ArgumentParser(
-        description="Confronto di 13 classificatori con validazione per paziente."
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Confronto di 13 classificatori con validazione per paziente.",
     )
     ap.add_argument("--h5ad", type=Path, help="obbligatorio senza --from-table")
     ap.add_argument("--splits", type=Path, help="obbligatorio senza --from-table")
     ap.add_argument(
         "--tasks",
-        nargs="*",
+        nargs="+",
         default=None,
         help="default task2_hier3 task2_v1; con --from-table tutti i task della tabella",
     )
-    ap.add_argument("--models", nargs="*", default=list(_models()))
+    ap.add_argument(
+        "--models", nargs="+", default=list(_models()), help="modelli da addestrare"
+    )
     ap.add_argument("--max-train", type=int, default=20000, help="0 = tutte le cellule")
     ap.add_argument(
         "--scheme", default=None, help="forza fold_group_5 / fold_random_5 / fold_lopo"
     )
-    ap.add_argument("--tag", default="sc")
+    ap.add_argument(
+        "--tag",
+        default="sc",
+        help="suffisso di model_zoo_{tag}.csv e model_zoo_summary_{tag}.csv",
+    )
     ap.add_argument(
         "--from-table",
         action="store_true",
@@ -511,7 +523,12 @@ def main() -> None:
         ax.barh(
             g.index, g["mean"], xerr=g["std"], capsize=3, color="#1b9e77", alpha=0.85
         )
-        ax.set_xlabel("macro-F1 (split per paziente)")
+        sch = d.scheme.iloc[0]
+        ax.set_xlabel(
+            "macro-F1 (split casuale per cellula)"
+            if sch == "fold_random_5"
+            else f"macro-F1 (split per paziente: {sch})"
+        )
         ax.set_title(f"{t} - {int(d.n_train.mean()):,} cellule di training per fold")
         fig.tight_layout()
         fig.savefig(FIG / f"model_zoo_{t}.png", dpi=140)
