@@ -18,14 +18,15 @@ trascrittoma stesso, in tre stadi:
    La soglia e' stimata sulle stesse cellule immunitarie su cui inferCNV centra lo
    score: un programma trascrizionale epiteliale qualsiasi (non solo
    un'aneuploidia) sposta lo score delle duttali sopra quello degli immuni e tende a
-   superarla. In `malignancy_labels.csv` risultano "maligne" anche il 45-62% delle
-   duttali di `Adjacent_normal` nei pazienti con almeno 20 duttali adiacenti.
+   superarla: in `malignancy_labels.csv` risultano "maligne" anche molte duttali di
+   `Adjacent_normal` (la frazione per paziente e' nella colonna `frac_malig`).
    I pazienti con meno di 20 immunitarie non hanno soglia: le loro duttali restano
    senza etichetta (NaN) e sono escluse dalla classificazione.
 
-   Coordinate dei geni: Ensembl release 116 (GRCh38), la release con cui sono state
-   calcolate le cache dell'11/07/2026 (le coordinate delle finestre di
-   `cnv_matrix.npz` coincidono con quelle dei geni di Ensembl 116). La tabella e'
+   Coordinate dei geni: Ensembl release 116 (GRCh38), la stessa delle cache precedenti
+   dell'11/07/2026 (ora in `data/interim/cache_cnv_20260711/`: le coordinate delle loro
+   finestre coincidono con quelle dei geni di Ensembl 116); le cache attuali sono
+   ricalcolate con questa tabella e con la regola dei cromosomi qui sotto. La tabella e'
    scaricata da BioMart via https solo da un host che dichiara la release 116 e
    salvata in `data/interim/gene_positions_ensembl116.csv`, poi riletta da li'.
    Se non e' disponibile lo script si ferma: `copykat` non e' un ripiego automatico
@@ -75,6 +76,9 @@ Output
   results/tables/external_test_predictions.csv  predizione per ogni duttale adiacente
   results/tables/external_test_summary.csv      frazione di duttali adiacenti predette maligne
   results/figures/malignancy.png
+  (se nessun fold LOPO e' valutabile o le duttali adiacenti sono 20 o meno, i file
+  corrispondenti non vengono scritti e quelli di un'esecuzione precedente vengono
+  cancellati)
 
 Argomenti
 ---------
@@ -590,6 +594,12 @@ def main() -> None:
             f"balanced accuracy media: {res.balanced_acc.mean():.3f} ± {res.balanced_acc.std():.3f}"
         )
         summ.T.rename_axis("metric").to_csv(TAB / "malignancy_lopo_summary.csv")
+    else:
+        # niente riepilogo di un'esecuzione precedente in results/
+        print(
+            "[!!] nessun fold LOPO valutabile: malignancy_lopo_summary.csv non scritto"
+        )
+        (TAB / "malignancy_lopo_summary.csv").unlink(missing_ok=True)
 
     # Applicazione alle duttali del tessuto adiacente: modello finale stimato sulle sole
     # duttali tumorali di training, compresa la scelta dei geni
@@ -628,6 +638,8 @@ def main() -> None:
         pd.DataFrame(ext_rows).to_csv(TAB / "external_test_summary.csv", index=False)
     else:
         print("numero insufficiente di duttali normali (<= 20): passo saltato.")
+        for name in ("external_test_predictions.csv", "external_test_summary.csv"):
+            (TAB / name).unlink(missing_ok=True)
 
     # Figura diagnostica (distribuzione CNV score e AUC per paziente)
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))

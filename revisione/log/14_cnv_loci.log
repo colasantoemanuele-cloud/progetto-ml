@@ -1,9 +1,5 @@
 [..] carico h5ad ...
-[..] coordinate dei geni (Ensembl 116) ...
-[ok] 14 geni su cromosomi non standard (MT, contig) esclusi
-[ok] posizioni per 19,579/30,543 geni
-[..] infercnv, riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] di tutti i pazienti (lento) ...
-[ok] X_cnv (101219, 1672) in 38s
+[ok] X_cnv da cache data/interim/cnv_matrix.npz
 
 duttali: 8,370 tumorali | 334 normali adiacenti
 

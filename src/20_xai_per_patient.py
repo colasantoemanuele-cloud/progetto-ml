@@ -203,7 +203,10 @@ def main() -> None:
     )
     ap.add_argument("--task", default="task1a_paired", help="task da spiegare")
     ap.add_argument(
-        "--scheme", default="fold_lopo", help="colonna dei fold (un fold per paziente)"
+        "--scheme",
+        default="fold_lopo",
+        choices=["fold_group_5", "fold_lopo", "fold_random_5"],
+        help="colonna dei fold (un fold per paziente)",
     )
     args = ap.parse_args()
 
@@ -336,7 +339,11 @@ def main() -> None:
         for c, (lo_s, hi_s) in rng_sim.items():
             print(f"  simulazione {c}: differenza fra {lo_s:+.3f} e {hi_s:+.3f}")
         lo0, hi0 = rng_sim.get("no_patient_effect", (np.nan, np.nan))
-        if diff > hi0:
+        if np.isnan(lo0) or np.isnan(hi0):
+            print(
+                "  scenario senza effetto paziente assente dalla simulazione: nessun confronto."
+            )
+        elif diff > hi0:
             print(
                 "  LETTURA: la differenza osservata e' sopra tutte le repliche simulate senza"
             )
@@ -344,8 +351,9 @@ def main() -> None:
                 "  effetto paziente: togliere un paziente cambia la regola appresa piu' che"
             )
             print(
-                "  togliere cellule a caso, come atteso se le cellule dello stesso paziente"
+                "  addestrare su un sottoinsieme casuale della stessa dimensione, come atteso"
             )
+            print("  se le cellule dello stesso paziente")
             print(
                 "  sono ridondanti. La simulazione ha pochi pazienti e una sola forma di"
             )

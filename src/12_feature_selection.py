@@ -139,6 +139,10 @@ def sel_l1(X, y, rng):  # noqa: ARG001
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always", ConvergenceWarning)
         m.fit(X, y)
+    # gli avvisi diversi dalla mancata convergenza vengono riemessi, non scartati
+    for x in w:
+        if not issubclass(x.category, ConvergenceWarning):
+            warnings.showwarning(x.message, x.category, x.filename, x.lineno)
     n_iter = int(np.max(m.n_iter_))
     converged = not any(issubclass(x.category, ConvergenceWarning) for x in w)
     return np.abs(m.coef_).max(axis=0), {"n_iter": n_iter, "converged": converged}
@@ -256,12 +260,14 @@ def main() -> None:
     ap.add_argument(
         "--scheme",
         default="fold_group_5",
+        choices=["fold_group_5", "fold_lopo", "fold_random_5"],
         help="colonna dei fold (decide anche i fold del Jaccard)",
     )
     ap.add_argument(
         "--methods",
         nargs="+",
         default=list(SELECTORS),
+        choices=list(SELECTORS),
         help="criteri di selezione dei geni",
     )
     args = ap.parse_args()

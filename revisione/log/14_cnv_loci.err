@@ -1,22 +1,21 @@
-  0%|          | 0/21 [00:00<?, ?it/s]  5%|▍         | 1/21 [00:15<05:06, 15.30s/it] 10%|▉         | 2/21 [00:16<02:07,  6.73s/it] 19%|█▉        | 4/21 [00:17<00:48,  2.83s/it] 24%|██▍       | 5/21 [00:18<00:36,  2.25s/it] 33%|███▎      | 7/21 [00:20<00:24,  1.78s/it] 38%|███▊      | 8/21 [00:22<00:22,  1.71s/it] 43%|████▎     | 9/21 [00:22<00:15,  1.32s/it] 48%|████▊     | 10/21 [00:22<00:12,  1.13s/it] 52%|█████▏    | 11/21 [00:24<00:11,  1.14s/it] 62%|██████▏   | 13/21 [00:27<00:11,  1.49s/it] 67%|██████▋   | 14/21 [00:29<00:10,  1.52s/it] 71%|███████▏  | 15/21 [00:29<00:07,  1.23s/it] 86%|████████▌ | 18/21 [00:30<00:02,  1.31it/s]100%|██████████| 21/21 [00:30<00:00,  1.47s/it]
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/14_cnv_loci.py --h5ad data/interim/sc_raw.h5ad"
-	User time (seconds): 266.18
-	System time (seconds): 71.19
-	Percent of CPU this job got: 548%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:01.56
+	User time (seconds): 16.29
+	System time (seconds): 1.53
+	Percent of CPU this job got: 106%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:16.79
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 12100440
+	Maximum resident set size (kbytes): 8590476
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 485
-	Minor (reclaiming a frame) page faults: 5444612
-	Voluntary context switches: 30149
-	Involuntary context switches: 25915
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 468035
+	Voluntary context switches: 19
+	Involuntary context switches: 288
 	Swaps: 0
-	File system inputs: 66504
-	File system outputs: 324288
+	File system inputs: 0
+	File system outputs: 216
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

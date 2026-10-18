@@ -1,6 +1,6 @@
 # Stato della revisione
 
-**Giro 1** (completo, 01:35, 8058701): 1 ALTA, 18 MEDIA, 29 BASSA. **Giro 2** (incrementale, 01:54, 50b8095): 0 ALTA, 4 MEDIA, 16 BASSA; corretti tutti salvo 1 BASSA motivata. **Giro 3** (incrementale, 02:08, 61fb36b): 0 ALTA, 5 MEDIA, 8 BASSA, tutti corretti. **Fase 3** eseguita (61fb36b, tutti rc = 0). **Chiusura 1** (4 revisori, 03:05): 2 ALTA, 9 MEDIA, 38 BASSA, corretti salvo 2 BASSA motivate; 13-14 rieseguiti (inferCNV senza cromosoma MT). Resta: chiusura 2 (giro 5 di 6).
+**Giro 1** (completo, 01:35, 8058701): 1 ALTA, 18 MEDIA, 29 BASSA. **Giro 2** (incrementale, 01:54, 50b8095): 0 ALTA, 4 MEDIA, 16 BASSA; corretti tutti salvo 1 BASSA motivata. **Giro 3** (incrementale, 02:08, 61fb36b): 0 ALTA, 5 MEDIA, 8 BASSA, tutti corretti. **Fase 3** eseguita (61fb36b, tutti rc = 0). **Chiusura 1** (4 revisori, 03:05): 2 ALTA, 9 MEDIA, 38 BASSA, corretti salvo 2 BASSA motivate; 13-14 rieseguiti (inferCNV senza cromosoma MT). **Chiusura 2** (giro 5, 03:40): 2 ALTA, 3 MEDIA, 37 BASSA, corretti; riesecuzioni senza cambi di numeri. Resta: chiusura 3 (giro 6, ultimo).
 
 **Test e stile.** pytest completo: 108 passati (lenti compresi, chiusura 1). `ruff check src tests revisione`: pulito. Calibrazioni (`tests/test_stats.py`, `sim_a`): Nadeau-Bengio sotto H0 p < 0,05 nel 2,7% (k = 3) e 1,8% (k = 5), potenza 99,3%; block permutation sotto H0 5,0-5,9% (1.000 repliche per livello, IC sup. ≤ 7,5%); permutazione di Spearman con n = 10: 4,75% (banda [0,02; 0,08]).
 

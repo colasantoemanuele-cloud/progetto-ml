@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/18_loyo_check.py --input results/tables/clonal_expansion_joined.csv"
-	User time (seconds): 15.48
-	System time (seconds): 2.12
-	Percent of CPU this job got: 106%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:16.56
+	User time (seconds): 17.83
+	System time (seconds): 2.42
+	Percent of CPU this job got: 104%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:19.31
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 1170824
+	Maximum resident set size (kbytes): 1170976
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 503174
+	Minor (reclaiming a frame) page faults: 493975
 	Voluntary context switches: 16
-	Involuntary context switches: 211
+	Involuntary context switches: 194
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 200

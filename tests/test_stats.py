@@ -6,12 +6,13 @@ banda si corregge lo stimatore):
 1. Cluster bootstrap sui pazienti (IC 95% della media pooled), con 10 e con 11
    pazienti di numerosita' diseguale come nei dati (5-59 cloni per paziente),
    esito continuo e binario: copertura empirica dell'IC in [0.90, 0.99].
-   400 repliche per scenario. (Fase 0, questo test con i semi 100 + k, log in
-   `revisione/log/fase0_pytest_slow.log`: l'intervallo percentile semplice dava
-   0.877-0.892, fuori banda; lo stimatore e' stato corretto con l'intervallo
-   "expanded percentile", la banda e' rimasta invariata. I valori 0,8875-0,9225 del
-   README vengono invece da `src/sim/sim_a_calibration.py`, semi 1000 + k:
-   simulazione diversa, stesso disegno.)
+   400 repliche per scenario. (Fase 0, questo test con i semi 100 + k + 1 se l'esito e'
+   binario, log in `revisione/log/fase0_pytest_slow.log`: l'intervallo percentile
+   semplice dava 0.877-0.892, fuori banda; lo stimatore e' stato corretto con
+   l'intervallo "expanded percentile", la banda e' rimasta invariata. L'88,8-92,3% del
+   README (0,8875-0,9225 in `results/tables/sim_a_cluster_bootstrap.csv`) viene invece
+   da `src/sim/sim_a_calibration.py`, semi 1000 + k: simulazione diversa, stesso
+   disegno.)
 2. Block permutation test (permutazione dell'esito entro paziente) sotto H0 con
    confondente di paziente (x e y dipendono entrambi da un effetto di paziente,
    nessuna associazione entro paziente): frazione di p < 0.05 in [0.02, 0.08],

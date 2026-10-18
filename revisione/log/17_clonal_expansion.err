@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/17_clonal_expansion.py --arbitration results/tables/arbitration_blood.csv --pairwise results/tables/pairwise_discordance_clone_b.csv"
-	User time (seconds): 7.98
-	System time (seconds): 0.43
-	Percent of CPU this job got: 112%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.46
+	User time (seconds): 9.22
+	System time (seconds): 0.47
+	Percent of CPU this job got: 110%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:08.74
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 1191104
+	Maximum resident set size (kbytes): 1190996
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 123616
-	Voluntary context switches: 17
-	Involuntary context switches: 183
+	Minor (reclaiming a frame) page faults: 121095
+	Voluntary context switches: 19
+	Involuntary context switches: 106
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 376

@@ -33,6 +33,8 @@ Scelte del disegno:
    I p sono grezzi (nessuna correzione per i 12 confronti) e il migliore e' scelto sugli
    stessi fold su cui e' confrontato con gli altri: il numero di p < 0,05 risente di
    questa selezione.
+   Con k fold il p esatto bilaterale di Wilcoxon non scende sotto 2/2^k (0,0625 con
+   k = 5, task1a_paired): li' il test di Wilcoxon non puo' rifiutare a 0,05.
 Il macro-F1 di ogni fold e' calcolato sulle sole classi presenti nel fold di test.
 Se un modello fallisce in un fold, tutti i suoi fold vengono scartati.
 Riproducibilita': `knn`, `svm_rbf` e `mlp` (proiezione densa) sono addestrati con BLAS a
@@ -46,6 +48,7 @@ Input
 -----
   --h5ad    data/interim/sc_raw.h5ad
   --splits  data/interim/splits_sc.csv (da 04_splits.py)
+  results/tables/model_zoo_{tag}.csv (letto con --from-table e con --update)
 
 Output
 ------
@@ -390,6 +393,10 @@ def compare(res: pd.DataFrame, task: str) -> None:
         f"\nNOTA: con {len(piv)} fold i gradi di liberta' sono {len(piv) - 1} e la potenza e' bassa."
     )
     print("Un p non significativo non dimostra che due modelli siano equivalenti.")
+    print(
+        f"Con {len(piv)} fold il p esatto bilaterale di Wilcoxon non scende sotto "
+        f"2/2^{len(piv)} = {2 / 2 ** len(piv):.4f}."
+    )
 
 
 def main() -> None:
@@ -411,7 +418,10 @@ def main() -> None:
     )
     ap.add_argument("--max-train", type=int, default=20000, help="0 = tutte le cellule")
     ap.add_argument(
-        "--scheme", default=None, help="forza fold_group_5 / fold_random_5 / fold_lopo"
+        "--scheme",
+        default=None,
+        choices=["fold_group_5", "fold_lopo", "fold_random_5"],
+        help="forza lo schema di split (default: quello primario del task)",
     )
     ap.add_argument(
         "--tag",
@@ -471,7 +481,12 @@ def main() -> None:
         )
     if args.update and out.exists() and not args.from_table:
         old = pd.read_csv(out)
-        drop = old.task.isin(args.tasks) & old.model.isin(args.models)
+        # solo le coppie (task, modello) effettivamente ricalcolate: un modello FALLITO
+        # mantiene le righe precedenti
+        done = set(zip(res.task, res.model))
+        drop = pd.Series(
+            [(t, m) in done for t, m in zip(old.task, old.model)], index=old.index
+        )
         res = pd.concat([old[~drop], res], ignore_index=True)
         print(f"[ok] --update: sostituite {int(drop.sum())} righe di {out}")
     if res.empty:

@@ -32,6 +32,8 @@ Output
                                            p_holm_family_of_{n}, n = numero di test; 4 con
                                            --previous-tests, 1 senza)
   results/figures/ni_score_vs_error.png
+  (con meno di 6 pazienti lo script si ferma e cancella test, Holm e figura di
+  un'esecuzione precedente)
 
 Argomenti
 ---------
@@ -108,6 +110,10 @@ def load_table_s1a(path: Path) -> pd.DataFrame:
         )
     ws = wb["Table S1A"]
     rows = list(ws.iter_rows(values_only=True))
+    if len(rows) < 3:
+        raise SystemExit(
+            f"[ERRORE] 'Table S1A' ha {len(rows)} righe: servono titolo, intestazione e dati."
+        )
     # Estrazione delle intestazioni dalla seconda riga e verifica delle colonne obbligatorie
     header = [str(h).strip() if h else h for h in rows[1]]
     missing = [c for c in EXPECTED_COLS if c not in header]
@@ -118,6 +124,10 @@ def load_table_s1a(path: Path) -> pd.DataFrame:
             "Il formato del supplementare potrebbe essere cambiato: controlla a mano."
         )
     data = [dict(zip(header, r)) for r in rows[2:] if r[0] is not None]
+    if not data:
+        raise SystemExit(
+            "[ERRORE] 'Table S1A' senza righe di dati (solo intestazione)."
+        )
     df = pd.DataFrame(data)
     df["patient"] = df.PatientID.apply(clean_patient_id)
     return df
@@ -224,6 +234,13 @@ def main() -> None:
 
     # Test di correlazione per H4: permutazione Monte Carlo e intervallo bootstrap
     if len(df) < 6:
+        # niente risultati di un'esecuzione precedente in results/
+        for path in (
+            TAB / "ni_score_test.csv",
+            TAB / "ni_score_holm_joint.csv",
+            FIG / "ni_score_vs_error.png",
+        ):
+            path.unlink(missing_ok=True)
         raise SystemExit(f"[ERRORE] solo {len(df)} pazienti con outcome e NI score.")
     x, y = df["NI score"].values.astype(float), df.error_rate.values
     rho, p = permutation_corr_test(x, y, N_PERM, SEED)
@@ -231,7 +248,10 @@ def main() -> None:
     print(
         f"\nn={len(df)} pazienti | rho={rho:+.3f}  p_perm={p:.4f}  IC95% boot=[{lo:+.3f}, {hi:+.3f}]"
     )
-    print(f"{'COERENTE con H4 (rho>0)' if rho > 0 else 'direzione OPPOSTA a H4'}")
+    if np.isnan(rho):
+        print("rho non definito (covariata o esito costante)")
+    else:
+        print(f"{'COERENTE con H4 (rho>0)' if rho > 0 else 'direzione OPPOSTA a H4'}")
     pd.DataFrame(
         [
             {

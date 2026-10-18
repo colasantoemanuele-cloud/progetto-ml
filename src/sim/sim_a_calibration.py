@@ -24,7 +24,7 @@ Verifica su dati simulati i due stimatori usati per l'inferenza nella pipeline.
    - H0 sulla media: media vera 0 (continuo); frazione di IC che escludono 0;
    - effetto noto: media vera 0.06 (continuo); frazione di IC che escludono 0 (potenza).
    400 repliche per scenario, 1.000 repliche bootstrap ciascuna (le analisi ne usano
-   2.000: l'effetto sulla copertura e' trascurabile).
+   2.000; la copertura non e' stata verificata con 2.000 repliche).
    Gli scenari continui non sono simulazioni indipendenti: per ogni k il generatore
    riparte dallo stesso seme (1000 + k), quindi `H0_mean0` ed `effect_mean006` usano
    gli stessi dati di `coverage_continuous`, traslati. Per costruzione la frazione di
@@ -39,10 +39,12 @@ Output
 ------
   results/tables/sim_a_nadeau_bengio.csv     scenario, k, repliche, frazione p < 0.05 (corretto e non)
   results/tables/sim_a_cluster_bootstrap.csv scenario, k, metodo, copertura / frazione che esclude 0
+  (con --quick i file hanno il suffisso `_quick` e le tabelle pubblicate non vengono toccate)
 
 Argomenti
 ---------
-  --reps-nb (default 1000), --reps-cb (default 400), --quick (repliche ridotte a 1/10);
+  --reps-nb (default 1000), --reps-cb (default 400), --quick (repliche ridotte a 1/10,
+  uscita in `sim_a_*_quick.csv`);
   i default sono anche in `--help`
 
 Uso
@@ -211,15 +213,20 @@ def main() -> None:
         default=400,
         help="repliche per scenario del cluster bootstrap",
     )
-    ap.add_argument("--quick", action="store_true", help="repliche ridotte a 1/10")
+    ap.add_argument(
+        "--quick",
+        action="store_true",
+        help="repliche ridotte a 1/10; scrive sim_a_*_quick.csv (non le tabelle pubblicate)",
+    )
     args = ap.parse_args()
     if args.quick:
         args.reps_nb, args.reps_cb = args.reps_nb // 10, args.reps_cb // 10
     TAB.mkdir(parents=True, exist_ok=True)
+    suffix = "_quick" if args.quick else ""
     nb = sim_nb(args.reps_nb)
-    nb.to_csv(TAB / "sim_a_nadeau_bengio.csv", index=False)
+    nb.to_csv(TAB / f"sim_a_nadeau_bengio{suffix}.csv", index=False)
     cb = sim_cb(args.reps_cb)
-    cb.to_csv(TAB / "sim_a_cluster_bootstrap.csv", index=False)
+    cb.to_csv(TAB / f"sim_a_cluster_bootstrap{suffix}.csv", index=False)
     print("\n" + nb.to_string(index=False))
     print(
         "\n"

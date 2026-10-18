@@ -12,8 +12,9 @@ usando le funzioni di quel modulo (`per_comp_stats`, `arbitrate`), in due condiz
     clustering sbaglia gruppi di cellule, non cellule isolate); nelle altre il 3%;
   - artefatto atteso nel tumore, in due intensita': perdita tecnica del segnale CD8
     (rilevamento di CD8A e CD8B moltiplicato per 0.4 "moderato" o 0.15 "forte") ed
-    espressione ambientale di CD4 (CD4 > 0 nel 35% o nel 60% delle cellule tumorali di
-    qualsiasi lignaggio). Le etichette hanno lo stesso errore vero della condizione H0:
+    espressione ambientale di CD4 (rilevamento di CD4 portato almeno al 35% o al 60%
+    nelle cellule tumorali di ogni lignaggio: `max(rilevamento, livello ambientale)`,
+    quindi nel lignaggio CD4 resta il valore piu' alto). Le etichette hanno lo stesso errore vero della condizione H0:
     cambiano solo i marcatori.
 Uno schema corretto dovrebbe stimare circa l'errore vero in ogni compartimento che
 giudica. Lo schema `loco`, per i cloni presenti solo in PBMC e Tumor, giudica il sangue

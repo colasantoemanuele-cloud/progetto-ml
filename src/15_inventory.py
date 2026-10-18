@@ -168,13 +168,11 @@ def main() -> None:
             "barcode",
             "chain",
             "cdr3_nt",
-            "cdr3",
             "umis",
             "productive",
             "is_cell",
             "high_confidence",
             "full_length",
-            "raw_clonotype_id",
         }
         print("colonne presenti:")
         for h in header:

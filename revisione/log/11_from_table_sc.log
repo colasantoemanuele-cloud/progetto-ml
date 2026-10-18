@@ -19,6 +19,7 @@ p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
 
 NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
 Un p non significativo non dimostra che due modelli siano equivalenti.
+Con 13 fold il p esatto bilaterale di Wilcoxon non scende sotto 2/2^13 = 0.0002.
 
 --- task2_hier3: confronto col migliore (lightgbm, 0.9226) ---
 p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
@@ -38,5 +39,6 @@ p-value: Nadeau-Bengio (corretto per fold sovrapposti) e Wilcoxon appaiato
 
 NOTA: con 13 fold i gradi di liberta' sono 12 e la potenza e' bassa.
 Un p non significativo non dimostra che due modelli siano equivalenti.
+Con 13 fold il p esatto bilaterale di Wilcoxon non scende sotto 2/2^13 = 0.0002.
 [ok] figura: results/figures/model_zoo_task2_v1.png
 [ok] figura: results/figures/model_zoo_task2_hier3.png

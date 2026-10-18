@@ -69,7 +69,8 @@ della stessa dimensione, campionati da tutte le cellule mescolate.
   simulazione patient_effect: differenza fra +0.116 e +0.181
   LETTURA: la differenza osservata e' sopra tutte le repliche simulate senza
   effetto paziente: togliere un paziente cambia la regola appresa piu' che
-  togliere cellule a caso, come atteso se le cellule dello stesso paziente
+  addestrare su un sottoinsieme casuale della stessa dimensione, come atteso
+  se le cellule dello stesso paziente
   sono ridondanti. La simulazione ha pochi pazienti e una sola forma di
   effetto: e' un'indicazione, non una stima calibrata.
   Il controllo condivide piu' cellule fra repliche di due training LOPO:

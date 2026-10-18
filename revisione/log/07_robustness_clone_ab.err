@@ -1,21 +1,23 @@
+/home/nemo/miniforge3/envs/pdac/lib/python3.11/site-packages/matplotlib/cbook.py:1810: FutureWarning: Calling float on a single element Series is deprecated and will raise a TypeError in the future. Use float(ser.iloc[0]) instead
+  return math.isfinite(val)
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/07_robustness.py --h5ad data/interim/sc_raw.h5ad --tcrdir data/raw/tcr --clone-def clone_ab"
-	User time (seconds): 43.36
-	System time (seconds): 0.71
-	Percent of CPU this job got: 101%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:43.28
+	User time (seconds): 37.34
+	System time (seconds): 0.58
+	Percent of CPU this job got: 102%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:36.97
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 3314440
+	Maximum resident set size (kbytes): 3313676
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 234778
-	Voluntary context switches: 23
-	Involuntary context switches: 627
+	Minor (reclaiming a frame) page faults: 234631
+	Voluntary context switches: 22
+	Involuntary context switches: 235
 	Swaps: 0
 	File system inputs: 0
-	File system outputs: 512
+	File system outputs: 536
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

@@ -15,8 +15,10 @@ pazienti. Frazione di p < 0.05 = tasso di falsi positivi.
 Forza del confondente c in {0, 0.5, 1, 2}; 1.000 repliche per livello, 2.000 permutazioni
 per replica; intervallo binomiale esatto (Clopper-Pearson) al 95% per ogni tasso. Le prime
 100 repliche di ogni livello sono quelle della versione precedente di questo script
-(100 repliche, seme 300 + indice del livello di confondente), riportate a parte; il dato "2 su 100" citato nella
-presentazione non e' riprodotto.
+(100 repliche, seme 300 + indice del livello di confondente), riportate a parte. Il dato
+"2 su 100" citato nella presentazione non e' riprodotto con il p non centrato usato in
+17 e 18 (4, 6, 11 e 5 falsi positivi); con il p centrato e confondente 2 le prime 100
+repliche danno 2.
 
 Input
 -----

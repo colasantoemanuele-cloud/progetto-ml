@@ -19,9 +19,9 @@ Tre controlli sulla discordanza fenotipica dei cloni T misurata in 07:
    salvano il numero di ricampionature distinte e la frazione di repliche > 0.
 
 2. Marcatori nei cloni discordanti (eccesso > 0.5 in 07) e concordanti (eccesso < 0.05),
-   espressi in log1p(CP10k). Per le cellule etichettate CD8T, per tessuto: CD8A medio,
-   frazione con CD8A > 0, CD4 medio e rapporto fra le medie di CD4 (discordanti /
-   concordanti). Il rapporto e' fra medie di log1p(CP10k), non un fold-change
+   espressi in log1p(CP10k). Per le cellule etichettate CD8T, per tessuto (solo i tessuti
+   con almeno 20 cellule CD8T in ciascun gruppo): CD8A medio, frazione con CD8A > 0, CD4
+   medio, rapporto fra le medie di CD4 (discordanti / concordanti) e GNLY medio. Il rapporto e' fra medie di log1p(CP10k), non un fold-change
    dell'espressione. Le statistiche a livello di cellula sono descrittive (nessun p:
    le cellule dello stesso clone e paziente non sono indipendenti); come riassunto
    per paziente si conta in quanti pazienti valutabili (>= 5 cellule CD8T per gruppo)
@@ -43,10 +43,12 @@ Output
   results/tables/triple_clones.csv              eccessi per clone presente nei tre compartimenti
   results/tables/triple_clones_summary.csv      medie, IC, differenze appaiate, ricampionature distinte, frazione > 0
   results/tables/markers_disc_vs_conc.csv       marcatori medi per gruppo x tessuto x etichetta
-  results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, CD4, rapporto CD4, pazienti concordi
+  results/tables/marker_test_disc_vs_conc.csv   CD8T per tessuto: CD8A, frazione CD8A>0, CD4, rapporto CD4,
+                                                GNLY (`mean_GNLY_disc`, `mean_GNLY_conc`), pazienti concordi
   results/tables/doublet_scores.csv             punteggio Scrublet per cellula (cache, escluso da git;
-                                                riusata solo se contiene esattamente le cellule
-                                                dell'h5ad, altrimenti lo script si ferma)
+                                                riusata, anche con --skip-scrublet, solo se contiene
+                                                esattamente le cellule dell'h5ad, altrimenti lo
+                                                script si ferma)
   results/tables/doublet_tcr_pos_vs_neg.csv     Scrublet TCR+ vs TCR- per classe, pazienti concordi
   (se una delle parti 1-3 non viene eseguita per mancanza di dati o di input, le sue
   tabelle e figure non vengono scritte e quelle di un'esecuzione precedente vengono
@@ -602,11 +604,14 @@ def main() -> None:
         cache = TAB / "doublet_scores.csv"
         if cache.exists():
             ds = pd.read_csv(cache, index_col=0).iloc[:, 0]
-            missing = gex.index.difference(ds.index)
-            if len(missing):
+            # stesso controllo di run_scrublet: la cache deve avere esattamente le cellule dell'h5ad
+            if set(ds.index) != set(gex.index):
+                n_miss = len(gex.index.difference(ds.index))
+                n_extra = len(ds.index.difference(gex.index))
                 raise SystemExit(
-                    f"[ERRORE] la cache {cache} non copre {len(missing):,} cellule: "
-                    "cancellala e riesegui senza --skip-scrublet."
+                    f"[ERRORE] la cache {cache} non coincide con le cellule dell'h5ad "
+                    f"({n_miss:,} mancanti, {n_extra:,} in piu'): cancellala e riesegui "
+                    "senza --skip-scrublet."
                 )
             gex["doublet_score"] = ds.reindex(gex.index).values
             part3(gex)

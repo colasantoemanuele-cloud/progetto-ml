@@ -80,6 +80,13 @@ SENS_SEEDS = (0, 1, 2, 3, 4)
 SENS_N_PERM_LARGE = 100_000
 
 
+def direction_text(rho: float) -> str:
+    """Direzione di rho rispetto all'ipotesi (rho > 0); 'non definito' se rho e' NaN."""
+    if np.isnan(rho):
+        return "rho non definito (esito o dimensione costante)"
+    return "direzione attesa (rho>0)" if rho > 0 else "direzione opposta"
+
+
 def bootstrap_ci_corr(
     x: np.ndarray, y: np.ndarray, n_boot: int = 2000, seed: int = SEED
 ):
@@ -152,7 +159,7 @@ def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> list
         print(
             f"  n={len(agg)} pazienti | rho={rho:+.3f}  p_perm={p:.4f}  IC95% boot=[{lo:+.3f}, {hi:+.3f}]"
         )
-        print(f"  {'direzione attesa (rho>0)' if rho > 0 else 'direzione opposta'}")
+        print(f"  {direction_text(rho)}")
         rows.append(
             {
                 "outcome": outcome_col,
@@ -178,7 +185,7 @@ def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> list
         f"  media della distribuzione nulla = {bp['null_mean']:+.3f} | "
         f"p sulla statistica centrata = {bp['p_centered']:.4f}"
     )
-    print(f"  {'direzione attesa (rho>0)' if bp['rho'] > 0 else 'direzione opposta'}")
+    print(f"  {direction_text(bp['rho'])}")
     rows.append(
         {
             "outcome": outcome_col,

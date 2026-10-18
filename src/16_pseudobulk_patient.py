@@ -18,10 +18,10 @@ formulate dopo i moduli 08-10 ma prima di calcolare le covariate.
     di esaurimento di ciascuna cellula (media di log1p(CP10k) di PDCD1, LAG3, HAVCR2,
     TOX, CTLA4, TIGIT). Ipotesi: piu' esaurimento -> piu' errore, per una deriva delle
     CD8T esauste verso profili CD4T/NK. Due limiti noti:
-      * la deriva ipotizzata va nel senso opposto agli errori osservati: nel Tumor gli
-        errori sono soprattutto cloni CD4 nel sangue etichettati CD8T, poi CD8 -> NK e
-        CD4 -> NK, mentre CD8 -> CD4 non compare (conteggi in
-        `error_decomposition_blood.csv`: 38, 12, 6 e 0 nella versione pubblicata);
+      * la deriva ipotizzata va nel senso opposto alla maggior parte degli errori
+        osservati: nel Tumor gli errori sono soprattutto cloni CD4 nel sangue etichettati
+        CD8T e CD8 -> CD4 non compare; solo gli errori CD8 -> NK vanno nel senso
+        ipotizzato (conteggi per transizione in `error_decomposition_blood.csv`);
       * il punteggio usa le cellule etichettate CD8T, cioe' le stesse etichette il cui
         errore e' l'outcome (circolarita'): le CD4 etichettate CD8T entrano nel punteggio.
     Non e' un punteggio pseudobulk: e' la media dei punteggi delle singole cellule.
@@ -44,7 +44,8 @@ Output
 ------
   results/tables/pseudobulk_patient_table.csv     outcome e covariate per paziente
   results/tables/pseudobulk_hypothesis_tests.csv  rho, p, IC e p di Holm per H1-H3
-  results/figures/pseudobulk_patient_pca.png
+  results/figures/pseudobulk_patient_pca.png (non scritta, e quella precedente cancellata,
+  se i pazienti con abbastanza cellule non bastano per la PCA)
 
 Argomenti
 ---------
@@ -293,14 +294,20 @@ def main() -> None:
             "ci_lo": lo,
             "ci_hi": hi,
             "direction_attesa": direction,
-            "coerente_con_ipotesi": (rho > 0) == (direction == "positive"),
+            # rho non definito (covariata o esito costante): coerenza non valutabile
+            "coerente_con_ipotesi": (
+                np.nan if np.isnan(rho) else (rho > 0) == (direction == "positive")
+            ),
         }
         print(
             f"  {col:20s} rho={rho:+.3f}  p_perm={p:.4f}  IC95% boot=[{lo:+.3f}, {hi:+.3f}]"
         )
         print(f"      {desc}")
+        coh = results[col]["coerente_con_ipotesi"]
         print(
-            f"      direzione osservata coerente con l'ipotesi: {results[col]['coerente_con_ipotesi']}\n"
+            "      rho non definito (covariata o esito costante)\n"
+            if np.isnan(rho)
+            else f"      direzione osservata coerente con l'ipotesi: {coh}\n"
         )
 
     # Correzione per molteplicita' secondo Holm-Bonferroni ed esportazione della tabella risultati
@@ -375,6 +382,7 @@ def main() -> None:
         )
     else:
         print(f"[!] solo {len(pats)} pazienti con abbastanza cellule: salto la PCA.")
+        (FIG / "pseudobulk_patient_pca.png").unlink(missing_ok=True)
 
     print("\n" + "=" * 78)
     print("NOTA METODOLOGICA SULL'ESCLUSIONE DI SCANSIONI TRANSCRITTOMICHE")

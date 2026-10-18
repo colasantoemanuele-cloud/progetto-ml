@@ -9,8 +9,9 @@ Scopo
    frazione di cellule CD8+ (CD8A > 0 o CD8B > 0) e CD4+ (CD4 > 0 senza CD8A/CD8B);
    l'identita' del clone e' CD8T o CD4T secondo la media, a peso uguale, di queste
    frazioni sui compartimenti in cui il clone compare (scartata se il margine
-   |f8 - f4| < 0.20). L'errore e' l'etichetta di maggioranza del compartimento diversa
-   dall'identita'. Questo schema include il compartimento giudicato nel riferimento
+   |f8 - f4| < 0.20). Entrano nell'arbitrato e nel tasso d'errore solo i cloni con
+   almeno 3 cellule in almeno 2 compartimenti (`n_comp >= 2`). L'errore e'
+   l'etichetta di maggioranza del compartimento diversa dall'identita'. Questo schema include il compartimento giudicato nel riferimento
    (circolare): gli schemi senza circolarita' sono in 10_loco.py. IC 95% con cluster
    bootstrap sui pazienti (`scpipe.cluster_bootstrap`).
    Etichetta di maggioranza: moda, pareggi risolti dalla prima comparsa
@@ -36,7 +37,10 @@ Output
                                                  `sim_a`), e allora si riportano anche le
                                                  ricampionature distinte (`n_distinct_resamples`)
   results/tables/doublet_physical.csv            mediane di n_counts, n_genes, UMI TCR per 1000, per classe x TCR
-  results/figures/error_rate_by_compartment.png, results/figures/doublet_physical.png
+  results/figures/error_rate_by_compartment.png (IC con <= 5 pazienti in grigio tratteggiato),
+  results/figures/doublet_physical.png
+  Se la sezione A non ha dati, le sue tabelle e la figura non vengono scritte e quelle di
+  un'esecuzione precedente vengono cancellate.
 
 Argomenti
 ---------
@@ -196,6 +200,7 @@ def partA(lym: pd.DataFrame) -> None:
     print(f"  ambigui (scartati): {(ident.identity == 'ambiguous').sum():,}")
     if conf.empty:
         print("nessun clone risolvibile.")
+        drop_stale_partA()
         return
 
     j = per.merge(conf[["patient", "clone_b", "identity"]], on=["patient", "clone_b"])
@@ -254,6 +259,7 @@ def partA(lym: pd.DataFrame) -> None:
     res.to_csv(TAB / "error_rate_by_compartment.csv", index=False)
     if res.empty:
         print("nessun compartimento con almeno 3 pazienti: niente figura.")
+        (FIG / "error_rate_by_compartment.png").unlink(missing_ok=True)
         return
 
     print("\ndifferenza appaiata Tumor - PBMC, sugli STESSI cloni:")
@@ -285,19 +291,50 @@ def partA(lym: pd.DataFrame) -> None:
     )
 
     fig, ax = plt.subplots(figsize=(6.5, 4))
-    ax.bar(
+    # IC con <= SMALL_K pazienti: non calibrati, barra grigia tratteggiata
+    cal = (res.n_patients > SMALL_K).values
+    bars = ax.bar(
         res.tissue,
         res.error_rate,
         yerr=[res.error_rate - res.lo, res.hi - res.error_rate],
         capsize=5,
-        color="#d95f02",
+        color=["#d95f02" if c else "#bbbbbb" for c in cal],
         alpha=0.85,
     )
+    for b, c in zip(bars, cal):
+        if not c:
+            b.set_hatch("//")
+    if not cal.all():
+        from matplotlib.patches import Patch
+
+        ax.legend(
+            handles=[
+                Patch(
+                    color="#d95f02", alpha=0.85, label=f"IC 95% (> {SMALL_K} pazienti)"
+                ),
+                Patch(
+                    facecolor="#bbbbbb",
+                    hatch="//",
+                    label=f"IC non calibrato (<= {SMALL_K} pazienti)",
+                ),
+            ],
+            fontsize=8,
+        )
     ax.set_ylabel("tasso d'errore dell'etichetta")
     ax.set_title("chi sbaglia? riferimento = identita' clonale (marcatori)")
     fig.tight_layout()
     fig.savefig(FIG / "error_rate_by_compartment.png", dpi=140)
     plt.close(fig)
+
+
+def drop_stale_partA() -> None:
+    """Cancella le tabelle e la figura della sezione A di un'esecuzione precedente."""
+    for path in (
+        TAB / "arbitration.csv",
+        TAB / "error_rate_by_compartment.csv",
+        FIG / "error_rate_by_compartment.png",
+    ):
+        path.unlink(missing_ok=True)
 
 
 def partB(gex: pd.DataFrame) -> None:
@@ -485,6 +522,7 @@ def main() -> None:
         print(
             "[!!] nessuna cellula CD4T/CD8T/NK con TCR: salto l'arbitrato (sezione A)."
         )
+        drop_stale_partA()
     else:
         partA(lym)
     partB(gex)

@@ -33,11 +33,11 @@ colonne presenti:
     c_gene  [non utilizzata]
     full_length  (usata)
     productive  (usata)
-    cdr3  (usata)
+    cdr3  [non utilizzata]
     cdr3_nt  (usata)
     reads  [non utilizzata]
     umis  (usata)
-    raw_clonotype_id  (usata)
+    raw_clonotype_id  [non utilizzata]
     raw_consensus_id  [non utilizzata]
 
 Le colonne dei segmenti genici V/D/J (v_gene, j_gene) consentono analisi

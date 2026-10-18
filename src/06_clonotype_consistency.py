@@ -50,7 +50,8 @@ Output
   results/tables/clone_switching_within_{cc}.csv    repliche split-half (escluso da git: grande)
   results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni, pazienti
                                                     (totali, del termine fra compartimenti, del basale)
-  ({cc} = clone_b o clone_ab)
+  ({cc} = clone_b o clone_ab; se i cloni condivisi non bastano, questi tre file e la figura
+  non vengono scritti e quelli di un'esecuzione precedente vengono cancellati)
   results/figures/clone_label_switching_{cc}.png
 
 Argomenti
@@ -494,6 +495,14 @@ def main() -> None:
     print("=" * 74)
     if across.empty or within.empty:
         print("Numero insufficiente di cloni condivisi per la stima.")
+        # niente tabelle o figure di un'esecuzione precedente in results/
+        for path in (
+            TAB / f"clone_switching_summary_{cc}.csv",
+            TAB / f"clone_switching_across_{cc}.csv",
+            TAB / f"clone_switching_within_{cc}.csv",
+            FIG / f"clone_label_switching_{cc}.png",
+        ):
+            path.unlink(missing_ok=True)
         return
 
     a_rate, w_rate = across.switch.mean(), within.switch.mean()

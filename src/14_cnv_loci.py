@@ -20,7 +20,8 @@ sono restituite da infercnvpy: sono interpolate in modo uniforme fra il primo e
 l'ultimo gene annotato di ciascun cromosoma, quindi i confini dei loci sono
 approssimati (una finestra puo' cadere dentro o fuori un locus per qualche Mb).
 L'AUC pooled mescola differenze fra pazienti e fra tessuti; l'AUC entro paziente
-(pazienti con almeno 10 duttali per tessuto) isola il contrasto tissutale. Il
+(pazienti con almeno 10 duttali per tessuto) elimina le differenze fra pazienti
+(resta il contrasto fra campioni e librerie diversi dello stesso paziente). Il
 messaggio finale tiene conto di entrambe: una separazione pooled che non si ritrova
 entro paziente non e' attribuita ai loci.
 

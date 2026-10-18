@@ -44,6 +44,10 @@ Output ({cc} = definizione di clone, clone_b o clone_ab)
                                                     nessun test; non dipende da {cc})
   results/tables/chat_sensitivity_raw.csv, chat_sensitivity_hc.csv (non dipendono da {cc})
   results/figures/ambient_vs_real_tcr.png, results/figures/excess_by_pair_{cc}.png
+                                                    (IC con <= 5 pazienti in grigio tratteggiato:
+                                                    non calibrati)
+  Se una sezione non ha dati, le sue tabelle e figure non vengono scritte e quelle di
+  un'esecuzione precedente vengono cancellate.
 
 Argomenti
 ---------
@@ -314,17 +318,32 @@ def plot_pairs(per_pair: pd.DataFrame, cc: str) -> None:
     """Figura dell'eccesso per coppia di compartimenti con IC (salta se la tabella e' vuota)."""
     if per_pair.empty:
         print("[!] nessuna coppia di compartimenti con >=3 pazienti: figura saltata.")
+        (FIG / f"excess_by_pair_{cc}.png").unlink(missing_ok=True)
         return
     fig, ax = plt.subplots(figsize=(7, 4))
     lab = [f"{a[:4]}↔{b[:4]}" for a, b in zip(per_pair.comp_a, per_pair.comp_b)]
-    ax.errorbar(
-        per_pair.excess,
-        range(len(per_pair)),
-        xerr=[per_pair.excess - per_pair.lo, per_pair.hi - per_pair.excess],
-        fmt="o",
-        capsize=4,
-        color="#d95f02",
-    )
+    # IC con <= SMALL_K pazienti: non calibrati, disegnati in grigio e tratteggiati
+    cal = (per_pair.n_patients > SMALL_K).values
+    for ok, color, label in (
+        (True, "#d95f02", f"IC 95% (> {SMALL_K} pazienti)"),
+        (False, "#999999", f"IC non calibrato (<= {SMALL_K} pazienti)"),
+    ):
+        m = cal == ok
+        if not m.any():
+            continue
+        pp = per_pair[m]
+        bars = ax.errorbar(
+            pp.excess,
+            np.arange(len(per_pair))[m],
+            xerr=[pp.excess - pp.lo, pp.hi - pp.excess],
+            fmt="o",
+            capsize=4,
+            color=color,
+            label=label,
+        )
+        if not ok:
+            bars[-1][0].set_linestyle("--")
+    ax.legend(fontsize=8, loc="best")
     ax.axvline(0, ls="--", c="k", lw=0.8)
     ax.set_yticks(range(len(per_pair)), lab)
     ax.set_xlabel("eccesso di discordanza (IC95%, cluster bootstrap sui pazienti)")
@@ -459,6 +478,15 @@ def main() -> None:
         print(
             "[!] nessun clone con >=2 cellule in due compartimenti: sezioni A-B saltate."
         )
+        # niente tabelle o figure di un'esecuzione precedente in results/
+        for path in (
+            TAB / f"pairwise_discordance_{cc}.csv",
+            TAB / f"excess_summary_{cc}.csv",
+            TAB / f"excess_by_compartment_pair_{cc}.csv",
+            TAB / f"discordant_clone_markers_{cc}.csv",
+            FIG / f"excess_by_pair_{cc}.png",
+        ):
+            path.unlink(missing_ok=True)
         return
     pw.to_csv(TAB / f"pairwise_discordance_{cc}.csv", index=False)
 
@@ -579,6 +607,7 @@ def main() -> None:
             print(
                 "numero insufficiente di cloni fortemente discordanti per la verifica."
             )
+            (TAB / f"discordant_clone_markers_{cc}.csv").unlink(missing_ok=True)
 
     # Generazione delle figure diagnostiche (UMI TCR e intervalli di confidenza per coppia di compartimenti)
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))

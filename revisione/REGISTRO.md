@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1 (4 revisori): 2/9/38; prossimo: chiusura 2 | - |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37; prossimo: chiusura 3 (giro 6, ultimo) | - |
 | 3 Esecuzione finale | eseguita al commit 61fb36b (tutti rc = 0); RISULTATI_FINALI.md generato; manca il giro di chiusura | (commit Fase 3) |
 
 ## Note iniziali
@@ -279,6 +279,27 @@ ambiente, docstring. Esito: (a) 1/4/10, (b) 0/3/7, (c) 0/1/9, (d) 1/1/12 -> 2 AL
   cambiare queste classi invaliderebbe la verifica (AST identico) che permette di non rieseguire
   05, 11 e 12; (a6) rinominare `model_comparison_{task}` e le figure con il tag: cambierebbe i
   nomi pubblicati; dichiarato in docstring che dipendono solo dal task.
+
+## Giro 5 = chiusura 2 (completo, 4 revisori in parallelo)
+
+Esito: (a) 0/0/11, (b) 1/0/11, (c) 0/2/8, (d) 1/1/7 -> 2 ALTA, 3 MEDIA, 37 BASSA. pytest completo
+108 passati (`revisione/log/chiusura2_pytest_all.log`); ruff pulito; tutti i numeri del README e di
+RISULTATI_FINALI coincidono con le tabelle. Rapporti: `revisione/log/chiusura2_revisore_{a,b,c,d}.md`.
+- ALTA (b1): 19 con un foglio Table S1A vuoto: messaggio chiaro. ALTA (d1): generatore ancora
+  fragile con tabelle o colonne mancanti: ora tutta la costruzione e' protetta e ogni errore e'
+  registrato fra i valori mancanti (provato togliendo tabelle e colonne).
+- MEDIA (c1 = d2): docstring di 13 con il vecchio 45-62%: tolto il numero. MEDIA (c2): README,
+  i 4 pazienti entro paziente sono quelli con >= 10 duttali per tessuto.
+- BASSA: corrette tutte salvo quelle gia' respinte (uscite anticipate che cancellano le tabelle
+  vecchie in 06, 07, 09, 13, 16, 19; Scrublet con controllo esatto anche con --skip-scrublet; IC
+  non calibrati segnati nelle figure di 07 e 09; rho NaN in 16, 17, 19; `choices` per --scheme e
+  --methods; avvisi non di convergenza riemessi in 12; --update di 11 non cancella i modelli
+  falliti; nota sul p minimo di Wilcoxon con 5 fold; sim_a --quick su file separati; README:
+  sim_d prima di 20, "quasi lineare" tolto, L1 non convergente su task2_v1, deriva di H1,
+  2 su 100 con il p centrato, 0,24 non riprodotto; verifica parziale della cache Scrublet
+  documentata).
+- Riesecuzioni: 06-10, 21, 15-19, simulazioni, 20, 13 e 14 (cache con impronta), 11 con
+  --from-table (blocco "chiusura 2" di `revisione/log/_status.txt`).
 
 ## Problemi respinti
 
