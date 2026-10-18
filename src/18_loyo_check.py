@@ -82,6 +82,11 @@ def block_permutation_test(
 def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
     """Rimuove un paziente alla volta e ricalcola rho pooled e p sui pazienti restanti."""
     print(f"\n{'=' * 78}\n{label}\n{'=' * 78}")
+    # cloni con esito non definito (pareggio nell'etichetta di maggioranza) esclusi, come in 17
+    n_na = int(df[outcome_col].isna().sum())
+    df = df.dropna(subset=[outcome_col])
+    if n_na:
+        print(f"[i] {n_na} cloni con esito non definito (pareggio) esclusi")
     pats = sorted(df.patient.unique())
 
     # Valore di riferimento su tutti i pazienti (stessi parametri di 17)
@@ -181,6 +186,7 @@ def loyo(df: pd.DataFrame, outcome_col: str, label: str) -> pd.DataFrame:
 
 def perm_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
     """Errore binario: p di ogni esclusione con semi diversi e con piu' permutazioni."""
+    df = df.dropna(subset=["error"])  # pareggi esclusi, come in loyo
     settings = [(s, N_PERM) for s in SENS_SEEDS] + [(SEED, SENS_N_PERM_LARGE)]
     print(
         "\n--- sensibilita' del block permutation (errore binario, leave-one-out) ---"

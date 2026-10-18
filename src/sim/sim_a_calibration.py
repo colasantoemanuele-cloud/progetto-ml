@@ -24,7 +24,10 @@ Verifica su dati simulati i due stimatori usati per l'inferenza nella pipeline.
    `clonal_expansion_joined` (5-59 per paziente); per k = 11 si aggiunge un undicesimo
    valore (40) scelto a mano. Le numerosita' reali delle coppie dell'eccesso (11
    pazienti, 13-282 coppie per paziente in `pairwise_discordance_clone_b`) sono piu'
-   sbilanciate: la copertura e' verificata con queste numerosita', non con quelle.
+   sbilanciate: negli scenari principali la copertura e' verificata con `SIZES`, non con
+   le numerosita' reali delle coppie. Per queste c'e' uno scenario a parte
+   (`coverage_pairs_real_sizes_{continuous,binary}`, k = 11, `PAIR_SIZES` = coppie per
+   paziente di `pairwise_discordance_clone_b`, seme 2011), che non cambia gli altri.
    - esito continuo: media vera 0.06, effetto paziente N(0, 0.05), rumore N(0, 0.15);
    - esito binario: p del paziente ~ Beta(2, 8) (media 0.2);
    - H0 sulla media: media vera 0 (continuo); frazione di IC che escludono 0;
@@ -83,6 +86,8 @@ from sklearn.model_selection import StratifiedKFold  # noqa: E402
 
 TAB = Path("results/tables")
 SIZES = np.array([17, 26, 47, 42, 22, 10, 30, 59, 29, 5, 40])
+# coppie clone-compartimenti per paziente dell'eccesso (pairwise_discordance_clone_b, 11 pazienti)
+PAIR_SIZES = np.array([62, 24, 184, 75, 282, 118, 146, 57, 97, 56, 13])
 ALPHA = 0.05
 
 
@@ -153,9 +158,13 @@ def sim_nb(reps: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def draw_groups(rng, k: int, kind: str, mean: float):
-    """Osservazioni simulate di `k` pazienti (dizionario paziente -> array), continue o binarie."""
-    sizes = SIZES[:k] if k <= len(SIZES) else rng.integers(5, 60, k)
+def draw_groups(rng, k: int, kind: str, mean: float, sizes=None):
+    """Osservazioni simulate di `k` pazienti (dizionario paziente -> array), continue o binarie.
+
+    `sizes` (facoltativo) fissa le numerosita' per paziente; di default i primi k di SIZES.
+    """
+    if sizes is None:
+        sizes = SIZES[:k] if k <= len(SIZES) else rng.integers(5, 60, k)
     if kind == "binary":
         p = rng.beta(2, 8, k)
         return {f"P{i}": (rng.random(sizes[i]) < p[i]).astype(float) for i in range(k)}
@@ -199,6 +208,32 @@ def sim_cb(reps: int, n_boot: int = 1000) -> pd.DataFrame:
                     }
                 )
                 print(rows[-1])
+    # copertura con le numerosita' reali delle coppie dell'eccesso (k = 11, seme proprio)
+    k = len(PAIR_SIZES)
+    for kind, target in (("continuous", 0.06), ("binary", 0.2)):
+        rng = np.random.default_rng(2011)
+        hit = {"expanded_percentile": 0, "percentile": 0}
+        for r in range(reps):
+            mean = 0.06 if kind == "continuous" else 0.0
+            by = draw_groups(rng, k, kind, mean, sizes=PAIR_SIZES)
+            stats, _ = cluster_bootstrap_replicates(by, n_boot, seed=r)
+            cis = {
+                "expanded_percentile": percentile_ci(stats, k),
+                "percentile": tuple(np.percentile(stats, [2.5, 97.5])),
+            }
+            for meth, (lo, hi) in cis.items():
+                hit[meth] += lo <= target <= hi
+        for meth, h in hit.items():
+            rows.append(
+                {
+                    "scenario": f"coverage_pairs_real_sizes_{kind}",
+                    "k_patients": k,
+                    "method": meth,
+                    "reps": reps,
+                    "rate": h / reps,
+                }
+            )
+            print(rows[-1])
     return pd.DataFrame(rows)
 
 

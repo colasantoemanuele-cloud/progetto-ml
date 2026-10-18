@@ -8,7 +8,8 @@ Ipotesi dell'espansione clonale (qui "ipotesi E", distinta da H1-H4 di 16 e 19),
 formulata prima di calcolare l'associazione: i cloni T piu' espansi (sangue + tumore)
 hanno piu' probabilita' che l'etichetta nel tumore sia sbagliata rispetto all'identita'
 stimata dal sangue. Due esiti per clone:
-  - `error`  : errore 0/1 nel Tumor (schema `blood`, da `arbitration_blood.csv` di 10);
+  - `error`  : errore 0/1 nel Tumor (schema `blood`, da `arbitration_blood.csv` di 10;
+               i cloni con etichetta in pareggio non hanno errore definito e sono esclusi);
   - `excess` : eccesso di discordanza PBMC-Tumor (da `pairwise_discordance_clone_b.csv` di 07).
 La covariata e' log1p(n_PBMC + n_Tumor) del clone.
 
@@ -34,7 +35,10 @@ Input
 
 Output
 ------
-  results/tables/clonal_expansion_joined.csv            cloni con dimensione ed esiti
+  results/tables/clonal_expansion_joined.csv            cloni con dimensione ed esiti (`error` NaN se
+                                                        l'etichetta nel Tumor e' in pareggio: questi
+                                                        cloni sono esclusi dalle analisi dell'errore,
+                                                        non da quelle dell'eccesso)
   results/tables/clonal_expansion_tests.csv             rho, p, p centrato, media nulla, IC per esito x livello
   results/tables/clonal_expansion_perm_sensitivity.csv  p del block permutation per seme e numero di permutazioni
   results/figures/clonal_expansion_vs_error.png, results/figures/clonal_expansion_vs_excess.png
@@ -135,6 +139,13 @@ def cluster_bootstrap_corr(
 # --------------------------------------------------------------------------- #
 def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> list:
     """Analisi a livello paziente, a livello clone (block permutation) e permutazione ingenua."""
+    # cloni con esito non definito (pareggio nell'etichetta di maggioranza) esclusi
+    n_na = int(df[outcome_col].isna().sum())
+    df = df.dropna(subset=[outcome_col])
+    if n_na:
+        print(
+            f"[i] {outcome_col}: {n_na} cloni con esito non definito (pareggio) esclusi"
+        )
     print(
         f"\n{'=' * 78}\nESITO: {outcome_label}  (n_cloni={len(df)}, n_pazienti={df.patient.nunique()})\n{'=' * 78}"
     )
@@ -226,6 +237,7 @@ def run_analysis(df: pd.DataFrame, outcome_col: str, outcome_label: str) -> list
 
 def perm_sensitivity(df: pd.DataFrame) -> pd.DataFrame:
     """Block permutation sull'errore binario con semi diversi e con piu' permutazioni."""
+    df = df.dropna(subset=["error"])  # pareggi esclusi, come in run_analysis
     x, y, g = df.log_size.values, df["error"].values, df.patient.values
     rows = []
     settings = [(s, N_PERM) for s in SENS_SEEDS] + [(SEED, SENS_N_PERM_LARGE)]
@@ -244,6 +256,7 @@ def make_figure(
     df: pd.DataFrame, outcome_col: str, outcome_label: str, fname: str
 ) -> None:
     """Dispersione dell'esito contro log(dimensione clonale) con le medie per paziente."""
+    df = df.dropna(subset=[outcome_col])
     fig, ax = plt.subplots(figsize=(7.5, 5.5))
     # Singoli cloni (punti semitrasparenti, un colore per paziente)
     for pat, g in df.groupby("patient"):

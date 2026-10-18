@@ -48,7 +48,7 @@ Test con unita' = righe (una riga per osservazione, es. un paziente in H1-H4):
   - `holm_bonferroni`        : correzione step-down di Holm.
 
 Altro:
-  - `majority_label`         : etichetta di maggioranza con regola esplicita dei pareggi.
+  - `majority_label`         : etichetta di maggioranza; None in caso di pareggio.
 
 Uso
 ---
@@ -407,18 +407,19 @@ def holm_bonferroni(pvals: dict) -> dict:
     return {k: adj[k] for k in pvals}
 
 
-def majority_label(labels) -> str:
-    """Etichetta di maggioranza (moda) di un insieme di cellule.
+def majority_label(labels) -> str | None:
+    """Etichetta di maggioranza (moda) di un insieme di cellule, oppure None.
 
-    Regola dei pareggi: a parita' di conteggio vince l'etichetta che compare per
-    prima nell'ordine delle cellule passato in ingresso (per gli script TCR:
-    l'ordine delle righe di `obs` dopo il merge con i contig). Le versioni
-    precedenti degli script usavano `pd.Series.value_counts().index[0]`, che in
-    pandas 2.3 risolve i pareggi per prima comparsa solo con 2-3 etichette distinte
-    (con 4 o piu' l'ordine dei pareggi non e' garantito); passando a questa regola
-    esplicita i numeri pubblicati non sono cambiati (riesecuzione della Fase 1).
+    Se due o piu' etichette hanno lo stesso conteggio massimo l'etichetta di
+    maggioranza non e' definita e la funzione restituisce None: l'unita' (per
+    esempio una coppia clone-compartimento) va esclusa dal calcolo principale e
+    trattata a parte nelle analisi di sensibilita'. La regola non dipende
+    dall'ordine delle cellule. (Le versioni precedenti risolvevano il pareggio con
+    la prima etichetta nell'ordine dei barcode, scelta arbitraria.)
     """
-    labels = list(labels)
-    vc = pd.Series(labels).value_counts()
-    tied = set(vc.index[vc == vc.iloc[0]])
-    return str(next(lab for lab in labels if lab in tied))
+    vc = pd.Series(list(labels)).value_counts()
+    if len(vc) == 0:
+        return None
+    if len(vc) > 1 and vc.iloc[0] == vc.iloc[1]:
+        return None
+    return str(vc.index[0])

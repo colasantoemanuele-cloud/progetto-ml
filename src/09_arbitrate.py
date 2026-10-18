@@ -4,8 +4,10 @@
 
 Scopo
 -----
-1. Arbitrato (sezione A). Il lignaggio CD4/CD8 di un clone T maturo non cambia fra
-   tessuti. Per ogni (clone, compartimento) con almeno 3 cellule si calcolano la
+1. Arbitrato (sezione A). Presupposto: il lignaggio CD4/CD8 di un clone T maturo e'
+   di norma stabile fra tessuti, con eccezioni note (CD4 citotossiche, CD4+CD8αα+ e
+   doppi positivi nei tessuti, MAIT, NKT, γδ; controllo dei TCR semi-invarianti in
+   10_loco.py, `clone_invariant_tcr_check.csv`). Per ogni (clone, compartimento) con almeno 3 cellule si calcolano la
    frazione di cellule CD8+ (CD8A > 0 o CD8B > 0) e CD4+ (CD4 > 0 senza CD8A/CD8B);
    l'identita' del clone e' CD8T o CD4T secondo la media, a peso uguale, di queste
    frazioni sui compartimenti in cui il clone compare (scartata se il margine
@@ -14,8 +16,10 @@ Scopo
    l'etichetta di maggioranza del compartimento diversa dall'identita'. Questo schema include il compartimento giudicato nel riferimento
    (circolare): gli schemi senza circolarita' sono in 10_loco.py. IC 95% con cluster
    bootstrap sui pazienti (`scpipe.cluster_bootstrap`).
-   Etichetta di maggioranza: moda, pareggi risolti dalla prima comparsa
-   (`scpipe.majority_label`).
+   Etichetta di maggioranza: moda (`scpipe.majority_label`); se due o piu' etichette
+   hanno lo stesso conteggio massimo non e' definita: la coppia clone-compartimento e'
+   esclusa dal tasso principale (colonna `tie` in arbitration.csv, `n_ties` nel tasso) e
+   contata come errore o come corretta nella sensibilita' (arbitration_tie_sensitivity.csv).
 
 2. Misure fisiche dei doppietti (sezione B): UMI totali per goccia (`n_counts`; in un
    doppietto T+NK attesi circa n_counts(NK TCR-) + n_counts(CD8T)) e UMI del TCR per
@@ -31,7 +35,10 @@ Input
 
 Output
 ------
-  results/tables/arbitration.csv                 una riga per (clone, compartimento) risolto
+  results/tables/arbitration.csv                 una riga per (clone, compartimento) risolto;
+                                                 `tie` = etichetta in pareggio (errore NaN)
+  results/tables/arbitration_tie_sensitivity.csv errore per compartimento con i pareggi esclusi,
+                                                 contati errore, contati corretti
   results/tables/error_rate_by_compartment.csv   errore per compartimento con IC; `ic_calibrato` e' falso
                                                  con <= 5 pazienti (copertura sotto il 95% in
                                                  `sim_a`), e allora si riportano anche le
@@ -150,6 +157,12 @@ def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
     return cluster_bootstrap(by_pat, n, SEED)
 
 
+def top_labels(labels) -> str:
+    """Etichette con il conteggio massimo, ordinate e unite da '|' (piu' di una = pareggio)."""
+    vc = pd.Series(list(labels)).value_counts()
+    return "|".join(sorted(vc.index[vc == vc.iloc[0]].astype(str)))
+
+
 def clone_identity(lym: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Determina l'identita' CD4T/CD8T del clone mediando con peso uniforme le frazioni compartimentali."""
     lym = lym.assign(
@@ -162,8 +175,9 @@ def clone_identity(lym: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
             n=("cd8_pos", "size"),
             f8=("cd8_pos", "mean"),
             f4=("cd4_pos", "mean"),
-            # moda; pareggi risolti dalla prima comparsa nell'ordine delle cellule
+            # moda; None se piu' etichette hanno lo stesso conteggio massimo (pareggio)
             lab=("all_celltype", majority_label),
+            lab_top=("all_celltype", top_labels),
         )
         .reset_index()
     )
@@ -207,9 +221,17 @@ def partA(lym: pd.DataFrame) -> None:
         return
 
     j = per.merge(conf[["patient", "clone_b", "identity"]], on=["patient", "clone_b"])
-    j = j[j.lab.isin(["CD4T", "CD8T", "NK"])]
-    j["error"] = j.lab != j.identity
+    # pareggio: etichetta di maggioranza non definita -> errore non definito (NaN)
+    j["tie"] = j.lab.isna()
+    tset = {"CD4T", "CD8T", "NK"}
+    keep = j.lab.isin(tset) | (
+        j.tie & j.lab_top.map(lambda t: bool(set(t.split("|")) & tset))
+    )
+    j = j[keep].copy()
+    j["error"] = np.where(j.tie, np.nan, (j.lab != j.identity).astype(float))
     j.to_csv(TAB / "arbitration.csv", index=False)
+    jt = j  # con i pareggi, per la sensibilita'
+    j = j[~j.tie]
 
     print("\ntasso d'errore dell'etichetta degli autori, per compartimento")
     print(
@@ -234,6 +256,7 @@ def partA(lym: pd.DataFrame) -> None:
             {
                 "tissue": tis,
                 "n_clone_comp": len(g),
+                "n_ties": int((jt.tissue == tis).sum() - len(g)),
                 "n_patients": k,
                 "error_rate": m,
                 "lo": lo,
@@ -251,6 +274,7 @@ def partA(lym: pd.DataFrame) -> None:
         columns=[
             "tissue",
             "n_clone_comp",
+            "n_ties",
             "n_patients",
             "error_rate",
             "lo",
@@ -260,6 +284,36 @@ def partA(lym: pd.DataFrame) -> None:
         ],
     )
     res.to_csv(TAB / "error_rate_by_compartment.csv", index=False)
+
+    # Sensibilita' ai pareggi: esclusi (principale), contati errore, contati corretti
+    srows = []
+    for version, err in (
+        ("ties_excluded", None),
+        ("ties_as_error", 1.0),
+        ("ties_as_correct", 0.0),
+    ):
+        jj = jt[~jt.tie] if err is None else jt.assign(error=jt.error.fillna(err))
+        for tis in COMPS:
+            g = jj[jj.tissue == tis]
+            if g.patient.nunique() < 3:
+                continue
+            by = {p: gg.error.values.astype(float) for p, gg in g.groupby("patient")}
+            m, lo, hi = cluster_boot(by)
+            srows.append(
+                {
+                    "version": version,
+                    "tissue": tis,
+                    "n_units": len(g),
+                    "n_ties": int(((jt.tissue == tis) & jt.tie).sum()),
+                    "n_patients": g.patient.nunique(),
+                    "error_rate": m,
+                    "lo": lo,
+                    "hi": hi,
+                }
+            )
+    pd.DataFrame(srows).to_csv(TAB / "arbitration_tie_sensitivity.csv", index=False)
+    print("\nsensibilita' ai pareggi dell'etichetta di maggioranza:")
+    print(pd.DataFrame(srows).round(4).to_string(index=False))
     if res.empty:
         print("nessun compartimento con almeno 3 pazienti: niente figura.")
         (FIG / "error_rate_by_compartment.png").unlink(missing_ok=True)
@@ -285,7 +339,7 @@ def partA(lym: pd.DataFrame) -> None:
 
     print("\ndirezione dell'errore (etichetta autori -> identita' clonale):")
     print(
-        j[j.error]
+        j[j.error == 1]
         .groupby(["tissue", "lab", "identity"])
         .size()
         .sort_values(ascending=False)
@@ -335,6 +389,7 @@ def drop_stale_partA() -> None:
     for path in (
         TAB / "arbitration.csv",
         TAB / "error_rate_by_compartment.csv",
+        TAB / "arbitration_tie_sensitivity.csv",
         FIG / "error_rate_by_compartment.png",
     ):
         path.unlink(missing_ok=True)

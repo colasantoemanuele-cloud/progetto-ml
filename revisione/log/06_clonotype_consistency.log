@@ -6,7 +6,7 @@
 
 [ok] cellule GEX: 199,184 | con TCR appaiato: 105,809 (53.1%)
 
-[qc] frazione di cellule con TCR produttivo per etichetta:
+[qc] frazione di cellule con catena TRB produttiva per etichetta:
               frac_tcr  n_tcr  n_cells
 all_celltype                          
 CD4T            0.9346  53044    56757
@@ -70,30 +70,31 @@ PA12      3875         218
 PA13      5597         178
 PA14      3051          42
 PA15      3356           0
+[i] pareggi dell'etichetta di maggioranza esclusi: 90 coppie fra compartimenti, 3943 repliche split-half
 
 ==========================================================================
 SINTESI DISCORDANZA CLONALE
 ==========================================================================
-cloni-coppie fra compartimenti : 1,114
-discordanza FRA compartimenti  : 0.120
-discordanza ENTRO compartimento: 0.064   (controllo, 45,120 repliche)
-ECCESSO                        : +0.057
-IC 95% cluster bootstrap (pazienti, n=14: 11 nel termine fra compartimenti, 14 nel basale): [+0.017, +0.127]
+cloni-coppie fra compartimenti : 1,024
+discordanza FRA compartimenti  : 0.084
+discordanza ENTRO compartimento: 0.021   (controllo, 41,177 repliche)
+ECCESSO                        : +0.063
+IC 95% cluster bootstrap (pazienti, n=14: 11 nel termine fra compartimenti, 14 nel basale): [+0.023, +0.134]
 
 per coppia di compartimenti:
                          mean  size
 comp_a          comp_b             
-Adjacent_normal PBMC    0.069   203
-                Tumor   0.065   443
-PBMC            Tumor   0.194   468
+Adjacent_normal PBMC    0.042   190
+                Tumor   0.036   416
+PBMC            Tumor   0.151   418
 
 transizioni di etichetta piu' frequenti:
 lab_a  lab_b
-CD4T   CD8T     77
-CD8T   NK       28
-       CD4T     16
-CD4T   NK        9
-NK     CD8T      4
+CD4T   CD8T     54
+CD8T   NK       17
+       CD4T     10
+CD4T   NK        4
+NK     CD8T      1
 
 ==========================================================================
 ESITO: l'IC 95% (cluster bootstrap sui pazienti) esclude lo zero.

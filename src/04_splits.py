@@ -18,7 +18,7 @@ Task: task1a_all e task1a_paired (Tumor vs Adjacent_normal; solo 5 pazienti hann
 entrambi i tessuti, PA04, PA06, PA08, PA09, PA10, e sono identificati qui),
 task2_v1 (9 tipi cellulari del tumore), task2_v2 (CAF+Stellate riuniti), task2_hier1
 (Immune/Epithelial/Stromal), task2_hier3 (CD4T/CD8T/NK), rare.
-Platelet (anucleate, quasi solo nel sangue) ed Endocrine sono escluse a priori: le
+Platelet (anucleate, solo nel sangue in questo dataset) ed Endocrine sono escluse a priori: le
 Endocrine sono presenti in 12 pazienti, ma solo 2 ne hanno almeno 10 cellule.
 
 Input

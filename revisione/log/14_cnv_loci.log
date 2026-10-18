@@ -3,7 +3,15 @@
 [ok] 14 geni su cromosomi non standard (MT, contig) esclusi
 [ok] posizioni per 19,579/30,543 geni
 [..] infercnv, riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] di tutti i pazienti (lento) ...
-[ok] X_cnv (101219, 1672) in 38s
+[ok] soglia del rumore globale: 0.0534 (1,5 x sd di tutta X_cnv)
+[ok] X_cnv (101219, 1672) in 42s
+
+controllo delle finestre dei loci (intervallo della finestra sovrapposto al locus):
+  CDKN2A_9p21: CDKN2A a chr9:21.97-22.00 Mb in 10 finestre, tutte attribuite al locus: True (finestre del locus: 10)
+  TP53_17p13: TP53 a chr17:7.66-7.69 Mb in 10 finestre, tutte attribuite al locus: True (finestre del locus: 19)
+  SMAD4_18q21: SMAD4 a chr18:51.03-51.09 Mb in 10 finestre, tutte attribuite al locus: True (finestre del locus: 13)
+  MYC_8q24: MYC a chr8:127.74-127.74 Mb in 9 finestre, tutte attribuite al locus: True (finestre del locus: 14)
+  KRAS_12p12: KRAS a chr12:25.21-25.33 Mb in 10 finestre, tutte attribuite al locus: True (finestre del locus: 15)
 
 duttali: 8,370 tumorali | 334 normali adiacenti
 
@@ -14,28 +22,28 @@ AUC = capacita' discriminativa tra duttali TUMORALI e NORMALI adiacenti.
 0.5 = distribuzioni sovrapposte; l'AUC pooled mescola pazienti diversi
 
         signal  auc_tumor_vs_normal  n_windows  n_loci
-    MEAN_|CNV|                0.531       1672     NaN
-   CDKN2A_9p21                0.525          2     1.0
-    TP53_17p13                0.541         11     1.0
-   SMAD4_18q21                0.580          4     1.0
-       1p_loss                0.617         47     1.0
-       6q_loss                0.582         35     1.0
-      MYC_8q24                0.643          8     1.0
-    KRAS_12p12                0.591          7     1.0
-      20q_gain                0.474         26     1.0
-PDAC_COMPOSITE                0.698        140     8.0
+    MEAN_|CNV|                0.598       1672     NaN
+   CDKN2A_9p21                0.559         10     1.0
+    TP53_17p13                0.529         19     1.0
+   SMAD4_18q21                0.586         13     1.0
+       1p_loss                0.656         74     1.0
+       6q_loss                0.600         36     1.0
+      MYC_8q24                0.656         14     1.0
+    KRAS_12p12                0.653         15     1.0
+      20q_gain                0.492         37     1.0
+PDAC_COMPOSITE                0.717        218     8.0
 
 AUC tumore-vs-normale PDAC_COMPOSITE, per paziente con abbastanza normali:
   PA04: non valutabile (tumor n=152, normal n=1, minimo 10)
-  PA06: AUC=0.583  (tumor n=2354, normal n=26)
-  PA08: AUC=0.588  (tumor n=809, normal n=210)
-  PA09: AUC=0.528  (tumor n=981, normal n=14)
-  PA10: AUC=0.529  (tumor n=726, normal n=83)
-  AUC entro paziente PDAC_COMPOSITE: media 0.557, range [0.528, 0.588] su 4 pazienti
+  PA06: AUC=0.608  (tumor n=2354, normal n=26)
+  PA08: AUC=0.576  (tumor n=809, normal n=210)
+  PA09: AUC=0.526  (tumor n=981, normal n=14)
+  PA10: AUC=0.556  (tumor n=726, normal n=83)
+  AUC entro paziente PDAC_COMPOSITE: media 0.566, range [0.526, 0.608] su 4 pazienti
 
 ==========================================================================
-AUC PDAC_COMPOSITE pooled 0.70 (score medio 0.53)
-AUC entro paziente (media su 4 pazienti): PDAC_COMPOSITE 0.56, score medio 0.57
+AUC PDAC_COMPOSITE pooled 0.72 (score medio 0.60)
+AUC entro paziente (media su 4 pazienti): PDAC_COMPOSITE 0.57, score medio 0.62
 ESITO: entro paziente le duttali tumorali e adiacenti si sovrappongono
   anche sui loci PDAC; l'eventuale separazione pooled riflette soprattutto
   differenze fra pazienti (compatibile con effetto di campo peri-tumorale

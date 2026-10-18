@@ -10,7 +10,11 @@ inferito dal trascrittoma e misura quanto un classificatore la predice dal
 trascrittoma stesso, in tre stadi:
 
 1. Score CNV con `infercnvpy`: finestre genomiche di 100 geni, UNA sola esecuzione
-   con `reference_key="ref_group"`. Il riferimento
+   con `reference_key="ref_group"`. Filtro del rumore: infercnvpy e' chiamato con
+   `dynamic_threshold=None` e poi le voci con |x| < 1,5 x sd di TUTTA `X_cnv` sono
+   azzerate (`global_noise_filter`). Il default di infercnvpy calcola questa soglia per
+   blocco di 5.000 cellule: con le cellule in ordine di libreria i blocchi sono confusi
+   con tessuto e quota di duttali, e lo score dipenderebbe dall'ordine delle righe. Il riferimento
    diploide sono le cellule immunitarie (`CD8T`, `CD4T`, `NK`, `B`, `Myeloid`,
    `Plasma`) di TUTTI i pazienti insieme, non dello stesso paziente. Solo la soglia
    e' calcolata per paziente:
@@ -43,7 +47,8 @@ trascrittoma stesso, in tre stadi:
    `data/interim/cnv_cache_fingerprint.json`, coincide con quella calcolata ora
    (hash delle cellule, dei conteggi, dei geni, della tabella delle coordinate, del
    gruppo di riferimento, della versione di infercnvpy e dei parametri di inferCNV:
-   window_size, step, lfc_clip, dynamic_threshold, exclude_chromosomes); altrimenti lo
+   window_size, step, lfc_clip, dynamic_threshold, exclude_chromosomes, regola del filtro
+   del rumore e delle coordinate delle finestre); altrimenti lo
    script si ferma. Se il sottoinsieme non ha cellule immunitarie di riferimento, o ha
    solo quelle, lo script si ferma prima di inferCNV.
 
@@ -151,6 +156,16 @@ STANDARD_CHROM = re.compile(r"^(\d{1,2}|X|Y)$")
 AUTOSOMES = {f"chr{i}" for i in range(1, 23)}
 # parametri di inferCNV, comuni a 13 e 14 e registrati nell'impronta delle cache
 WINDOW_SIZE = 100
+# filtro del rumore: una sola soglia globale su tutta X_cnv (vedi `global_noise_filter`)
+NOISE_K = 1.5
+NOISE_RULE = (
+    "dynamic_threshold=None in infercnvpy; poi |x| < 1.5 * sd(tutta X_cnv) -> 0 "
+    "(soglia globale, indipendente dall'ordine delle cellule)"
+)
+WINDOW_RULE = (
+    "finestra i di un cromosoma = geni ordinati per start [i*step, i*step+window_size); "
+    "coordinate = start del primo gene, end massimo, mediana degli start"
+)
 FINGERPRINT = Path("data/interim/cnv_cache_fingerprint.json")
 CHROM_RULE = "1-22, X, Y in add_positions; X e Y esclusi da infercnvpy"
 
@@ -244,10 +259,9 @@ def run_infercnv(adata: ad.AnnData) -> np.ndarray:
     """Esegue infercnvpy su dati log-normalizzati e restituisce lo score medio |X_cnv| per cellula.
 
     Una sola esecuzione su tutte le cellule: il riferimento sono le immunitarie di
-    tutti i pazienti insieme (categorie di `ref_group` in IMMUNE_REF).
+    tutti i pazienti insieme (categorie di `ref_group` in IMMUNE_REF); soglia del rumore
+    globale (`run_infercnv_core`).
     """
-    import infercnvpy as cnv
-
     a = adata.copy()
     a.layers["counts"] = a.X.copy()
     sc.pp.normalize_total(a, target_sum=1e4)
@@ -256,12 +270,112 @@ def run_infercnv(adata: ad.AnnData) -> np.ndarray:
 
     ref = reference_categories(a.obs["ref_group"])
     print(f"[..] infercnv: riferimento = {ref} (tutti i pazienti)")
-    cnv.tl.infercnv(
-        a, reference_key="ref_group", reference_cat=ref, window_size=WINDOW_SIZE
-    )
-    check_autosomal_windows(a.uns["cnv"]["chr_pos"])
+    run_infercnv_core(a, ref, WINDOW_SIZE)
     score = np.asarray(np.abs(a.obsm["X_cnv"]).mean(axis=1)).ravel()
     return score
+
+
+def global_noise_filter(X, k: float = NOISE_K):
+    """Azzera le voci con |x| < k * sd, con la sd calcolata su TUTTA la matrice.
+
+    infercnvpy (`dynamic_threshold`) calcola la stessa soglia separatamente per ogni
+    blocco di `chunksize` cellule: con le cellule in ordine di libreria i blocchi sono
+    confusi con tessuto e tipo cellulare, e la soglia dipende dall'ordine delle righe.
+    Qui la soglia e' una sola (equivale al default di infercnvpy con un solo blocco).
+    La sd e' quella di popolazione (ddof = 0), come `np.std`, e include gli zeri
+    impliciti di una matrice sparsa. Restituisce (matrice filtrata, soglia).
+    """
+    n = X.shape[0] * X.shape[1]
+    if sp.issparse(X):
+        X = sp.csr_matrix(X, copy=True)
+        vals = X.data
+    else:
+        X = np.array(X, copy=True)
+        vals = X.ravel()
+    s1 = vals.sum(dtype=np.float64)
+    s2 = np.square(vals, dtype=np.float64).sum()
+    sd = float(np.sqrt(max(s2 / n - (s1 / n) ** 2, 0.0)))
+    thr = k * sd
+    vals[np.abs(vals) < thr] = 0
+    if sp.issparse(X):
+        X.eliminate_zeros()
+    return X, thr
+
+
+def run_infercnv_core(a: ad.AnnData, ref: list[str], window_size: int) -> float:
+    """inferCNV senza soglia per blocco, poi la soglia globale (`global_noise_filter`).
+
+    `a` deve essere log-normalizzato e avere le coordinate dei geni; modifica
+    `a.obsm["X_cnv"]` sul posto e restituisce la soglia applicata. Gli altri passi di
+    infercnvpy (log fold change rispetto al riferimento, clip, media mobile per
+    cromosoma, centratura per cellula) sono per cellula e non dipendono dai blocchi.
+    """
+    import infercnvpy as cnv
+
+    cnv.tl.infercnv(
+        a,
+        reference_key="ref_group",
+        reference_cat=ref,
+        window_size=window_size,
+        dynamic_threshold=None,
+    )
+    check_autosomal_windows(a.uns["cnv"]["chr_pos"])
+    a.obsm["X_cnv"], thr = global_noise_filter(a.obsm["X_cnv"])
+    print(f"[ok] soglia del rumore globale: {thr:.4f} (1,5 x sd di tutta X_cnv)")
+    return thr
+
+
+def window_table(a: ad.AnnData, window_size: int = WINDOW_SIZE) -> pd.DataFrame:
+    """Coordinate genomiche reali delle finestre di `X_cnv` (stessa costruzione di infercnvpy).
+
+    In infercnvpy 0.6.1 i geni di ciascun cromosoma (esclusi quelli senza coordinate e
+    i cromosomi di `exclude_chromosomes`) sono ordinati per `start`; la media mobile
+    di `window_size` geni e' calcolata a ogni posizione e se ne tiene una ogni `step`:
+    la finestra i copre i geni [i*step, i*step + window_size) (tutti i geni se il
+    cromosoma ne ha meno di `window_size`). Per ogni finestra: cromosoma, start del
+    primo gene, end massimo dei suoi geni, mediana degli start, numero di geni, primo e
+    ultimo gene. Si ferma se il numero di finestre non coincide con `X_cnv`.
+    """
+    import inspect
+
+    import infercnvpy as cnv
+
+    sig = inspect.signature(cnv.tl.infercnv).parameters
+    step = sig["step"].default
+    excl = set(sig["exclude_chromosomes"].default or [])
+    var = a.var.loc[a.var["chromosome"].notna(), ["chromosome", "start", "end"]]
+    var = var[~var["chromosome"].isin(excl)]
+    chr_pos = a.uns["cnv"]["chr_pos"]
+    n_win = a.obsm["X_cnv"].shape[1]
+    order = sorted(chr_pos.items(), key=lambda kv: kv[1])
+    rows = []
+    for i, (chrom, start_col) in enumerate(order):
+        end_col = order[i + 1][1] if i + 1 < len(order) else n_win
+        # stessa espressione di infercnvpy (_running_mean_for_chromosome)
+        genes = var.loc[var["chromosome"] == chrom].sort_values("start")
+        n = len(genes)
+        starts = np.arange(0, n - window_size + 1, step) if n > window_size else [0]
+        width = window_size if n > window_size else n
+        if len(starts) != end_col - start_col:
+            raise SystemExit(
+                f"[ERRORE] {chrom}: {end_col - start_col} finestre in X_cnv ma "
+                f"{len(starts)} ricostruite dai geni"
+            )
+        for j, g0 in enumerate(starts):
+            w = genes.iloc[g0 : g0 + width]
+            rows.append(
+                {
+                    "col": start_col + j,
+                    "chrom": chrom.replace("chr", ""),
+                    "start": float(w.start.iloc[0]),
+                    "end": float(w.end.max()),
+                    "pos": float(np.median(w.start.values)),
+                    "n_genes": len(w),
+                    "first_gene": w.index[0],
+                    "last_gene": w.index[-1],
+                }
+            )
+    return pd.DataFrame(rows).sort_values("col").reset_index(drop=True)
 
 
 def reference_categories(ref_group: pd.Series) -> list[str]:
@@ -282,18 +396,19 @@ def reference_categories(ref_group: pd.Series) -> list[str]:
 
 
 def infercnv_params() -> dict:
-    """Versione di infercnvpy e parametri di `infercnv` usati (quelli passati e i default)."""
+    """Versione di infercnvpy, parametri di `infercnv` (passati e default), filtro del
+    rumore e regola delle coordinate delle finestre."""
     import inspect
 
     import infercnvpy as cnv
 
     sig = inspect.signature(cnv.tl.infercnv).parameters
-    params = {
-        k: sig[k].default
-        for k in ("lfc_clip", "step", "dynamic_threshold", "exclude_chromosomes")
-    }
+    params = {k: sig[k].default for k in ("lfc_clip", "step", "exclude_chromosomes")}
     params["exclude_chromosomes"] = list(params["exclude_chromosomes"] or [])
     params["window_size"] = WINDOW_SIZE
+    params["dynamic_threshold"] = None  # passato esplicitamente (run_infercnv_core)
+    params["noise_filter"] = NOISE_RULE
+    params["window_coordinates"] = WINDOW_RULE
     return {"infercnvpy_version": cnv.__version__, "infercnv_params": params}
 
 

@@ -236,7 +236,7 @@ def plot_gap(res: pd.DataFrame, tag: str) -> None:
             piv[rnd],
             0.38,
             xerr=err[rnd].reindex(piv.index),
-            label="split casuale (leakage)",
+            label="split casuale per cellula",
             color="#d95f02",
             alpha=0.85,
         )
@@ -245,7 +245,7 @@ def plot_gap(res: pd.DataFrame, tag: str) -> None:
             piv[grp],
             0.38,
             xerr=err[grp].reindex(piv.index),
-            label="split per paziente (onesto)",
+            label="split per paziente (nessun paziente in train e test)",
             color="#1b9e77",
             alpha=0.85,
         )

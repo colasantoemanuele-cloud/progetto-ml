@@ -6,21 +6,22 @@
 # cloni piu' espansi (sangue+tumore) -> etichetta nel tumore piu' spesso
 # diversa dall'identita' stimata dal sangue.
 ##############################################################################
+[i] error: 10 cloni con esito non definito (pareggio) esclusi
 
 ==============================================================================
-ESITO: errore di annotazione nel tumore (0/1, riferimento sangue)  (n_cloni=287, n_pazienti=10)
+ESITO: errore di annotazione nel tumore (0/1, riferimento sangue)  (n_cloni=277, n_pazienti=10)
 ==============================================================================
 
 --- (1) LIVELLO PAZIENTE: medie per paziente, potenza bassa ---
-  n=10 pazienti | rho=+0.467  p_perm=0.1762  IC95% boot=[-0.537, +0.962]
+  n=10 pazienti | rho=+0.467  p_perm=0.1752  IC95% boot=[-0.547, +0.973]
   direzione attesa (rho>0)
 
 --- (2) LIVELLO CLONE, POOLED: permutazione entro paziente ---
-  n=287 cloni | rho pooled=+0.177  p_block_perm=0.0009  IC95% cluster-boot=[+0.097, +0.317]
-  media della distribuzione nulla = +0.012 | p sulla statistica centrata = 0.0015
+  n=277 cloni | rho pooled=+0.220  p_block_perm=0.0004  IC95% cluster-boot=[+0.125, +0.344]
+  media della distribuzione nulla = +0.021 | p sulla statistica centrata = 0.0005
   direzione attesa (rho>0)
 
-  [confronto] permutazione che ignora i pazienti: rho=+0.177 p=0.0030
+  [confronto] permutazione che ignora i pazienti: rho=+0.220 p=0.0004
   -> l'associazione regge anche permutando solo entro paziente.
 [ok] figura: results/figures/clonal_expansion_vs_error.png
 
@@ -42,12 +43,12 @@ ESITO: eccesso di discordanza sangue-tumore (continuo, da 07)  (n_cloni=287, n_p
 [ok] figura: results/figures/clonal_expansion_vs_excess.png
 
 --- sensibilita' del block permutation (errore binario) ---
-  seme 0 |  20,000 permutazioni | p=0.0009 | p centrato=0.0015 | media nulla=+0.0118
-  seme 1 |  20,000 permutazioni | p=0.0013 | p centrato=0.0022 | media nulla=+0.0110
-  seme 2 |  20,000 permutazioni | p=0.0014 | p centrato=0.0020 | media nulla=+0.0116
-  seme 3 |  20,000 permutazioni | p=0.0018 | p centrato=0.0028 | media nulla=+0.0117
-  seme 4 |  20,000 permutazioni | p=0.0014 | p centrato=0.0026 | media nulla=+0.0119
-  seme 0 | 100,000 permutazioni | p=0.0017 | p centrato=0.0026 | media nulla=+0.0115
+  seme 0 |  20,000 permutazioni | p=0.0004 | p centrato=0.0005 | media nulla=+0.0209
+  seme 1 |  20,000 permutazioni | p=0.0001 | p centrato=0.0002 | media nulla=+0.0200
+  seme 2 |  20,000 permutazioni | p=0.0002 | p centrato=0.0004 | media nulla=+0.0207
+  seme 3 |  20,000 permutazioni | p=0.0003 | p centrato=0.0004 | media nulla=+0.0202
+  seme 4 |  20,000 permutazioni | p=0.0001 | p centrato=0.0003 | media nulla=+0.0207
+  seme 0 | 100,000 permutazioni | p=0.0002 | p centrato=0.0003 | media nulla=+0.0204
 
 ==============================================================================
 Lettura: guardare insieme la direzione a livello paziente (bassa potenza) e

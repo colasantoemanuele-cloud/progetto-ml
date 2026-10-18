@@ -21,7 +21,7 @@ e Holm-Bonferroni e' ricalcolato sulla famiglia completa di 4 ipotesi.
 Input
 -----
   --table-s1        data/raw/paper_supplement/mmc2.xlsx (Table S1 di Chen et al. 2025)
-  --arbitration     results/tables/arbitration_blood.csv (da 10_loco.py)
+  --arbitration     results/tables/arbitration_blood.csv (da 10_loco.py) (pareggi esclusi, come in 16)
   --previous-tests  results/tables/pseudobulk_hypothesis_tests.csv (da 16_pseudobulk_patient.py)
 
 Output
@@ -161,6 +161,10 @@ def build_outcome(arb_path: Path) -> pd.DataFrame:
         raise SystemExit(f"[ERRORE] {arb_path} assente. Esegui prima 10_loco.py.")
     j = pd.read_csv(arb_path)
     j = j[j.tissue == "Tumor"]
+    # unita' con etichetta di maggioranza in pareggio: errore non definito, escluse (come 16)
+    n_tie = int(j.error.isna().sum())
+    j = j.dropna(subset=["error"])
+    print(f"[i] {n_tie} coppie clone-compartimento in pareggio escluse dall'esito")
     out = j.groupby("patient").agg(
         error_rate=("error", "mean"), n_clones=("error", "size")
     )

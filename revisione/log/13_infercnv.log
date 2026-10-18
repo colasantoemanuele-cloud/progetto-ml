@@ -22,60 +22,61 @@ All                   334   8370  8704
 [ok] 14 geni su cromosomi non standard (MT, contig) esclusi
 [ok] posizioni per 19,579/30,543 geni
 [..] infercnv: riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] (tutti i pazienti)
-[ok] CNV in 37s
+[ok] soglia del rumore globale: 0.0534 (1,5 x sd di tutta X_cnv)
+[ok] CNV in 42s
 
 ==========================================================================
 ETICHETTA DI MALIGNITA' (soglia per paziente sugli immuni di riferimento)
 ==========================================================================
 patient          tissue    n  malignant  frac_malig
-   PA01           Tumor  270         98       0.363
-   PA02           Tumor  278         98       0.353
-   PA04           Tumor  152         44       0.289
+   PA01           Tumor  270        103       0.381
+   PA02           Tumor  278        103       0.371
+   PA04           Tumor  152         49       0.322
    PA04 Adjacent_normal    1          0       0.000
-   PA05           Tumor 1296       1077       0.831
-   PA06           Tumor 2354       1196       0.508
-   PA06 Adjacent_normal   26         15       0.577
-   PA07           Tumor  188         31       0.165
-   PA08           Tumor  809        321       0.397
-   PA08 Adjacent_normal  210         86       0.410
-   PA09           Tumor  981        601       0.613
+   PA05           Tumor 1296       1049       0.809
+   PA06           Tumor 2354       1681       0.714
+   PA06 Adjacent_normal   26         17       0.654
+   PA07           Tumor  188         30       0.160
+   PA08           Tumor  809        339       0.419
+   PA08 Adjacent_normal  210         79       0.376
+   PA09           Tumor  981        677       0.690
    PA09 Adjacent_normal   14          3       0.214
-   PA10           Tumor  726        547       0.753
-   PA10 Adjacent_normal   83         44       0.530
+   PA10           Tumor  726        574       0.791
+   PA10 Adjacent_normal   83         45       0.542
    PA11           Tumor  389        185       0.476
    PA12           Tumor  230         55       0.239
-   PA13           Tumor  678        368       0.543
+   PA13           Tumor  678        365       0.538
    PA14           Tumor   19          1       0.053
 
 ==========================================================================
 CLASSIFICATORE LOPO: predire la malignita' dal trascrittoma
 ==========================================================================
 pazienti con >=150 duttali tumorali: 12 -> ['PA01', 'PA02', 'PA04', 'PA05', 'PA06', 'PA07', 'PA08', 'PA09', 'PA10', 'PA11', 'PA12', 'PA13']
-cellule di training: 8,351 | maligne: 55.3%
+cellule di training: 8,351 | maligne: 62.4%
 
 per paziente (leave-one-patient-out):
 patient  n_test  balanced_acc  f1_malig   auc
-   PA01     270         0.763     0.700 0.847
-   PA02     278         0.676     0.573 0.775
-   PA04     152         0.734     0.630 0.887
-   PA05    1296         0.858     0.865 0.948
-   PA06    2354         0.649     0.728 0.730
-   PA07     188         0.804     0.593 0.906
-   PA08     809         0.669     0.569 0.787
-   PA09     981         0.740     0.806 0.814
-   PA10     726         0.669     0.799 0.745
-   PA11     389         0.806     0.793 0.898
-   PA12     230         0.753     0.652 0.901
-   PA13     678         0.712     0.766 0.811
+   PA01     270         0.781     0.732 0.850
+   PA02     278         0.703     0.624 0.766
+   PA04     152         0.717     0.614 0.858
+   PA05    1296         0.887     0.927 0.943
+   PA06    2354         0.694     0.862 0.781
+   PA07     188         0.763     0.466 0.887
+   PA08     809         0.694     0.628 0.790
+   PA09     981         0.731     0.856 0.826
+   PA10     726         0.665     0.840 0.742
+   PA11     389         0.796     0.802 0.902
+   PA12     230         0.799     0.713 0.892
+   PA13     678         0.720     0.788 0.796
 
-AUC media: 0.837 ± 0.071
-balanced accuracy media: 0.736 ± 0.065
+AUC media: 0.836 ± 0.062
+balanced accuracy media: 0.746 ± 0.062
 
 ==========================================================================
 DUTTALI DEL TESSUTO ADIACENTE (mai in training; stessa esecuzione inferCNV)
 ==========================================================================
 duttali normali adiacenti: 334
-predette maligne: 30.8% | non maligne: 69.2%
+predette maligne: 37.4% | non maligne: 62.6%
 La frazione predetta maligna misura quanto il classificatore separa le duttali
 tumorali dalle duttali peri-tumorali; non e' un tasso di falsi positivi
 rispetto a una verita' indipendente (vedi docstring, punto 3).

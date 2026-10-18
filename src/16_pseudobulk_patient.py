@@ -38,7 +38,8 @@ pseudobulk (profilo medio CD8T+CD4T tumorali per paziente) e' solo descrittiva.
 Input
 -----
   --h5ad         data/interim/sc_raw.h5ad
-  --arbitration  results/tables/arbitration_blood.csv (da 10_loco.py)
+  --arbitration  results/tables/arbitration_blood.csv (da 10_loco.py) (le coppie clone-compartimento in
+                 pareggio, senza errore definito, sono escluse dall'esito)
 
 Output
 ------
@@ -90,7 +91,8 @@ MIN_CLONES_OUTCOME = 5
 # Firma genica canonica di esaurimento funzionale dei linfociti T CD8+
 EXHAUSTION_GENES = ["PDCD1", "LAG3", "HAVCR2", "TOX", "CTLA4", "TIGIT"]
 
-# Definizione formale delle tre ipotesi a priori e della direzione attesa dell'effetto
+# Definizione formale delle tre ipotesi (formulate prima di calcolare le covariate) e
+# della direzione attesa dell'effetto
 HYPOTHESES = {
     "exhaustion_score": (
         "H1: esaurimento CD8T tumorali -> piu' errore (deriva CD8->CD4/NK ipotizzata)",
@@ -139,6 +141,10 @@ def build_outcome(arb_path: Path) -> pd.DataFrame:
         j = pd.read_csv(arb_path)
         # Filtro esclusivo sul compartimento tumorale e aggregazione per paziente
         j = j[j.tissue == "Tumor"]
+        # unita' con etichetta di maggioranza in pareggio: errore non definito, escluse
+        n_tie = int(j.error.isna().sum())
+        j = j.dropna(subset=["error"])
+        print(f"[i] {n_tie} coppie clone-compartimento in pareggio escluse dall'esito")
         out = j.groupby("patient").agg(
             error_rate=("error", "mean"), n_clones=("error", "size")
         )
@@ -216,7 +222,8 @@ def build_predictors(adata: ad.AnnData) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     """Orchestra la costruzione della tabella pseudobulk per paziente, l'esecuzione
-    dei test di permutazione sulle tre ipotesi a priori e la PCA descrittiva."""
+    dei test di permutazione sulle tre ipotesi (formulate prima di calcolare le
+    covariate) e la PCA descrittiva."""
     ap = argparse.ArgumentParser(
         description="Covariate per paziente (H1-H3) contro il tasso d'errore nel tumore.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

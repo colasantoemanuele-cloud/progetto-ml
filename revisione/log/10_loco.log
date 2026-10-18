@@ -34,80 +34,101 @@ Le popolazioni mieloidi esprimono CD4 endogeno e sono escluse dal proxy ambienta
 ==============================================================================
 
 --- NAIVE (riferimento include il target, circolare) ---
-  PBMC             errore = 0.043  IC95% [0.025, 0.067]  (n=862, 11 pz)
-  Adjacent_normal  errore = 0.076  IC95% [0.051, 0.162]  (n=646, 5 pz)
-  Tumor            errore = 0.092  IC95% [0.062, 0.129]  (n=1519, 13 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.035  IC95% [+0.005, +0.138]  IC non calibrato (5 pazienti)  (n=259 cloni, 5 pz)
-  Tumor - PBMC (stessi cloni): +0.156  IC95% [+0.046, +0.253]  IC esclude 0  (n=282 cloni, 10 pz)
+  PBMC             errore = 0.041  IC95% [0.025, 0.064]  (n=857, 11 pz; 5 pareggi esclusi)
+  Adjacent_normal  errore = 0.072  IC95% [0.046, 0.160]  (n=639, 5 pz; 7 pareggi esclusi)
+  Tumor            errore = 0.084  IC95% [0.058, 0.115]  (n=1502, 13 pz; 17 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.024  IC95% [+0.000, +0.110]  IC non calibrato (5 pazienti)  (n=253 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.129  IC95% [+0.029, +0.212]  IC esclude 0  (n=272 cloni, 10 pz)
 
 --- LOCO (riferimento = gli altri compartimenti) ---
-  PBMC             errore = 0.036  IC95% [0.013, 0.063]  (n=309, 10 pz)
-  Adjacent_normal  errore = 0.061  IC95% [0.030, 0.093]  (n=295, 5 pz)
-  Tumor            errore = 0.147  IC95% [0.084, 0.244]  (n=464, 11 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.027  IC95% [-0.010, +0.124]  IC non calibrato (5 pazienti)  (n=255 cloni, 5 pz)
-  Tumor - PBMC (stessi cloni): +0.146  IC95% [+0.041, +0.238]  IC esclude 0  (n=274 cloni, 10 pz)
+  PBMC             errore = 0.036  IC95% [0.013, 0.063]  (n=309, 10 pz; 0 pareggi esclusi)
+  Adjacent_normal  errore = 0.062  IC95% [0.031, 0.094]  (n=292, 5 pz; 3 pareggi esclusi)
+  Tumor            errore = 0.128  IC95% [0.076, 0.214]  (n=453, 11 pz; 11 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.016  IC95% [-0.020, +0.095]  IC non calibrato (5 pazienti)  (n=249 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.121  IC95% [+0.021, +0.205]  IC esclude 0  (n=265 cloni, 10 pz)
 
 --- BLOOD (riferimento = solo PBMC) ---
-  Adjacent_normal  errore = 0.059  IC95% [0.000, 0.093]  (n=118, 4 pz)
-  Tumor            errore = 0.195  IC95% [0.110, 0.290]  (n=287, 10 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.192]  IC non calibrato (4 pazienti)  (n=88 cloni, 4 pz)
+  Adjacent_normal  errore = 0.060  IC95% [0.000, 0.095]  (n=117, 4 pz; 1 pareggi esclusi)
+  Tumor            errore = 0.170  IC95% [0.095, 0.252]  (n=277, 10 pz; 10 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.059  IC95% [+0.000, +0.160]  IC non calibrato (4 pazienti)  (n=85 cloni, 4 pz)
 
 ==============================================================================
 (2b) RIPETUTO con soglia CD4 sopra l'ambient del compartimento
 ==============================================================================
 
 --- LOCO + soglia CD4 corretta per ambient ---
-  PBMC             errore = 0.036  IC95% [0.013, 0.063]  (n=309, 10 pz)
-  Adjacent_normal  errore = 0.058  IC95% [0.031, 0.087]  (n=291, 5 pz)
-  Tumor            errore = 0.130  IC95% [0.075, 0.222]  (n=453, 11 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.028  IC95% [-0.010, +0.125]  IC non calibrato (5 pazienti)  (n=252 cloni, 5 pz)
-  Tumor - PBMC (stessi cloni): +0.124  IC95% [+0.034, +0.211]  IC esclude 0  (n=267 cloni, 10 pz)
+  PBMC             errore = 0.036  IC95% [0.013, 0.063]  (n=309, 10 pz; 0 pareggi esclusi)
+  Adjacent_normal  errore = 0.059  IC95% [0.031, 0.087]  (n=288, 5 pz; 3 pareggi esclusi)
+  Tumor            errore = 0.113  IC95% [0.068, 0.190]  (n=443, 11 pz; 10 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.016  IC95% [-0.020, +0.095]  IC non calibrato (5 pazienti)  (n=246 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.100  IC95% [+0.020, +0.179]  IC esclude 0  (n=259 cloni, 10 pz)
 
 ==============================================================================
-(3) RIPETUTO escludendo i possibili doppietti (n_counts > 90o pct per libreria x classe)
+(3) RIPETUTO senza il decile superiore di n_counts per libreria x classe (proxy dei doppietti, non doppietti identificati)
 ==============================================================================
   cellule escluse: 20,017 / 199,184
 
---- LOCO senza doppietti ---
-  PBMC             errore = 0.038  IC95% [0.014, 0.068]  (n=289, 10 pz)
-  Adjacent_normal  errore = 0.049  IC95% [0.004, 0.080]  (n=268, 5 pz)
-  Tumor            errore = 0.143  IC95% [0.074, 0.249]  (n=428, 11 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.035  IC95% [+0.000, +0.134]  IC non calibrato (5 pazienti)  (n=230 cloni, 5 pz)
-  Tumor - PBMC (stessi cloni): +0.140  IC95% [+0.042, +0.230]  IC esclude 0  (n=258 cloni, 10 pz)
+--- LOCO senza il decile superiore di n_counts (proxy dei doppietti) ---
+  PBMC             errore = 0.035  IC95% [0.009, 0.067]  (n=288, 10 pz; 1 pareggi esclusi)
+  Adjacent_normal  errore = 0.049  IC95% [0.004, 0.081]  (n=266, 5 pz; 2 pareggi esclusi)
+  Tumor            errore = 0.129  IC95% [0.070, 0.222]  (n=419, 11 pz; 9 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.027  IC95% [+0.000, +0.102]  IC non calibrato (5 pazienti)  (n=225 cloni, 5 pz)
+  Tumor - PBMC (stessi cloni): +0.128  IC95% [+0.034, +0.202]  IC esclude 0  (n=250 cloni, 10 pz)
 
 ==============================================================================
 (5) SENSIBILITA' dello schema BLOOD
 ==============================================================================
 scomposizione dell'errore nel Tumor:
                       category  n_errors  rate_over_all_clones  n_clones  n_patients     lo     hi
-    CD4_in_blood_labelled_CD8T        38                0.1324       287          10    NaN    NaN
-                   labelled_NK        18                0.0627       287          10    NaN    NaN
-    CD8_in_blood_labelled_CD4T         0                0.0000       287          10    NaN    NaN
-                         other         0                0.0000       287          10    NaN    NaN
-       transition_CD4T_to_CD8T        38                0.1324       287          10    NaN    NaN
-         transition_CD4T_to_NK         6                0.0209       287          10    NaN    NaN
-         transition_CD8T_to_NK        12                0.0418       287          10    NaN    NaN
-error_rate_excluding_NK_labels        38                0.1413       269          10 0.0582 0.2614
+    CD4_in_blood_labelled_CD8T        32                0.1155       277          10    NaN    NaN
+                   labelled_NK        15                0.0542       277          10    NaN    NaN
+    CD8_in_blood_labelled_CD4T         0                0.0000       277          10    NaN    NaN
+                         other         0                0.0000       277          10    NaN    NaN
+       transition_CD4T_to_CD8T        32                0.1155       277          10    NaN    NaN
+         transition_CD4T_to_NK         4                0.0144       277          10    NaN    NaN
+         transition_CD8T_to_NK        11                0.0397       277          10    NaN    NaN
+                 ties_excluded         0                   NaN        10          10    NaN    NaN
+error_rate_excluding_NK_labels        32                0.1221       262          10 0.0486 0.2238
+
+sensibilita' ai pareggi dell'etichetta di maggioranza (schema blood):
+scheme         version                         quantity  n_units  n_ties  n_patients  value     lo     hi
+ blood   ties_excluded            error_Adjacent_normal      117     1.0           4 0.0598 0.0000 0.0952
+ blood   ties_excluded                      error_Tumor      277    10.0          10 0.1697 0.0946 0.2519
+ blood   ties_excluded diff_Tumor_minus_Adjacent_normal       85     NaN           4 0.0588 0.0000 0.1600
+ blood   ties_as_error            error_Adjacent_normal      118     1.0           4 0.0678 0.0000 0.1163
+ blood   ties_as_error                      error_Tumor      287    10.0          10 0.1986 0.1168 0.2914
+ blood   ties_as_error diff_Tumor_minus_Adjacent_normal       88     NaN           4 0.0682 0.0000 0.1923
+ blood ties_as_correct            error_Adjacent_normal      118     1.0           4 0.0593 0.0000 0.0930
+ blood ties_as_correct                      error_Tumor      287    10.0          10 0.1638 0.0925 0.2397
+ blood ties_as_correct diff_Tumor_minus_Adjacent_normal       88     NaN           4 0.0568 0.0000 0.1538
+
+cloni a TCR semi-invariante nel Tumor (schema blood):
+                           category  n_units_tumor  n_error  n_correct  n_tie  fraction  n_cells
+                          MAIT_like           12.0      0.0       12.0    0.0       NaN      NaN
+                               iNKT            0.0      0.0        0.0    0.0       NaN      NaN
+                              altri          275.0     47.0      218.0   10.0       NaN      NaN
+MAIT_like_fraction_of_NK_TCR+_cells            NaN      NaN        NaN    NaN    0.0306   1438.0
+     iNKT_fraction_of_NK_TCR+_cells            NaN      NaN        NaN    NaN    0.0007   1438.0
 
 --- BLOOD con regola CD8+: CD8A > 0 oppure CD8B > 0 (principale) ---
-  Adjacent_normal  errore = 0.059  IC95% [0.000, 0.093]  (n=118, 4 pz)
-  Tumor            errore = 0.195  IC95% [0.110, 0.290]  (n=287, 10 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.192]  IC non calibrato (4 pazienti)  (n=88 cloni, 4 pz)
+  Adjacent_normal  errore = 0.060  IC95% [0.000, 0.095]  (n=117, 4 pz; 1 pareggi esclusi)
+  Tumor            errore = 0.170  IC95% [0.095, 0.252]  (n=277, 10 pz; 10 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.059  IC95% [+0.000, +0.160]  IC non calibrato (4 pazienti)  (n=85 cloni, 4 pz)
 
 --- BLOOD con regola CD8+: CD8B > 0 ---
-  Adjacent_normal  errore = 0.051  IC95% [0.000, 0.070]  (n=117, 4 pz)
-  Tumor            errore = 0.206  IC95% [0.114, 0.310]  (n=282, 10 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.200]  IC non calibrato (4 pazienti)  (n=87 cloni, 4 pz)
+  Adjacent_normal  errore = 0.052  IC95% [0.000, 0.071]  (n=116, 4 pz; 1 pareggi esclusi)
+  Tumor            errore = 0.180  IC95% [0.099, 0.271]  (n=272, 10 pz; 10 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.060  IC95% [+0.000, +0.167]  IC non calibrato (4 pazienti)  (n=84 cloni, 4 pz)
 
 --- BLOOD con regola CD8+: CD8A >= 2 UMI ---
-  Adjacent_normal  errore = 0.052  IC95% [0.000, 0.070]  (n=116, 4 pz)
-  Tumor            errore = 0.206  IC95% [0.113, 0.307]  (n=287, 10 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.200]  IC non calibrato (4 pazienti)  (n=87 cloni, 4 pz)
+  Adjacent_normal  errore = 0.052  IC95% [0.000, 0.071]  (n=115, 4 pz; 1 pareggi esclusi)
+  Tumor            errore = 0.181  IC95% [0.098, 0.269]  (n=277, 10 pz; 10 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.060  IC95% [+0.000, +0.167]  IC non calibrato (4 pazienti)  (n=84 cloni, 4 pz)
 
 --- BLOOD con regola CD8+: CD8B > 0 oppure CD8A >= 2 UMI ---
-  Adjacent_normal  errore = 0.051  IC95% [0.000, 0.070]  (n=117, 4 pz)
-  Tumor            errore = 0.203  IC95% [0.113, 0.304]  (n=286, 10 pz)
-  Tumor - Adjacent_normal (stessi cloni): +0.080  IC95% [+0.000, +0.200]  IC non calibrato (4 pazienti)  (n=87 cloni, 4 pz)
+  Adjacent_normal  errore = 0.052  IC95% [0.000, 0.071]  (n=116, 4 pz; 1 pareggi esclusi)
+  Tumor            errore = 0.178  IC95% [0.098, 0.265]  (n=276, 10 pz; 10 pareggi esclusi)
+  Tumor - Adjacent_normal (stessi cloni): +0.060  IC95% [+0.000, +0.167]  IC non calibrato (4 pazienti)  (n=84 cloni, 4 pz)
 
 ==============================================================================
 (4) FRAZIONE DI DOPPIETTI NELLE NK-TCR+  (due stime, non indipendenti)
@@ -134,10 +155,15 @@ conferma indipendente. Le mediane sono pooled fra tessuti (vedi strati).
   mean   Tumor            d1 = 0.381 [0.170, 0.473]  d2 = 0.515 [0.325, 0.675]
   In questi strati la maggioranza di doppietti non e' sostenuta dai dati.
 
+d1/d2 per le NK-TCR+ dei cloni del Tumor contati come errore (schema blood):
+statistic  n_nk_tcr_pos_cells  n_clones  n_patients    d1  d1_lo  d1_hi    d2  d2_lo  d2_hi
+   median                 149        15          13 0.617  0.058  0.849 0.458  0.008  0.653
+     mean                 149        15          13 0.403  0.000  0.579 0.529  0.055  0.719
+
 ==============================================================================
-  naive  Tumor - Adjacent_normal = +0.035 [+0.005, +0.138]  IC non calibrato (5 pazienti)
-  loco   Tumor - Adjacent_normal = +0.027 [-0.010, +0.124]  IC non calibrato (5 pazienti)
-  blood  Tumor - Adjacent_normal = +0.080 [+0.000, +0.192]  IC non calibrato (4 pazienti)
+  naive  Tumor - Adjacent_normal = +0.024 [+0.000, +0.110]  IC non calibrato (5 pazienti)
+  loco   Tumor - Adjacent_normal = +0.016 [-0.020, +0.095]  IC non calibrato (5 pazienti)
+  blood  Tumor - Adjacent_normal = +0.059 [+0.000, +0.160]  IC non calibrato (4 pazienti)
 Tutti i contrasti hanno <= 5 pazienti: l'IC non e' calibrato
 (copertura sotto il 95% in simulazione), quindi nessun verdetto; vedi
 n_distinct_resamples e frac_boot_gt0 in error_rate_paired_diff.csv.

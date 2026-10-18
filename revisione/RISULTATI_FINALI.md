@@ -25,24 +25,24 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | sim (d): differenza con / senza effetto paziente | **0,063/0,040** | **0,143/0,030** | cambiato | `sim_d_xai_stability` |
 | rumore di base d_within | **0,107** | 0,107 | uguale | `excess_summary_clone_b` |
 | eccesso fra compartimenti [IC 95%] | **+0,059 [0,034;0,100]** | **+0,059 [0,031; 0,110]** | cambiato | `excess_summary_clone_b` |
-| errore Tumor, schema solo sangue [IC] | **0,195 [0,123;0,274]** | **0,195 [0,110; 0,290]** | cambiato | `error_rate_blood` |
-| errore Adjacent_normal, schema solo sangue | **0,059** | 0,059 | uguale | `error_rate_blood` |
-| Tumor − Adjacent appaiata, solo sangue [IC] | **+0,080 [+0,021;+0,170]** | **+0,080 [+0,000; +0,192]** | cambiato | `error_rate_paired_diff` |
+| errore Tumor, schema solo sangue [IC] | **0,195 [0,123;0,274]** | **0,170 [0,095; 0,252]** | cambiato | `error_rate_blood` |
+| errore Adjacent_normal, schema solo sangue | **0,059** | **0,060** | cambiato | `error_rate_blood` |
+| Tumor − Adjacent appaiata, solo sangue [IC] | **+0,080 [+0,021;+0,170]** | **+0,059 [+0,000; +0,160]** | cambiato | `error_rate_paired_diff` |
 | CD8A > 0 nei cloni discordanti / concordanti (Tumor) | **7%/88%** | 7%/88% | uguale | `marker_test_disc_vs_conc` |
 | doppietti d1 | **0,723** | 0,723 | uguale | `doublet_mixture` |
 | doppietti d2 | **0,790** | **0,676** | cambiato | `doublet_mixture` |
-| espansione clonale: ρ errore / ρ eccesso | **ρ 0,18/0,28** | ρ 0,18/0,28 | uguale | `clonal_expansion_tests` |
+| espansione clonale: ρ errore / ρ eccesso | **ρ 0,18/0,28** | **ρ 0,22/0,28** | cambiato | `clonal_expansion_tests` |
 | sim (c): falsi positivi su 100 repliche / su 1.000 (confondente 0; 0,5; 1; 2) | **2/100** | **4/6/11/5 su 100; 5,0%/5,9%/4,8%/5,1% su 1.000** | cambiato | `sim_c_block_permutation` |
-| H1: ρ, p_Holm (famiglia di 4) | **ρ -0,47, p_Holm 0,53** | ρ -0,47, p_Holm 0,53 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
-| H2: ρ, p_Holm (famiglia di 4) | **ρ -0,54, p_Holm 0,45** | ρ -0,54, p_Holm 0,45 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
-| H3: ρ, p_Holm (famiglia di 4) | **ρ -0,15, p_Holm 1,00** | ρ -0,15, p_Holm 1,00 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
-| H4: ρ, p_Holm (famiglia di 4) | **ρ -0,14, p_Holm 1,00** | ρ -0,14, p_Holm 1,00 | uguale | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
-| AUC LOPO malignita' (13) | **0,825** | **0,837** | cambiato | `malignancy_lopo_summary` |
-| duttali adiacenti predette maligne | **31,7%** | **30,8%** | cambiato | `external_test_summary` |
-| AUC pooled score CNV medio | **0,492** | **0,531** | cambiato | `cnv_loci_auc` |
-| AUC pooled loci PDAC | **0,682** | **0,698** | cambiato | `cnv_loci_auc` |
-| AUC loci PDAC entro paziente (media dei 4 pazienti valutabili) | **0,53** | **0,557** | cambiato | `cnv_loci_auc_by_patient` |
-| sim (b): errore PBMC stimato da LOCO con artefatto (moderato / forte) | **0,24** | **0,126 / 0,385** | cambiato | `sim_b_reference_schemes` |
+| H1: ρ, p_Holm (famiglia di 4) | **ρ -0,47, p_Holm 0,53** | **ρ -0,45, p_Holm 0,58** | cambiato | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
+| H2: ρ, p_Holm (famiglia di 4) | **ρ -0,54, p_Holm 0,45** | **ρ -0,50, p_Holm 0,58** | cambiato | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
+| H3: ρ, p_Holm (famiglia di 4) | **ρ -0,15, p_Holm 1,00** | **ρ -0,13, p_Holm 1,00** | cambiato | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
+| H4: ρ, p_Holm (famiglia di 4) | **ρ -0,14, p_Holm 1,00** | **ρ -0,13, p_Holm 1,00** | cambiato | `pseudobulk_hypothesis_tests, ni_score_test, ni_score_holm_joint` |
+| AUC LOPO malignita' (13) | **0,825** | **0,836** | cambiato | `malignancy_lopo_summary` |
+| duttali adiacenti predette maligne | **31,7%** | **37,4%** | cambiato | `external_test_summary` |
+| AUC pooled score CNV medio | **0,492** | **0,598** | cambiato | `cnv_loci_auc` |
+| AUC pooled loci PDAC | **0,682** | **0,717** | cambiato | `cnv_loci_auc` |
+| AUC loci PDAC entro paziente (media dei 4 pazienti valutabili) | **0,53** | **0,566** | cambiato | `cnv_loci_auc_by_patient` |
+| sim (b): errore PBMC stimato da LOCO con artefatto (moderato / forte) | **0,24** | **0,119 / 0,383** | cambiato | `sim_b_reference_schemes` |
 
 Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato; il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
 
@@ -182,56 +182,57 @@ Jaccard medio fra i top-50 dei 5 fold LOPO 0,300 (0,220-0,408 fra coppie, `xai_j
 ## Validazione clonale con il TCR
 
 - Rumore di base (stesso clone, stesso compartimento): 0,107; discordanza fra compartimenti 0,166; eccesso +0,059 IC [+0,031; +0,110] (11 pazienti, 1.114 coppie; `excess_summary_clone_b`).
-- Sensibilita' (B3): pesi uguali +0,074 IC [+0,050; +0,119]; clone TRA+TRB +0,065 IC [+0,035; +0,121] (`excess_summary_clone_ab`); split-half di 06 +0,057 IC [+0,017; +0,127] (14 pazienti: 11 nel termine fra compartimenti, 14 nel basale; `clone_switching_summary_clone_b`).
+- Sensibilita' (B3): pesi uguali +0,074 IC [+0,050; +0,119]; clone TRA+TRB +0,065 IC [+0,035; +0,121] (`excess_summary_clone_ab`); split-half di 06 +0,063 IC [+0,023; +0,134] (14 pazienti: 11 nel termine fra compartimenti, 14 nel basale; `clone_switching_summary_clone_b`).
 
-**Tasso d'errore per compartimento e schema di riferimento** (`error_rate_schemes`)
+**Tasso d'errore per compartimento e schema di riferimento** (`error_rate_schemes`; \* IC non calibrato, <= 5 pazienti)
 
 | Schema | Compartimento | Errore | IC 95% | Cloni | Pazienti |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| blood | Adjacent_normal | 0,059 | [0,000; 0,093] | 118 | 4 |
-| blood | Tumor | 0,195 | [0,110; 0,290] | 287 | 10 |
+| blood | Adjacent_normal | 0,060 | [0,000; 0,095]* | 117 | 4 |
+| blood | Tumor | 0,170 | [0,095; 0,252] | 277 | 10 |
 | loco | PBMC | 0,036 | [0,013; 0,063] | 309 | 10 |
-| loco | Adjacent_normal | 0,061 | [0,030; 0,093] | 295 | 5 |
-| loco | Tumor | 0,147 | [0,084; 0,244] | 464 | 11 |
-| naive | PBMC | 0,043 | [0,025; 0,067] | 862 | 11 |
-| naive | Adjacent_normal | 0,076 | [0,051; 0,162] | 646 | 5 |
-| naive | Tumor | 0,092 | [0,062; 0,129] | 1.519 | 13 |
+| loco | Adjacent_normal | 0,062 | [0,031; 0,094]* | 292 | 5 |
+| loco | Tumor | 0,128 | [0,076; 0,214] | 453 | 11 |
+| naive | PBMC | 0,041 | [0,025; 0,064] | 857 | 11 |
+| naive | Adjacent_normal | 0,072 | [0,046; 0,160]* | 639 | 5 |
+| naive | Tumor | 0,084 | [0,058; 0,115] | 1.502 | 13 |
 
 **Differenze appaiate** (`error_rate_paired_diff`; B2: ricampionature distinte e frazione > 0 con <= 5 pazienti)
 
 | Schema | Variante | Contrasto | Diff. | IC 95% | Cloni | Pazienti | Ricamp. distinte | Frac > 0 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| naive | main | Tumor - Adjacent_normal | +0,035 | [+0,005; +0,138] | 259 | 5 | 122 | 1,000 |
-| naive | main | Tumor - PBMC | +0,156 | [+0,046; +0,253] | 282 | 10 |  |  |
-| loco | main | Tumor - Adjacent_normal | +0,027 | [-0,010; +0,124] | 255 | 5 | 122 | 0,945 |
-| loco | main | Tumor - PBMC | +0,146 | [+0,041; +0,238] | 274 | 10 |  |  |
-| blood | main | Tumor - Adjacent_normal | +0,080 | [+0,000; +0,192] | 88 | 4 | 35 | 0,997 |
+| naive | main | Tumor - Adjacent_normal | +0,024 | [+0,000; +0,110] | 253 | 5 | 122 | 0,989 |
+| naive | main | Tumor - PBMC | +0,129 | [+0,029; +0,212] | 272 | 10 |  |  |
+| loco | main | Tumor - Adjacent_normal | +0,016 | [-0,020; +0,095] | 249 | 5 | 122 | 0,813 |
+| loco | main | Tumor - PBMC | +0,121 | [+0,021; +0,205] | 265 | 10 |  |  |
+| blood | main | Tumor - Adjacent_normal | +0,059 | [+0,000; +0,160] | 85 | 4 | 35 | 0,933 |
 
 **Scomposizione dell'errore nel Tumor, schema solo sangue (B1)** (`error_decomposition_blood`)
 
 | Categoria | Errori | Tasso | Cloni | IC 95% |
 | :--- | :--- | :--- | :--- | :--- |
-| CD4_in_blood_labelled_CD8T | 38 | 0,132 | 287 |  |
-| labelled_NK | 18 | 0,063 | 287 |  |
-| CD8_in_blood_labelled_CD4T | 0 | 0,000 | 287 |  |
-| other | 0 | 0,000 | 287 |  |
-| transition_CD4T_to_CD8T | 38 | 0,132 | 287 |  |
-| transition_CD4T_to_NK | 6 | 0,021 | 287 |  |
-| transition_CD8T_to_NK | 12 | 0,042 | 287 |  |
-| error_rate_excluding_NK_labels | 38 | 0,141 | 269 | [0,058; 0,261] |
+| CD4_in_blood_labelled_CD8T | 32 | 0,116 | 277 |  |
+| labelled_NK | 15 | 0,054 | 277 |  |
+| CD8_in_blood_labelled_CD4T | 0 | 0,000 | 277 |  |
+| other | 0 | 0,000 | 277 |  |
+| transition_CD4T_to_CD8T | 32 | 0,116 | 277 |  |
+| transition_CD4T_to_NK | 4 | 0,014 | 277 |  |
+| transition_CD8T_to_NK | 11 | 0,040 | 277 |  |
+| ties_excluded | 0 | ⟦n.d.⟧ | 10 |  |
+| error_rate_excluding_NK_labels | 32 | 0,122 | 262 | [0,049; 0,224] |
 
 **Regola d'identita' CD4/CD8 (B6)** (`error_rate_identity_rules`)
 
 | Regola | Compartimento | Errore | IC 95% | Cloni |
 | :--- | :--- | :--- | :--- | :--- |
-| CD8A > 0 oppure CD8B > 0 (principale) | Adjacent_normal | 0,059 | [0,000; 0,093] | 118 |
-| CD8A > 0 oppure CD8B > 0 (principale) | Tumor | 0,195 | [0,110; 0,290] | 287 |
-| CD8B > 0 | Adjacent_normal | 0,051 | [0,000; 0,070] | 117 |
-| CD8B > 0 | Tumor | 0,206 | [0,114; 0,310] | 282 |
-| CD8A >= 2 UMI | Adjacent_normal | 0,052 | [0,000; 0,070] | 116 |
-| CD8A >= 2 UMI | Tumor | 0,206 | [0,113; 0,307] | 287 |
-| CD8B > 0 oppure CD8A >= 2 UMI | Adjacent_normal | 0,051 | [0,000; 0,070] | 117 |
-| CD8B > 0 oppure CD8A >= 2 UMI | Tumor | 0,203 | [0,113; 0,304] | 286 |
+| CD8A > 0 oppure CD8B > 0 (principale) | Adjacent_normal | 0,060 | [0,000; 0,095] | 117 |
+| CD8A > 0 oppure CD8B > 0 (principale) | Tumor | 0,170 | [0,095; 0,252] | 277 |
+| CD8B > 0 | Adjacent_normal | 0,052 | [0,000; 0,071] | 116 |
+| CD8B > 0 | Tumor | 0,180 | [0,099; 0,271] | 272 |
+| CD8A >= 2 UMI | Adjacent_normal | 0,052 | [0,000; 0,071] | 115 |
+| CD8A >= 2 UMI | Tumor | 0,181 | [0,098; 0,269] | 277 |
+| CD8B > 0 oppure CD8A >= 2 UMI | Adjacent_normal | 0,052 | [0,000; 0,071] | 116 |
+| CD8B > 0 oppure CD8A >= 2 UMI | Tumor | 0,178 | [0,098; 0,265] | 276 |
 
 Marcatori nelle cellule etichettate CD8T del Tumor (`marker_test_disc_vs_conc`): CD8A > 0 nel 6,6% dei discordanti contro 88,4% dei concordanti; rapporto delle medie di log1p(CP10k) di CD4 16,3; GNLY 1,78 contro 0,44.
 
@@ -266,9 +267,9 @@ Fonte: `doublet_mixture` (B5: medie e strati per compartimento). d1 e d2 non son
 
 | Esito | Livello | n | ρ | p | media nulla | p centrato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| error | patient_means | 10 | 0,467 | 0,176 |  |  |
-| error | clone_block_permutation | 287 | 0,177 | 9,0e-04 | 0,0118 | 0,0015 |
-| error | clone_naive_permutation | 287 | 0,177 | 0,0030 |  |  |
+| error | patient_means | 10 | 0,467 | 0,175 |  |  |
+| error | clone_block_permutation | 277 | 0,220 | 4,0e-04 | 0,0209 | 5,5e-04 |
+| error | clone_naive_permutation | 277 | 0,220 | 4,5e-04 |  |  |
 | excess | patient_means | 10 | 0,321 | 0,368 |  |  |
 | excess | clone_block_permutation | 287 | 0,281 | 5,0e-05 | 0,0265 | 5,0e-05 |
 | excess | clone_naive_permutation | 287 | 0,281 | 5,0e-05 |  |  |
@@ -279,40 +280,40 @@ Fonte: `clonal_expansion_tests`.
 
 | Esito | Seme | Permutazioni | p | media nulla | p centrato |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| error | 0 | 20.000 | 9,0e-04 | 0,0118 | 0,0015 |
-| error | 1 | 20.000 | 0,0013 | 0,0110 | 0,0022 |
-| error | 2 | 20.000 | 0,0014 | 0,0116 | 0,0020 |
-| error | 3 | 20.000 | 0,0018 | 0,0117 | 0,0028 |
-| error | 4 | 20.000 | 0,0014 | 0,0119 | 0,0026 |
-| error | 0 | 100.000 | 0,0017 | 0,0115 | 0,0026 |
+| error | 0 | 20.000 | 4,0e-04 | 0,0209 | 5,5e-04 |
+| error | 1 | 20.000 | 1,5e-04 | 0,0200 | 2,5e-04 |
+| error | 2 | 20.000 | 2,5e-04 | 0,0207 | 4,0e-04 |
+| error | 3 | 20.000 | 3,0e-04 | 0,0202 | 4,0e-04 |
+| error | 4 | 20.000 | 1,5e-04 | 0,0207 | 3,0e-04 |
+| error | 0 | 100.000 | 1,8e-04 | 0,0204 | 3,1e-04 |
 
-- Leave-one-patient-out, errore: p < 0,05 in 10/10 casi, ρ fra 0,146 e 0,197; p centrato < 0,05 in 10/10 (massimo 0,016) (`loyo_clonal_expansion_error`).
+- Leave-one-patient-out, errore: p < 0,05 in 10/10 casi, ρ fra 0,195 e 0,252; p centrato < 0,05 in 10/10 (massimo 0,0024) (`loyo_clonal_expansion_error`).
 - Leave-one-patient-out, eccesso: p < 0,05 in 10/10 casi, ρ fra 0,236 e 0,368; p centrato < 0,05 in 10/10 (massimo 9,0e-04) (`loyo_clonal_expansion_excess`).
-- Leave-one-patient-out, errore, 20.000 permutazioni (5 semi): p fra 9,0e-04 e 0,012, p centrato fino a 0,017 (`loyo_clonal_expansion_perm_sensitivity`).
-- Leave-one-patient-out, errore, 100.000 permutazioni (1 seme): p fra 0,0011 e 0,011, p centrato fino a 0,016 (`loyo_clonal_expansion_perm_sensitivity`).
+- Leave-one-patient-out, errore, 20.000 permutazioni (5 semi): p fra 5,0e-05 e 0,0015, p centrato fino a 0,0024 (`loyo_clonal_expansion_perm_sensitivity`).
+- Leave-one-patient-out, errore, 100.000 permutazioni (1 seme): p fra 1,1e-04 e 0,0013, p centrato fino a 0,0021 (`loyo_clonal_expansion_perm_sensitivity`).
 
 ### Quattro ipotesi per paziente (16, 19)
 
 | Ipotesi | Covariata | ρ | p | p_Holm (4 test) |
 | :--- | :--- | :--- | :--- | :--- |
-| H1 | exhaustion_score | -0,467 | 0,176 | 0,528 |
-| H2 | myeloid_fraction | -0,539 | 0,113 | 0,453 |
-| H3 | caf_fraction | -0,152 | 0,673 | 1,000 |
-| H4 | H4_ni_score | -0,139 | 0,705 | 1,000 |
+| H1 | exhaustion_score | -0,455 | 0,190 | 0,580 |
+| H2 | myeloid_fraction | -0,503 | 0,145 | 0,580 |
+| H3 | caf_fraction | -0,127 | 0,724 | 1,000 |
+| H4 | H4_ni_score | -0,127 | 0,735 | 1,000 |
 
 Fonti: `pseudobulk_hypothesis_tests`, `ni_score_test`, `ni_score_holm_joint`. n = 10 pazienti: potenza bassa.
 
 ## CNV e malignita' (13, 14)
 
-AUC LOPO del Random Forest sull'etichetta CNV: 0,837 ± 0,071 (12 pazienti; `malignancy_lopo_summary`); duttali adiacenti predette maligne 30,8% di 334 (`external_test_summary`, non e' una validazione esterna). AUC tumore vs adiacente pooled: score CNV medio 0,531, loci PDAC 0,698 (`cnv_loci_auc`).
+AUC LOPO del Random Forest sull'etichetta CNV: 0,836 ± 0,062 (12 pazienti; `malignancy_lopo_summary`); duttali adiacenti predette maligne 37,4% di 334 (`external_test_summary`, non e' una validazione esterna). AUC tumore vs adiacente pooled: score CNV medio 0,598, loci PDAC 0,717 (`cnv_loci_auc`).
 
 | Paziente | Duttali Tumor | Duttali Adjacent | AUC loci PDAC | AUC score medio |
 | :--- | :--- | :--- | :--- | :--- |
-| PA06 | 2.354 | 26 | 0,583 | 0,478 |
-| PA08 | 809 | 210 | 0,588 | 0,458 |
-| PA09 | 981 | 14 | 0,528 | 0,766 |
-| PA10 | 726 | 83 | 0,529 | 0,585 |
-| _mean | 4.870 | 333 | 0,557 | 0,572 |
+| PA06 | 2.354 | 26 | 0,608 | 0,531 |
+| PA08 | 809 | 210 | 0,576 | 0,494 |
+| PA09 | 981 | 14 | 0,526 | 0,798 |
+| PA10 | 726 | 83 | 0,556 | 0,640 |
+| _mean | 4.870 | 333 | 0,566 | 0,616 |
 
 Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
@@ -336,6 +337,10 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 | coverage_binary | percentile | 0,762 | 0,838 | 0,887 | 0,922 |
 | coverage_continuous | expanded_percentile | 0,820 | 0,915 | 0,938 | 0,935 |
 | coverage_continuous | percentile | 0,743 | 0,835 | 0,887 | 0,895 |
+| coverage_pairs_real_sizes_binary | expanded_percentile | ⟦n.d.⟧ | ⟦n.d.⟧ | ⟦n.d.⟧ | 0,927 |
+| coverage_pairs_real_sizes_binary | percentile | ⟦n.d.⟧ | ⟦n.d.⟧ | ⟦n.d.⟧ | 0,882 |
+| coverage_pairs_real_sizes_continuous | expanded_percentile | ⟦n.d.⟧ | ⟦n.d.⟧ | ⟦n.d.⟧ | 0,938 |
+| coverage_pairs_real_sizes_continuous | percentile | ⟦n.d.⟧ | ⟦n.d.⟧ | ⟦n.d.⟧ | 0,890 |
 | effect_mean006 | expanded_percentile | 0,570 | 0,550 | 0,810 | 0,855 |
 | effect_mean006 | percentile | 0,715 | 0,723 | 0,892 | 0,915 |
 
@@ -343,30 +348,30 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 
 | Condizione | Schema | Compartimento | Errore stimato | Errore vero | Distorsione |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| H0 | blood | Adjacent_normal | 0,102 | 0,098 | +0,004 |
-| H0 | blood | Tumor | 0,098 | 0,093 | +0,005 |
-| H0 | loco | Adjacent_normal | 0,094 | 0,094 | +0,000 |
-| H0 | loco | PBMC | 0,095 | 0,091 | +0,003 |
-| H0 | loco | Tumor | 0,097 | 0,093 | +0,004 |
-| H0 | naive | Adjacent_normal | 0,096 | 0,096 | +0,000 |
-| H0 | naive | PBMC | 0,091 | 0,091 | +0,0002 |
-| H0 | naive | Tumor | 0,092 | 0,092 | +0,0002 |
-| artifact_moderate | blood | Adjacent_normal | 0,098 | 0,093 | +0,005 |
-| artifact_moderate | blood | Tumor | 0,102 | 0,096 | +0,006 |
-| artifact_moderate | loco | Adjacent_normal | 0,091 | 0,091 | +0,000 |
-| artifact_moderate | loco | PBMC | 0,126 | 0,093 | +0,033 |
-| artifact_moderate | loco | Tumor | 0,101 | 0,096 | +0,005 |
-| artifact_moderate | naive | Adjacent_normal | 0,090 | 0,090 | +0,000 |
-| artifact_moderate | naive | PBMC | 0,092 | 0,092 | +0,000 |
-| artifact_moderate | naive | Tumor | 0,095 | 0,095 | +0,000 |
-| artifact_strong | blood | Adjacent_normal | 0,095 | 0,087 | +0,007 |
-| artifact_strong | blood | Tumor | 0,095 | 0,090 | +0,006 |
-| artifact_strong | loco | Adjacent_normal | 0,091 | 0,090 | +0,001 |
-| artifact_strong | loco | PBMC | 0,385 | 0,092 | +0,293 |
-| artifact_strong | loco | Tumor | 0,094 | 0,089 | +0,005 |
-| artifact_strong | naive | Adjacent_normal | 0,089 | 0,089 | +0,000 |
-| artifact_strong | naive | PBMC | 0,094 | 0,093 | +0,0003 |
-| artifact_strong | naive | Tumor | 0,091 | 0,091 | +0,0000 |
+| H0 | blood | Adjacent_normal | 0,092 | 0,101 | -0,008 |
+| H0 | blood | Tumor | 0,089 | 0,095 | -0,006 |
+| H0 | loco | Adjacent_normal | 0,084 | 0,096 | -0,012 |
+| H0 | loco | PBMC | 0,087 | 0,094 | -0,007 |
+| H0 | loco | Tumor | 0,088 | 0,095 | -0,007 |
+| H0 | naive | Adjacent_normal | 0,087 | 0,098 | -0,012 |
+| H0 | naive | PBMC | 0,084 | 0,094 | -0,010 |
+| H0 | naive | Tumor | 0,084 | 0,095 | -0,011 |
+| artifact_moderate | blood | Adjacent_normal | 0,090 | 0,098 | -0,008 |
+| artifact_moderate | blood | Tumor | 0,093 | 0,099 | -0,006 |
+| artifact_moderate | loco | Adjacent_normal | 0,084 | 0,097 | -0,013 |
+| artifact_moderate | loco | PBMC | 0,119 | 0,096 | +0,023 |
+| artifact_moderate | loco | Tumor | 0,093 | 0,100 | -0,006 |
+| artifact_moderate | naive | Adjacent_normal | 0,083 | 0,096 | -0,013 |
+| artifact_moderate | naive | PBMC | 0,084 | 0,095 | -0,011 |
+| artifact_moderate | naive | Tumor | 0,087 | 0,099 | -0,012 |
+| artifact_strong | blood | Adjacent_normal | 0,085 | 0,092 | -0,007 |
+| artifact_strong | blood | Tumor | 0,086 | 0,093 | -0,006 |
+| artifact_strong | loco | Adjacent_normal | 0,084 | 0,093 | -0,009 |
+| artifact_strong | loco | PBMC | 0,383 | 0,095 | +0,288 |
+| artifact_strong | loco | Tumor | 0,085 | 0,092 | -0,007 |
+| artifact_strong | naive | Adjacent_normal | 0,080 | 0,094 | -0,013 |
+| artifact_strong | naive | PBMC | 0,086 | 0,097 | -0,011 |
+| artifact_strong | naive | Tumor | 0,084 | 0,094 | -0,011 |
 
 **(c) Block permutation sotto H0 con confondente di paziente** (`sim_c_block_permutation`)
 
@@ -377,12 +382,12 @@ Fonte: `cnv_loci_auc_by_patient` (AUC entro paziente).
 | 1,0 | 1.000 | 4,8% [3,6; 6,3] | 4,1% [3,0; 5,5] | 83,1% | 11 |
 | 2,0 | 1.000 | 5,1% [3,8; 6,7] | 4,5% [3,3; 6,0] | 99,4% | 5 |
 
-**(d) Stabilita' XAI**: differenza controllo − LOPO +0,143 con effetto paziente (+0,116; +0,181) e +0,030 senza (`sim_d_xai_stability`).
+**(d) Stabilita' XAI**: differenza controllo − LOPO +0,143 con effetto paziente (da +0,116 a +0,181 sulle 5 repliche) e +0,030 senza (`sim_d_xai_stability`).
 
 
 ## Esecuzione finale (Fase 3)
 
-Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni dei giri di chiusura 1, 2 e del giro 6 sono stati rieseguiti 04, 06-10, 13-21 e le simulazioni (colonna "Ultima esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
+Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picchi di memoria in `revisione/log/_status.txt` (misurati con `/usr/bin/time -v`; durate e memoria vengono dai log, non da `results/tables/`). Prima esecuzione completa al commit `61fb36b`: dopo 00-04 tre rami, TCR (06-10, 21, 15-19) e 20 + simulazioni in parallelo, poi CNV (13, 14) da solo per la memoria. Dopo le correzioni dei giri 4-7 sono stati rieseguiti 04, 05 (giro 7: solo la legenda delle figure; tabelle identiche byte per byte), 06-10, 13-21 e le simulazioni (colonna "Ultima esecuzione"); il log di ogni script corrisponde all'ultima esecuzione.
 
 | Script | Esito | Picco di memoria | Durata | Ultima esecuzione |
 | :--- | :--- | :--- | :--- | :--- |
@@ -395,33 +400,36 @@ Comandi del README nell'ordine; log in `revisione/log/NN_nome.log`, stato e picc
 | 03_eda_qc_sc | rc = 0 | 0,4 GB | 0:07,01 | Fase 3 (61fb36b) |
 | 03_eda_qc_sn | rc = 0 | 0,3 GB | 0:03,75 | Fase 3 (61fb36b) |
 | 04_splits | rc = 0 | 0,4 GB | 0:04,74 | giro 6 |
-| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:49,44 | giro 6 |
-| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:37,27 | giro 6 |
-| 20_xai_per_patient | rc = 0 | 6,0 GB | 1:41,53 | giro 6 |
-| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:38,45 | giro 6 |
-| 08_disambiguate | rc = 0 | 3,5 GB | 0:36,63 | giro 6 |
-| 09_arbitrate | rc = 0 | 3,4 GB | 0:33,25 | giro 6 |
-| sim_a_calibration | rc = 0 | 0,2 GB | 3:09,37 | giro 6 |
-| sim_b_reference_schemes | rc = 0 | 0,3 GB | 1:28,81 | giro 6 |
-| 10_loco | rc = 0 | 3,4 GB | 3:53,51 | giro 6 |
-| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:02,14 | giro 6 |
-| 15_inventory | rc = 0 | 0,3 GB | 0:01,75 | giro 6 |
-| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:14,05 | giro 6 |
-| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:08,96 | giro 6 |
-| 18_loyo_check | rc = 0 | 1,2 GB | 0:19,18 | giro 6 |
-| 19_ni_score | rc = 0 | 0,2 GB | 0:02,54 | giro 6 |
-| sim_c_block_permutation | rc = 0 | 0,2 GB | 2:24,61 | giro 6 |
-| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:11,10 | giro 6 |
-| 13_infercnv | rc = 0 | 10,8 GB | 1:35,06 | giro 6 |
-| 14_cnv_loci | rc = 0 | 12,1 GB | 1:01,38 | giro 6 |
+| 06_clonotype_consistency | rc = 0 | 0,5 GB | 0:45,53 | giro 7 |
+| 07_robustness_clone_ab | rc = 0 | 3,3 GB | 0:44,03 | giro 7 |
+| 20_xai_per_patient | rc = 0 | 6,0 GB | 2:26,09 | giro 7 |
+| 07_robustness_clone_b | rc = 0 | 3,3 GB | 0:50,16 | giro 7 |
+| 08_disambiguate | rc = 0 | 3,5 GB | 0:46,07 | giro 7 |
+| 09_arbitrate | rc = 0 | 3,4 GB | 1:03,74 | giro 7 |
+| sim_a_calibration | rc = 0 | 0,2 GB | 4:33,42 | giro 7 |
+| sim_b_reference_schemes | rc = 0 | 0,3 GB | 2:36,21 | giro 7 |
+| 10_loco | rc = 0 | 3,4 GB | 7:57,35 | giro 7 |
+| 21_fig_blood_scheme | rc = 0 | 0,3 GB | 0:03,87 | giro 7 |
+| 15_inventory | rc = 0 | 0,3 GB | 0:03,10 | giro 7 |
+| 16_pseudobulk_patient | rc = 0 | 3,6 GB | 0:21,68 | giro 7 |
+| 17_clonal_expansion | rc = 0 | 1,2 GB | 0:13,23 | giro 7 |
+| 18_loyo_check | rc = 0 | 1,1 GB | 0:24,28 | giro 7 |
+| 19_ni_score | rc = 0 | 0,2 GB | 0:03,43 | giro 7 |
+| sim_c_block_permutation | rc = 0 | 0,2 GB | 3:06,04 | giro 7 |
+| sim_d_xai_stability | rc = 0 | 0,3 GB | 0:16,57 | giro 7 |
+| 13_infercnv | rc = 0 | 10,8 GB | 1:39,14 | giro 7 |
+| 14_cnv_loci | rc = 0 | 12,6 GB | 1:08,03 | giro 7 |
+| 05_baseline | rc = 0 | 9,7 GB | 17:09,67 | giro 7 |
 
 **Non rieseguiti** (calcolo invariato dall'esecuzione precedente, verificato con `git diff`):
-- `05_baseline.py` (eseguito al commit `52ace44`, picco 9,7 GB), `12_feature_selection.py` (`52ace44`, 6,1 GB) e `11_model_zoo.py` (`8058701`, processi paralleli in `revisione/log/11_final/`, 5,2-5,8 GB): dopo quei commit cambiano solo controlli sugli argomenti e sugli input (fold con una sola classe, `cell_id` assenti, `nargs`), messaggi, docstring e `help`; per 11 riepilogo, confronti e figure sono stati rigenerati con `--from-table` (stesso codice).
+- `12_feature_selection.py` (`52ace44`, 6,1 GB) e `11_model_zoo.py` (`8058701`, processi paralleli in `revisione/log/11_final/`, 5,2-5,8 GB): dopo quei commit cambiano solo controlli sugli argomenti e sugli input (fold con una sola classe, `cell_id` assenti, `nargs`), messaggi, docstring e `help`; per 11 riepilogo, confronti e figure sono stati rigenerati con `--from-table` (stesso codice).
 - Le funzioni di `scpipe.py` usate da 05, 11 e 12 (`LogCPM`, `HVGSelector`, `macro_f1`, `nadeau_bengio_ttest`, `jaccard`, `mean_pairwise_jaccard`) sono identiche a quelle del commit `52ace44` (confronto dell'AST senza docstring); `04_splits.py` e' cambiato solo nei controlli e ricrea `splits_sc.csv` identico byte per byte.
 
 **Scorciatoie usate:** download gia' presenti non ripetuti (00, `download_tcr.sh`, 01, 02); cache di Scrublet (`doublet_scores.csv`, 08), ora riusata solo se contiene esattamente le cellule dell'h5ad (199.184, controllo passato); la cache e' del 10/07 e non e' stata ricalcolata per intero: il revisore della chiusura 1 ha ricalcolato Scrublet con il codice attuale su due librerie (PDAC10-PBMC e PDAC14-Tumor) e ha trovato una differenza massima di circa 1e-16 (`revisione/log/chiusura1_revisore_b.md`, punto 8). Nessun numero del README dipende da questa cache. inferCNV ricalcolato senza cache nel giro di chiusura 1, dopo l'esclusione del cromosoma mitocondriale e dei contig non standard.
 
 **Riproducibilita':** `02_build_h5ad.py` ricrea `sc_raw.h5ad` identico byte per byte e `04_splits.py` ricrea `splits_sc.csv` identico. Nella chiusura 1 sono cambiati i risultati di 13 e 14 (cromosomi), le colonne aggiunte a `clone_switching_summary_clone_b` e `error_rate_by_compartment` e le figure di 11 (etichetta dell'asse); nella chiusura 2 solo le figure `excess_by_pair_{cc}` e `error_rate_by_compartment`, nel giro 6 solo `error_rate_blood` ed `error_rate_loco` (IC non calibrati segnati); nel giro 6 inferCNV e' stato ricalcolato senza cache (impronta con versione e parametri) con risultati identici byte per byte.
+
+Nel giro 7 sono cambiati i risultati del ramo TCR (pareggi dell'etichetta di maggioranza esclusi) e del ramo CNV (soglia del rumore globale, coordinate reali delle finestre), e lo scenario `coverage_pairs_real_sizes` di `sim_a`; vedi la tabella prima/dopo.
 
 
 ## Limiti noti
@@ -430,9 +438,11 @@ Problemi del codice che riguardano dati simulati, test sintetici o input anomali
 
 | Dove | Problema | Verifica sul dataset reale |
 | :--- | :--- | :--- |
-| `src/scpipe.py:72` (`LogCPM`), `:97` (`HVGSelector`) | richiedono una matrice sparsa CSR: con un `ndarray` denso vanno in errore | tutti gli script convertono prima in CSR (`src/05_baseline.py:309`, `src/11_model_zoo.py:477`, `src/12_feature_selection.py:289`, `src/20_xai_per_patient.py:228`, `src/13_infercnv.py:324`); i test di leakage passano matrici CSR |
-| `src/sim/sim_a_calibration.py:85`, `tests/test_stats.py:60` (`SIZES`) | con k = 11 l'undicesima numerosita' (40) e' aggiunta a mano; le coppie reali dell'eccesso (13-282 per paziente) sono piu' sbilanciate | riguarda solo la simulazione di calibrazione; un revisore ha ripetuto la copertura con le numerosita' reali delle 1.114 coppie (0,928-0,943, dentro la banda): `revisione/log/chiusura3_revisore_c.md`, punto 3 |
+| `src/scpipe.py:72` (`LogCPM`), `:97` (`HVGSelector`) | richiedono una matrice sparsa CSR: con un `ndarray` denso vanno in errore | tutti gli script convertono prima in CSR (`src/05_baseline.py:309`, `src/11_model_zoo.py:477`, `src/12_feature_selection.py:289`, `src/20_xai_per_patient.py:228`, `src/13_infercnv.py` prima del Random Forest e sulle duttali adiacenti); i test di leakage passano matrici CSR |
+| `src/sim/sim_a_calibration.py:85`, `tests/test_stats.py:60` (`SIZES`) | con k = 11 l'undicesima numerosita' (40) e' aggiunta a mano; le coppie reali dell'eccesso (13-282 per paziente) sono piu' sbilanciate | riguarda solo la simulazione di calibrazione; lo scenario `coverage_pairs_real_sizes` di `sim_a_cluster_bootstrap.csv` usa le numerosita' reali delle 11 coppie dell'eccesso (copertura dell'IC espanso 93,8% con esito continuo e 92,8% con esito binario, dentro la banda) |
 | `tests/test_stats.py:240`, `:247` | il test di Nadeau-Bengio usa gli stessi semi di `sim_a` (55.000 + k, 51.005): e' un sottoinsieme della stessa simulazione, non una seconda verifica | dichiarato nel docstring del test (righe 37-38); nessun numero del dataset reale dipende dal test |
 | `src/11_model_zoo.py:390` (e figure `model_zoo_{task}`), `src/12_feature_selection.py`, `src/20_xai_per_patient.py` | i file di confronto e le figure dipendono solo dal task: un'esecuzione con un altro `--tag` o schema li sovrascrive | i comandi del README eseguono ogni task una sola volta, con uno schema solo; `model_comparison_{task2_v1,task2_hier3,task1a_paired}` coincidono con le tabelle per fold (verificato dai revisori dei giri di chiusura) |
 | argparse degli script TCR e CNV | `--help` mostra "(default: None)" per gli argomenti obbligatori | solo testo d'aiuto; i comandi del README passano tutti gli argomenti obbligatori |
+| `src/07_robustness.py:119`, `src/08_disambiguate.py:118`, `src/09_arbitrate.py:110`, `src/10_loco.py:151` (`TISSUE_MAP[tis]`) | un file VDJ con un tessuto diverso da Tumor, Normal o PBMC manda lo script in `KeyError` (06 invece lo salta con un avviso) | i 30 file di `vdj_inventory.csv` hanno solo i tessuti Tumor, Normal e PBMC; tutti gli script terminano con rc = 0 (`revisione/log/_status.txt`) |
+| `src/20_xai_per_patient.py:147` (`np.argsort(-coef)[:TOP_K]`) | con meno di 50 coefficienti non nulli i geni mancanti dei top-50 sarebbero scelti fra pareggi a zero in ordine arbitrario | sul dataset reale i fold LOPO hanno da 3.887 a 4.380 coefficienti non nulli (`revisione/log/20_xai_per_patient.log`) |
 

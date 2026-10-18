@@ -1,0 +1,6 @@
+category,n_units_tumor,n_error,n_correct,n_tie,fraction,n_cells
+MAIT_like,12.0,0.0,12.0,0.0,,
+iNKT,0.0,0.0,0.0,0.0,,
+altri,275.0,47.0,218.0,10.0,,
+MAIT_like_fraction_of_NK_TCR+_cells,,,,,0.030598052851182198,1438.0
+iNKT_fraction_of_NK_TCR+_cells,,,,,0.0006954102920723226,1438.0

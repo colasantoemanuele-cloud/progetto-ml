@@ -1,0 +1,143 @@
+[..] carico h5ad in memoria (serve X) ...
+[ok] (199184, 30543), 358,929,111 nnz
+
+==========================================================================
+task2_hier1: 71,377 cellule x 30,543 geni | 3 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.333 ± 0.007   [20s]
+  fold_group_5   logreg_l2  macro-F1 = 0.999 ± 0.001   [25s]
+  fold_random_5  dummy      macro-F1 = 0.335 ± 0.004   [21s]
+  fold_random_5  logreg_l2  macro-F1 = 0.999 ± 0.000   [24s]
+
+==========================================================================
+task2_hier3: 42,168 cellule x 30,543 geni | 3 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.330 ± 0.006   [11s]
+  fold_group_5   logreg_l2  macro-F1 = 0.866 ± 0.030   [26s]
+  fold_random_5  dummy      macro-F1 = 0.337 ± 0.005   [11s]
+  fold_random_5  logreg_l2  macro-F1 = 0.885 ± 0.002   [26s]
+
+==========================================================================
+task2_v1: 70,547 cellule x 30,543 geni | 9 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.107 ± 0.002   [20s]
+  fold_group_5   logreg_l2  macro-F1 = 0.954 ± 0.009   [134s]
+  fold_random_5  dummy      macro-F1 = 0.111 ± 0.002   [20s]
+  fold_random_5  logreg_l2  macro-F1 = 0.964 ± 0.001   [134s]
+
+==========================================================================
+task2_v2: 70,547 cellule x 30,543 geni | 8 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.119 ± 0.003   [22s]
+  fold_group_5   logreg_l2  macro-F1 = 0.951 ± 0.011   [131s]
+  fold_random_5  dummy      macro-F1 = 0.125 ± 0.001   [27s]
+  fold_random_5  logreg_l2  macro-F1 = 0.961 ± 0.001   [136s]
+
+==========================================================================
+task1a_paired: 67,662 cellule x 30,543 geni | 2 classi | primaria: fold_lopo
+==========================================================================
+  fold_lopo      dummy      macro-F1 = 0.496 ± 0.002   [16s]
+  fold_lopo      logreg_l2  macro-F1 = 0.729 ± 0.100   [25s]
+  fold_random_5  dummy      macro-F1 = 0.505 ± 0.001   [16s]
+  fold_random_5  logreg_l2  macro-F1 = 0.875 ± 0.002   [27s]
+
+==========================================================================
+task1a_all: 109,618 cellule x 30,543 geni | 2 classi | primaria: fold_group_5
+==========================================================================
+  fold_group_5   dummy      macro-F1 = 0.490 ± 0.007   [28s]
+  fold_group_5   logreg_l2  macro-F1 = 0.682 ± 0.148   [44s]
+  fold_random_5  dummy      macro-F1 = 0.495 ± 0.001   [28s]
+  fold_random_5  logreg_l2  macro-F1 = 0.878 ± 0.002   [44s]
+
+[ok] scritto results/tables/baseline_sc.csv
+
+                                                          mean    std
+task          scheme        model     metric                         
+task1a_all    fold_group_5  dummy     balanced_accuracy  0.496  0.002
+                                      macro_f1           0.490  0.007
+                                      mcc               -0.009  0.004
+                            logreg_l2 balanced_accuracy  0.697  0.130
+                                      macro_f1           0.682  0.148
+                                      mcc                0.410  0.278
+              fold_random_5 dummy     balanced_accuracy  0.495  0.001
+                                      macro_f1           0.495  0.001
+                                      mcc               -0.010  0.001
+                            logreg_l2 balanced_accuracy  0.890  0.002
+                                      macro_f1           0.878  0.002
+                                      mcc                0.760  0.004
+task1a_paired fold_lopo     dummy     balanced_accuracy  0.498  0.001
+                                      macro_f1           0.496  0.002
+                                      mcc               -0.004  0.003
+                            logreg_l2 balanced_accuracy  0.738  0.100
+                                      macro_f1           0.729  0.100
+                                      mcc                0.478  0.197
+              fold_random_5 dummy     balanced_accuracy  0.505  0.001
+                                      macro_f1           0.505  0.001
+                                      mcc                0.009  0.002
+                            logreg_l2 balanced_accuracy  0.875  0.002
+                                      macro_f1           0.875  0.002
+                                      mcc                0.749  0.004
+task2_hier1   fold_group_5  dummy     balanced_accuracy  0.335  0.006
+                                      macro_f1           0.333  0.007
+                                      mcc                0.003  0.008
+                            logreg_l2 balanced_accuracy  0.999  0.001
+                                      macro_f1           0.999  0.001
+                                      mcc                0.999  0.001
+              fold_random_5 dummy     balanced_accuracy  0.335  0.004
+                                      macro_f1           0.335  0.004
+                                      mcc                0.004  0.007
+                            logreg_l2 balanced_accuracy  0.999  0.000
+                                      macro_f1           0.999  0.000
+                                      mcc                0.999  0.000
+task2_hier3   fold_group_5  dummy     balanced_accuracy  0.334  0.006
+                                      macro_f1           0.330  0.006
+                                      mcc                0.001  0.010
+                            logreg_l2 balanced_accuracy  0.885  0.020
+                                      macro_f1           0.866  0.030
+                                      mcc                0.821  0.045
+              fold_random_5 dummy     balanced_accuracy  0.337  0.005
+                                      macro_f1           0.337  0.005
+                                      mcc                0.006  0.011
+                            logreg_l2 balanced_accuracy  0.894  0.003
+                                      macro_f1           0.885  0.002
+                                      mcc                0.845  0.003
+task2_v1      fold_group_5  dummy     balanced_accuracy  0.111  0.002
+                                      macro_f1           0.107  0.002
+                                      mcc               -0.003  0.003
+                            logreg_l2 balanced_accuracy  0.962  0.005
+                                      macro_f1           0.954  0.009
+                                      mcc                0.928  0.009
+              fold_random_5 dummy     balanced_accuracy  0.111  0.002
+                                      macro_f1           0.111  0.002
+                                      mcc               -0.002  0.002
+                            logreg_l2 balanced_accuracy  0.967  0.001
+                                      macro_f1           0.964  0.001
+                                      mcc                0.941  0.002
+task2_v2      fold_group_5  dummy     balanced_accuracy  0.124  0.003
+                                      macro_f1           0.119  0.003
+                                      mcc               -0.003  0.005
+                            logreg_l2 balanced_accuracy  0.959  0.007
+                                      macro_f1           0.951  0.011
+                                      mcc                0.928  0.012
+              fold_random_5 dummy     balanced_accuracy  0.125  0.001
+                                      macro_f1           0.125  0.001
+                                      mcc               -0.000  0.003
+                            logreg_l2 balanced_accuracy  0.964  0.001
+                                      macro_f1           0.961  0.001
+                                      mcc                0.940  0.001
+
+>>> RIEPILOGO DIVARIO DI GENERALIZZAZIONE:
+scheme         fold_group_5  fold_lopo  fold_random_5  gap_random_minus_honest
+task                                                                          
+task1a_all            0.682        NaN          0.878                    0.196
+task1a_paired           NaN      0.729          0.875                    0.146
+task2_hier1           0.999        NaN          0.999                    0.000
+task2_hier3           0.866        NaN          0.885                    0.019
+task2_v1              0.954        NaN          0.964                    0.009
+task2_v2              0.951        NaN          0.961                    0.010
+[ok] figura: results/figures/gap_sc_task1a_all.png
+[ok] figura: results/figures/gap_sc_task1a_paired.png
+[ok] figura: results/figures/gap_sc_task2_hier1.png
+[ok] figura: results/figures/gap_sc_task2_hier3.png
+[ok] figura: results/figures/gap_sc_task2_v1.png
+[ok] figura: results/figures/gap_sc_task2_v2.png

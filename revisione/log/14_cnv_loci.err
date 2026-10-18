@@ -1,22 +1,22 @@
-  0%|          | 0/21 [00:00<?, ?it/s]  5%|▍         | 1/21 [00:15<05:07, 15.39s/it] 10%|▉         | 2/21 [00:15<02:05,  6.61s/it] 14%|█▍        | 3/21 [00:15<01:05,  3.64s/it] 19%|█▉        | 4/21 [00:17<00:50,  2.98s/it] 33%|███▎      | 7/21 [00:20<00:22,  1.61s/it] 38%|███▊      | 8/21 [00:21<00:19,  1.50s/it] 43%|████▎     | 9/21 [00:21<00:14,  1.22s/it] 48%|████▊     | 10/21 [00:22<00:11,  1.04s/it] 52%|█████▏    | 11/21 [00:22<00:08,  1.18it/s] 57%|█████▋    | 12/21 [00:23<00:07,  1.15it/s] 62%|██████▏   | 13/21 [00:27<00:14,  1.82s/it] 71%|███████▏  | 15/21 [00:29<00:08,  1.39s/it] 81%|████████  | 17/21 [00:30<00:03,  1.06it/s] 95%|█████████▌| 20/21 [00:30<00:00,  1.54it/s]100%|██████████| 21/21 [00:30<00:00,  1.47s/it]
+  0%|          | 0/21 [00:00<?, ?it/s]  5%|▍         | 1/21 [00:15<05:07, 15.39s/it] 10%|▉         | 2/21 [00:16<02:12,  6.98s/it] 14%|█▍        | 3/21 [00:17<01:12,  4.04s/it] 19%|█▉        | 4/21 [00:17<00:45,  2.70s/it] 24%|██▍       | 5/21 [00:19<00:39,  2.45s/it] 29%|██▊       | 6/21 [00:20<00:27,  1.86s/it] 33%|███▎      | 7/21 [00:21<00:21,  1.52s/it] 38%|███▊      | 8/21 [00:23<00:20,  1.61s/it] 48%|████▊     | 10/21 [00:23<00:10,  1.02it/s] 52%|█████▏    | 11/21 [00:24<00:08,  1.19it/s] 57%|█████▋    | 12/21 [00:24<00:07,  1.17it/s] 62%|██████▏   | 13/21 [00:30<00:16,  2.10s/it] 76%|███████▌  | 16/21 [00:31<00:06,  1.20s/it] 81%|████████  | 17/21 [00:32<00:04,  1.05s/it] 86%|████████▌ | 18/21 [00:32<00:02,  1.11it/s]100%|██████████| 21/21 [00:32<00:00,  1.55s/it]
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/14_cnv_loci.py --h5ad data/interim/sc_raw.h5ad"
-	User time (seconds): 268.13
-	System time (seconds): 65.59
-	Percent of CPU this job got: 543%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:01.38
+	User time (seconds): 283.87
+	System time (seconds): 73.85
+	Percent of CPU this job got: 525%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:08.03
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 12103316
+	Maximum resident set size (kbytes): 12594348
 	Average resident set size (kbytes): 0
-	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 5216668
-	Voluntary context switches: 32075
-	Involuntary context switches: 25442
+	Major (requiring I/O) page faults: 2
+	Minor (reclaiming a frame) page faults: 7064289
+	Voluntary context switches: 58234
+	Involuntary context switches: 40359
 	Swaps: 0
-	File system inputs: 112
-	File system outputs: 324280
+	File system inputs: 168
+	File system outputs: 323096
 	Socket messages sent: 0
 	Socket messages received: 0
 	Signals delivered: 0

@@ -23,8 +23,17 @@ Scopo
    (`scpipe.cluster_bootstrap`, "expanded percentile"). Con 4-5 pazienti l'intervallo
    non e' calibrato: si riportano anche il numero di ricampionature distinte e la
    frazione di repliche con differenza > 0.
-   Etichetta di maggioranza del compartimento: moda, pareggi risolti dalla prima
-   comparsa (`scpipe.majority_label`).
+   Etichetta di maggioranza del compartimento: moda (`scpipe.majority_label`). Se due
+   o piu' etichette hanno lo stesso conteggio massimo l'etichetta non e' definita: la
+   coppia clone-compartimento e' esclusa dal calcolo principale (colonna `tie` nelle
+   tabelle di arbitrato, `n_ties` nei tassi) e, come sensibilita', contata come errore
+   oppure come corretta (`error_rate_tie_sensitivity.csv`). La regola non dipende
+   dall'ordine dei barcode.
+   Presupposto: il lignaggio CD4/CD8 di un clone T maturo e' di norma stabile fra
+   tessuti, con eccezioni note (CD4 citotossiche, CD4+CD8αα+ e doppi positivi nei
+   tessuti, MAIT, NKT, γδ). Il controllo dei cloni a TCR semi-invariante (MAIT-like:
+   TRAV1-2 con TRAJ33/12/20; iNKT: TRAV10 con TRAJ18) fra le unita' del Tumor e' in
+   `clone_invariant_tcr_check.csv`.
 
 2. Soglia di CD4 sopra l'RNA ambientale: 95-esimo percentile di CD4 nelle cellule
    Ductal ed Endothelial di ciascun compartimento. Nel PBMC queste cellule sono
@@ -32,7 +41,8 @@ Scopo
    punti ed e' instabile. Il numero di cellule e' stampato e salvato.
 
 3. Robustezza: LOCO ripetuto escludendo le cellule con n_counts sopra il 90-esimo
-   percentile della propria (libreria, classe).
+   percentile della propria (libreria, classe): un proxy dei doppietti, non doppietti
+   identificati.
 
 4. Frazione di doppietti fisici nelle NK con TCR, da un unico modello di miscela:
    una NK-TCR+ e' con probabilita' d un doppietto NK + CD8T (UMI totali s + c, TCR
@@ -45,7 +55,9 @@ Scopo
    rapporti) e' un'approssimazione: le due stime sono indicative. Le stime
    principali usano le mediane pooled su tutti i tessuti; come sensibilita' si
    riportano le medie e le stime per compartimento. IC con bootstrap sui pazienti
-   (500 repliche, "expanded percentile").
+   (500 repliche, "expanded percentile"). Le stesse stime per le sole NK-TCR+ dei
+   cloni del Tumor contati come errore (schema blood) sono in
+   `doublet_mixture_error_nk.csv`.
 
 5. Sensibilita' (blood): scomposizione dell'errore nel Tumor (cloni CD4 nel sangue
    etichettati CD8T, cloni etichettati NK, altri), tasso escludendo le etichette NK,
@@ -59,8 +71,18 @@ Input
 
 Output
 ------
-  results/tables/arbitration_{naive,loco,blood}.csv   una riga per (clone, compartimento giudicato)
-  results/tables/error_rate_schemes.csv               errore per schema x compartimento (+ varianti)
+  results/tables/arbitration_{naive,loco,blood}.csv   una riga per (clone, compartimento giudicato);
+                                                      `tie` = etichetta in pareggio (errore NaN)
+  results/tables/error_rate_schemes.csv               errore per schema x compartimento (+ varianti),
+                                                      pareggi esclusi (`n_ties`)
+  results/tables/error_rate_tie_sensitivity.csv       per schema: errore per compartimento e
+                                                      differenza Tumor - Adjacent_normal con i
+                                                      pareggi esclusi, contati errore, contati corretti
+  results/tables/clone_invariant_tcr_check.csv        cloni MAIT-like / iNKT fra le unita' del Tumor
+                                                      (errore, corretto, pareggio) e frazione fra le
+                                                      NK-TCR+
+  results/tables/doublet_mixture_error_nk.csv         d1, d2 con IC per le NK-TCR+ dei cloni del
+                                                      Tumor contati come errore (schema blood)
   results/tables/error_rate_paired_diff.csv           differenze appaiate per schema, con cloni e pazienti
   results/tables/error_decomposition_blood.csv        scomposizione dell'errore nel Tumor (blood)
   results/tables/error_rate_identity_rules.csv        errore (blood) con regole CD8+ alternative
@@ -268,12 +290,19 @@ def per_comp_stats(
             n=("cd8_pos", "size"),
             f8=("cd8_pos", "mean"),
             f4=("cd4_pos", "mean"),
-            # moda; pareggi risolti dalla prima comparsa nell'ordine delle cellule
+            # moda; None se piu' etichette hanno lo stesso conteggio massimo (pareggio)
             lab=("all_celltype", majority_label),
+            lab_top=("all_celltype", top_labels),
         )
         .reset_index()
     )
     return per[per.n >= MIN_CELLS]
+
+
+def top_labels(labels) -> str:
+    """Etichette con il conteggio massimo, ordinate e unite da '|' (piu' di una = pareggio)."""
+    vc = pd.Series(list(labels)).value_counts()
+    return "|".join(sorted(vc.index[vc == vc.iloc[0]].astype(str)))
 
 
 def arbitrate(per: pd.DataFrame, scheme: str) -> pd.DataFrame:
@@ -299,16 +328,24 @@ def arbitrate(per: pd.DataFrame, scheme: str) -> pd.DataFrame:
             if abs(f8 - f4) < MIN_MARGIN:
                 continue
             ident = "CD8T" if f8 > f4 else "CD4T"
-            if r.lab not in ("CD4T", "CD8T", "NK"):
+            tie = r.lab is None or pd.isna(r.lab)
+            if tie:
+                # pareggio: etichetta di maggioranza non definita, errore non definito;
+                # l'unita' e' esclusa dal calcolo principale (vedi tie_sensitivity)
+                if not set(r.lab_top.split("|")) & {"CD4T", "CD8T", "NK"}:
+                    continue
+            elif r.lab not in ("CD4T", "CD8T", "NK"):
                 continue
             rows.append(
                 {
                     "patient": pat,
                     "clone": clone,
                     "tissue": target,
-                    "lab": r.lab,
+                    "lab": None if tie else r.lab,
                     "identity": ident,
-                    "error": r.lab != ident,
+                    "error": np.nan if tie else float(r.lab != ident),
+                    "tie": tie,
+                    "tie_labels": r.lab_top if tie else "",
                     "n_ref_comp": ref.tissue.nunique(),
                 }
             )
@@ -321,9 +358,18 @@ def arbitrate(per: pd.DataFrame, scheme: str) -> pd.DataFrame:
             "lab",
             "identity",
             "error",
+            "tie",
+            "tie_labels",
             "n_ref_comp",
         ],
     )
+
+
+def untied(j: pd.DataFrame) -> pd.DataFrame:
+    """Unita' con etichetta di maggioranza definita (calcolo principale)."""
+    if "tie" not in j.columns:
+        return j
+    return j[~j.tie.astype(bool)]
 
 
 def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
@@ -334,7 +380,9 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
         return pd.DataFrame(columns=["tissue", "n", "n_pat", "error", "lo", "hi"])
     rows = []
     for tis in COMPS:
-        g = j[j.tissue == tis]
+        g_all = j[j.tissue == tis]
+        g = untied(g_all)
+        n_ties = len(g_all) - len(g)
         if g.empty or g.patient.nunique() < 3:
             continue
         by = {p: gg.error.values.astype(float) for p, gg in g.groupby("patient")}
@@ -342,6 +390,7 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
         row = {
             "tissue": tis,
             "n": len(g),
+            "n_ties": n_ties,
             "n_pat": g.patient.nunique(),
             "error": m,
             "lo": lo,
@@ -354,7 +403,7 @@ def report(j: pd.DataFrame, title: str) -> pd.DataFrame:
         rows.append(row)
         print(
             f"  {tis:16s} errore = {m:.3f}  IC95% [{lo:.3f}, {hi:.3f}]  "
-            f"(n={len(g)}, {g.patient.nunique()} pz)"
+            f"(n={len(g)}, {g.patient.nunique()} pz; {n_ties} pareggi esclusi)"
         )
     paired_diffs(j, verbose=True)
     return pd.DataFrame(rows)
@@ -364,6 +413,7 @@ def paired_diffs(j: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
     """Differenze appaiate dell'errore sugli stessi cloni (Tumor - Adjacent_normal, Tumor - PBMC)."""
     cols = ["contrast", "n_clones", "n_patients", "diff", "lo", "hi"]
     rows = []
+    j = untied(j)  # le unita' in pareggio non hanno errore definito
     if j.empty:
         return pd.DataFrame(rows, columns=cols)
     piv = j.pivot_table(
@@ -404,6 +454,154 @@ def paired_diffs(j: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
     )
 
 
+def tie_sensitivity(j: pd.DataFrame, scheme: str) -> pd.DataFrame:
+    """Errore e differenza appaiata con i pareggi esclusi, contati come errore e come corretti.
+
+    Versione principale: pareggi esclusi. Sensibilita': ogni unita' in pareggio contata
+    come errore (1) oppure come corretta (0). Stesso bootstrap sui pazienti di `report`.
+    """
+    rows = []
+    if j.empty:
+        return pd.DataFrame(rows)
+    tie = j.tie.astype(bool) if "tie" in j.columns else pd.Series(False, index=j.index)
+    versions = {
+        "ties_excluded": j[~tie],
+        "ties_as_error": j.assign(error=j.error.where(~tie, 1.0)),
+        "ties_as_correct": j.assign(error=j.error.where(~tie, 0.0)),
+    }
+    for version, jj in versions.items():
+        for tis in COMPS:
+            g = jj[jj.tissue == tis]
+            if g.empty or g.patient.nunique() < 3:
+                continue
+            by = {p: gg.error.values.astype(float) for p, gg in g.groupby("patient")}
+            m, lo, hi = cluster_boot(by)
+            rows.append(
+                {
+                    "scheme": scheme,
+                    "version": version,
+                    "quantity": f"error_{tis}",
+                    "n_units": len(g),
+                    "n_ties": int((tie & (j.tissue == tis)).sum()),
+                    "n_patients": g.patient.nunique(),
+                    "value": m,
+                    "lo": lo,
+                    "hi": hi,
+                }
+            )
+        # differenza appaiata Tumor - Adjacent_normal sugli stessi cloni
+        piv = jj.pivot_table(
+            index=["patient", "clone"], columns="tissue", values="error", aggfunc="max"
+        )
+        if {"Tumor", "Adjacent_normal"}.issubset(piv.columns):
+            d = piv.dropna(subset=["Tumor", "Adjacent_normal"]).reset_index()
+            if len(d) >= 20 and d.patient.nunique() >= 3:
+                d["diff"] = d.Tumor - d.Adjacent_normal
+                by = {p: g["diff"].values for p, g in d.groupby("patient")}
+                m, lo, hi = cluster_boot(by)
+                rows.append(
+                    {
+                        "scheme": scheme,
+                        "version": version,
+                        "quantity": "diff_Tumor_minus_Adjacent_normal",
+                        "n_units": len(d),
+                        "n_ties": np.nan,
+                        "n_patients": d.patient.nunique(),
+                        "value": m,
+                        "lo": lo,
+                        "hi": hi,
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def load_tra_genes(tcrdir: Path) -> pd.DataFrame:
+    """Geni V e J della catena TRA dominante (piu' UMI) per cellula, dai file VDJ."""
+    frames = []
+    for p in sorted(tcrdir.glob("*_filtered_contig_annotations.csv.gz")):
+        m = FNAME_RE.match(p.name)
+        if not m:
+            continue
+        pnum, tis = m.groups()
+        df = pd.read_csv(p, compression="gzip", low_memory=False)
+        for col in ("is_cell", "high_confidence", "productive", "full_length"):
+            if col in df.columns:
+                df = df[df[col].astype(str).str.lower().isin(["true", "1"])]
+        df = df[df.chain == "TRA"]
+        df["patient"] = f"PA{int(pnum):02d}"
+        df["tissue"] = TISSUE_MAP[tis]
+        df["barcode16"] = df.barcode.astype(str).str.extract(
+            r"([ACGT]{16})", expand=False
+        )
+        frames.append(
+            df[["patient", "tissue", "barcode16", "v_gene", "j_gene", "umis"]]
+        )
+    if not frames:
+        return pd.DataFrame(
+            columns=["patient", "tissue", "barcode16", "v_gene", "j_gene"]
+        )
+    c = pd.concat(frames, ignore_index=True).dropna(subset=["barcode16"])
+    c = c.sort_values("umis", ascending=False).drop_duplicates(
+        ["patient", "tissue", "barcode16"]
+    )
+    return c[["patient", "tissue", "barcode16", "v_gene", "j_gene"]]
+
+
+def invariant_tcr_check(
+    lym: pd.DataFrame, j: pd.DataFrame, tra: pd.DataFrame
+) -> pd.DataFrame:
+    """Cloni a TCR semi-invariante fra le unita' del Tumor (schema blood).
+
+    MAIT-like: TRAV1-2 con TRAJ33, TRAJ12 o TRAJ20; iNKT: TRAV10 con TRAJ18 (catena TRA
+    dominante del clone nelle cellule linfoidi). Controlla se le eccezioni note alla
+    stabilita' del lignaggio CD4/CD8 spiegano gli errori.
+    """
+    x = lym.merge(tra, on=["patient", "tissue", "barcode16"], how="left")
+    x["mait"] = (x.v_gene == "TRAV1-2") & x.j_gene.isin(["TRAJ33", "TRAJ12", "TRAJ20"])
+    x["inkt"] = (x.v_gene == "TRAV10") & (x.j_gene == "TRAJ18")
+    # un clone e' MAIT-like / iNKT se lo e' la maggioranza delle sue cellule con TRA
+    cl = (
+        x[x.v_gene.notna()]
+        .groupby(["patient", "clone_b"], observed=True)[["mait", "inkt"]]
+        .mean()
+        .gt(0.5)
+        .reset_index()
+        .rename(columns={"clone_b": "clone"})
+    )
+    t = j[j.tissue == "Tumor"].merge(cl, on=["patient", "clone"], how="left")
+    t[["mait", "inkt"]] = t[["mait", "inkt"]].fillna(False).astype(bool)
+    tie = t.tie.astype(bool)
+    rows = []
+    for name, mask in (
+        ("MAIT_like", t.mait),
+        ("iNKT", t.inkt),
+        ("altri", ~t.mait & ~t.inkt),
+    ):
+        rows.append(
+            {
+                "category": name,
+                "n_units_tumor": int(mask.sum()),
+                "n_error": int((mask & ~tie & (t.error == 1)).sum()),
+                "n_correct": int((mask & ~tie & (t.error == 0)).sum()),
+                "n_tie": int((mask & tie).sum()),
+            }
+        )
+    nk = x[(x.all_celltype == "NK") & x.v_gene.notna()]
+    for name, col in (("MAIT_like", "mait"), ("iNKT", "inkt")):
+        rows.append(
+            {
+                "category": f"{name}_fraction_of_NK_TCR+_cells",
+                "n_units_tumor": np.nan,
+                "n_error": np.nan,
+                "n_correct": np.nan,
+                "n_tie": np.nan,
+                "fraction": float(nk[col].mean()) if len(nk) else np.nan,
+                "n_cells": len(nk),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def ci_verdict(lo: float, hi: float, n_patients: int) -> str:
     """Lettura dell'IC; con <= SMALL_K pazienti l'IC non e' calibrato e non si da' verdetto."""
     if n_patients <= SMALL_K:
@@ -413,7 +611,9 @@ def ci_verdict(lo: float, hi: float, n_patients: int) -> str:
 
 def decompose_tumor_error(j: pd.DataFrame) -> pd.DataFrame:
     """Scompone l'errore nel Tumor (schema blood) per tipo di etichetta sbagliata."""
-    t = j[j.tissue == "Tumor"]
+    t_all = j[j.tissue == "Tumor"]
+    t = untied(t_all)
+    t = t.assign(error=t.error.astype(bool))
     if t.empty:
         return pd.DataFrame()
     n = len(t)
@@ -453,6 +653,16 @@ def decompose_tumor_error(j: pd.DataFrame) -> pd.DataFrame:
                 "n_patients": t.patient.nunique(),
             }
         )
+    # Unita' in pareggio, escluse dal denominatore
+    rows.append(
+        {
+            "category": "ties_excluded",
+            "n_errors": 0,
+            "rate_over_all_clones": np.nan,
+            "n_clones": len(t_all) - n,
+            "n_patients": t_all.patient.nunique(),
+        }
+    )
     # Tasso escludendo i cloni etichettati NK, con IC sui pazienti
     nn = t[t.lab != "NK"]
     by = {p: g.error.values.astype(float) for p, g in nn.groupby("patient")}
@@ -471,6 +681,87 @@ def decompose_tumor_error(j: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def mix_est(sub: pd.DataFrame, stat: str = "median") -> tuple[float, float]:
+    """d1 e d2 su un sottoinsieme (NK e CD8T con colonna `ratio`); NaN se < 10 cellule per gruppo."""
+    nk_pos = sub[(sub.all_celltype == "NK") & sub.has_tcr]
+    nk_neg = sub[(sub.all_celltype == "NK") & ~sub.has_tcr]
+    cd8 = sub[(sub.all_celltype == "CD8T") & sub.has_tcr]
+    if min(len(nk_pos), len(nk_neg), len(cd8)) < 10:
+        return np.nan, np.nan
+    f = (lambda s: s.median()) if stat == "median" else (lambda s: s.mean())
+    s, c, o = f(nk_neg.n_counts), f(cd8.n_counts), f(nk_pos.n_counts)
+    # Modello comune (docstring, punto 4): doppietto = NK + CD8T con UMI s + c e il TCR
+    # della CD8T; non doppietto = una cellula con UMI s e TCR alla densita' r_CD8.
+    # d1: eccesso di UMI totali delle NK-TCR+ rispetto al singoletto NK, in unita' di CD8T
+    d1 = (o - s) / max(c, 1)
+    r_cd8, r_nk = f(cd8.ratio), f(nk_pos.ratio)
+    # rapporto atteso in un doppietto: gli UMI TCR della CD8T diluiti su s + c
+    r_dbl = r_cd8 * c / max(s + c, 1)
+    # d2: r_NK = (1 - d) r_CD8 + d r_dbl  ->  d = (r_CD8 - r_NK) / (r_CD8 - r_dbl)
+    d2 = (r_cd8 - r_nk) / max(r_cd8 - r_dbl, 1e-9)
+    return float(np.clip(d1, 0, 1)), float(np.clip(d2, 0, 1))
+
+
+def mix_boot(sub: pd.DataFrame, stat: str) -> tuple[list, list, int]:
+    """Repliche di d1 e d2 ricampionando i pazienti (N_BOOT_MIX, seme SEED)."""
+    pats = sub.patients.unique()
+    parts = {p: sub[sub.patients == p] for p in pats}
+    rng = np.random.default_rng(SEED)
+    b1, b2 = [], []
+    for _ in range(N_BOOT_MIX):
+        draw = rng.choice(pats, len(pats), replace=True)
+        a, b = mix_est(pd.concat([parts[p] for p in draw]), stat)
+        if not np.isnan(a):
+            b1.append(a)
+            b2.append(b)
+    return b1, b2, len(pats)
+
+
+def mixture_error_nk(gex: pd.DataFrame, jblood: pd.DataFrame) -> pd.DataFrame:
+    """d1 e d2 per le cellule NK-TCR+ dei cloni del Tumor contati come errore (schema blood).
+
+    Le NK-TCR- e le CD8T-TCR+ di riferimento sono quelle del Tumor; IC con bootstrap
+    sui pazienti come in `mixture`.
+    """
+    err = jblood[
+        (jblood.tissue == "Tumor") & (jblood.lab == "NK") & (jblood.error == 1)
+    ][["patient", "clone"]]
+    g = gex[(gex.tissue == "Tumor") & gex.all_celltype.isin(["NK", "CD8T"])].copy()
+    g["ratio"] = g.umi_tcr / np.maximum(g.n_counts, 1) * 1000
+    key = set(zip(err.patient, err.clone))
+    in_err = pd.Series(
+        [(p, c) in key for p, c in zip(g.patients, g.clone_b)], index=g.index
+    )
+    nk_pos = (g.all_celltype == "NK") & g.has_tcr
+    sub = g[~nk_pos | in_err]  # NK-TCR+ solo dei cloni in errore
+    rows = []
+    for stat in ("median", "mean"):
+        d1, d2 = mix_est(sub, stat)
+        b1, b2, k = mix_boot(sub, stat)
+        lo1, hi1 = percentile_ci(np.array(b1), k) if b1 else (np.nan, np.nan)
+        lo2, hi2 = percentile_ci(np.array(b2), k) if b2 else (np.nan, np.nan)
+        rows.append(
+            {
+                "statistic": stat,
+                "n_nk_tcr_pos_cells": int((nk_pos & in_err).sum()),
+                "n_clones": len(key),
+                "n_patients": k,
+                "d1": d1,
+                "d1_lo": lo1,
+                "d1_hi": hi1,
+                "d2": d2,
+                "d2_lo": lo2,
+                "d2_hi": hi2,
+            }
+        )
+    out = pd.DataFrame(rows)
+    print(
+        "\nd1/d2 per le NK-TCR+ dei cloni del Tumor contati come errore (schema blood):"
+    )
+    print(out.round(3).to_string(index=False))
+    return out
+
+
 def mixture(gex: pd.DataFrame) -> None:
     """Frazione di doppietti nelle NK-TCR+ con le stime d1 e d2 (non indipendenti)."""
     print("\n" + "=" * 78)
@@ -480,47 +771,15 @@ def mixture(gex: pd.DataFrame) -> None:
     g = gex[gex.all_celltype.isin(["NK", "CD8T"])].copy()
     g["ratio"] = g.umi_tcr / np.maximum(g.n_counts, 1) * 1000
 
-    def est(sub: pd.DataFrame, stat: str = "median") -> tuple[float, float]:
-        nk_pos = sub[(sub.all_celltype == "NK") & sub.has_tcr]
-        nk_neg = sub[(sub.all_celltype == "NK") & ~sub.has_tcr]
-        cd8 = sub[(sub.all_celltype == "CD8T") & sub.has_tcr]
-        if min(len(nk_pos), len(nk_neg), len(cd8)) < 10:
-            return np.nan, np.nan
-        f = (lambda s: s.median()) if stat == "median" else (lambda s: s.mean())
-        s, c, o = f(nk_neg.n_counts), f(cd8.n_counts), f(nk_pos.n_counts)
-        # Modello comune (docstring, punto 4): doppietto = NK + CD8T con UMI s + c e il TCR
-        # della CD8T; non doppietto = una cellula con UMI s e TCR alla densita' r_CD8.
-        # d1: eccesso di UMI totali delle NK-TCR+ rispetto al singoletto NK, in unita' di CD8T
-        d1 = (o - s) / max(c, 1)
-        r_cd8, r_nk = f(cd8.ratio), f(nk_pos.ratio)
-        # rapporto atteso in un doppietto: gli UMI TCR della CD8T diluiti su s + c
-        r_dbl = r_cd8 * c / max(s + c, 1)
-        # d2: r_NK = (1 - d) r_CD8 + d r_dbl  ->  d = (r_CD8 - r_NK) / (r_CD8 - r_dbl)
-        d2 = (r_cd8 - r_nk) / max(r_cd8 - r_dbl, 1e-9)
-        return float(np.clip(d1, 0, 1)), float(np.clip(d2, 0, 1))
-
-    def boot(sub: pd.DataFrame, stat: str) -> tuple[list, list, int]:
-        pats = sub.patients.unique()
-        parts = {p: sub[sub.patients == p] for p in pats}
-        rng = np.random.default_rng(SEED)
-        b1, b2 = [], []
-        for _ in range(N_BOOT_MIX):
-            draw = rng.choice(pats, len(pats), replace=True)
-            a, b = est(pd.concat([parts[p] for p in draw]), stat)
-            if not np.isnan(a):
-                b1.append(a)
-                b2.append(b)
-        return b1, b2, len(pats)
-
     rows = []
     strata = [("all", g)] + [(t, g[g.tissue == t]) for t in COMPS]
     for stat in ("median", "mean"):
         for name, sub in strata:
-            d1, d2 = est(sub, stat)
+            d1, d2 = mix_est(sub, stat)
             if np.isnan(d1):
                 print(f"  {stat:6s} {name:16s} cellule insufficienti (<10 per gruppo)")
                 continue
-            b1, b2, k = boot(sub, stat)
+            b1, b2, k = mix_boot(sub, stat)
             lo1, hi1 = percentile_ci(np.array(b1), k)
             lo2, hi2 = percentile_ci(np.array(b2), k)
             rows.append(
@@ -694,7 +953,7 @@ def main() -> None:
     print("(1) SCHEMI DI RIFERIMENTO: naive, leave-one-compartment-out, solo sangue")
     print("=" * 78)
     per = per_comp_stats(lym, None)
-    res, diffs, js = [], [], {}
+    res, diffs, js, ties = [], [], {}, []
     for scheme, title in [
         ("naive", "NAIVE (riferimento include il target, circolare)"),
         ("loco", "LOCO (riferimento = gli altri compartimenti)"),
@@ -704,6 +963,7 @@ def main() -> None:
         js[scheme] = j
         res.append(report(j, title).assign(scheme=scheme, variant="main"))
         diffs.append(paired_diffs(j).assign(scheme=scheme, variant="main"))
+        ties.append(tie_sensitivity(j, scheme))
         j.to_csv(TAB / f"arbitration_{scheme}.csv", index=False)
 
     print("\n" + "=" * 78)
@@ -718,7 +978,8 @@ def main() -> None:
 
     print("\n" + "=" * 78)
     print(
-        "(3) RIPETUTO escludendo i possibili doppietti (n_counts > 90o pct per libreria x classe)"
+        "(3) RIPETUTO senza il decile superiore di n_counts per libreria x classe"
+        " (proxy dei doppietti, non doppietti identificati)"
     )
     print("=" * 78)
     cut = gex.groupby(["library", "all_celltype"], observed=True).n_counts.transform(
@@ -731,7 +992,9 @@ def main() -> None:
     ].copy()
     j = arbitrate(per_comp_stats(lym_s, None), "loco")
     res.append(
-        report(j, "LOCO senza doppietti").assign(scheme="loco", variant="no_top_decile")
+        report(
+            j, "LOCO senza il decile superiore di n_counts (proxy dei doppietti)"
+        ).assign(scheme="loco", variant="no_top_decile")
     )
 
     print("\n" + "=" * 78)
@@ -741,6 +1004,16 @@ def main() -> None:
     print("scomposizione dell'errore nel Tumor:")
     print(dec.round(4).to_string(index=False))
     dec.to_csv(TAB / "error_decomposition_blood.csv", index=False)
+
+    ts = pd.concat(ties, ignore_index=True)
+    ts.to_csv(TAB / "error_rate_tie_sensitivity.csv", index=False)
+    print("\nsensibilita' ai pareggi dell'etichetta di maggioranza (schema blood):")
+    print(ts[ts.scheme == "blood"].round(4).to_string(index=False))
+
+    inv = invariant_tcr_check(lym, js["blood"], load_tra_genes(args.tcrdir))
+    inv.to_csv(TAB / "clone_invariant_tcr_check.csv", index=False)
+    print("\ncloni a TCR semi-invariante nel Tumor (schema blood):")
+    print(inv.round(4).to_string(index=False))
 
     rule_rows = []
     for rule, desc in CD8_RULES.items():
@@ -757,6 +1030,9 @@ def main() -> None:
     diffs.to_csv(TAB / "error_rate_paired_diff.csv", index=False)
 
     mixture(gex)
+    mixture_error_nk(gex, js["blood"]).to_csv(
+        TAB / "doublet_mixture_error_nk.csv", index=False
+    )
 
     r = res[1]
     if r.empty:

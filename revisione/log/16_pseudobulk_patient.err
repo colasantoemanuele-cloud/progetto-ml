@@ -1,18 +1,18 @@
 	Command being timed: "/home/nemo/miniforge3/envs/pdac/bin/python src/16_pseudobulk_patient.py --h5ad data/interim/sc_raw.h5ad --arbitration results/tables/arbitration_blood.csv"
-	User time (seconds): 14.60
-	System time (seconds): 0.59
-	Percent of CPU this job got: 108%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:14.05
+	User time (seconds): 20.19
+	System time (seconds): 0.74
+	Percent of CPU this job got: 96%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:21.68
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 3550236
+	Maximum resident set size (kbytes): 3551116
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 133187
-	Voluntary context switches: 21
-	Involuntary context switches: 141
+	Minor (reclaiming a frame) page faults: 135149
+	Voluntary context switches: 19
+	Involuntary context switches: 1109
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 136

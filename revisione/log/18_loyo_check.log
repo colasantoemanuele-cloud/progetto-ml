@@ -3,25 +3,26 @@
 ==============================================================================
 leave-one-patient-out: errore di annotazione (0/1)
 ==============================================================================
-tutti i 10 pazienti:  rho=+0.177  p=0.0009  media nulla=+0.012  p centrato=0.0015
+[i] 10 cloni con esito non definito (pareggio) esclusi
+tutti i 10 pazienti:  rho=+0.220  p=0.0004  media nulla=+0.021  p centrato=0.0005
 
-  senza PA05 ( 17 cloni): rho=+0.165  p=0.0033
-  senza PA06 ( 26 cloni): rho=+0.188  p=0.0039
-  senza PA07 ( 47 cloni): rho=+0.197  p=0.0014
-  senza PA08 ( 42 cloni): rho=+0.197  p=0.0015
-  senza PA09 ( 22 cloni): rho=+0.172  p=0.0024
-  senza PA10 ( 10 cloni): rho=+0.180  p=0.0020
-  senza PA11 ( 30 cloni): rho=+0.146  p=0.0118
-  senza PA12 ( 59 cloni): rho=+0.189  p=0.0022
-  senza PA13 ( 29 cloni): rho=+0.174  p=0.0028
-  senza PA14 (  5 cloni): rho=+0.164  p=0.0027
+  senza PA05 ( 17 cloni): rho=+0.211  p=0.0005
+  senza PA06 ( 25 cloni): rho=+0.229  p=0.0003
+  senza PA07 ( 43 cloni): rho=+0.213  p=0.0007
+  senza PA08 ( 41 cloni): rho=+0.252  p=0.0000
+  senza PA09 ( 21 cloni): rho=+0.215  p=0.0002
+  senza PA10 ( 10 cloni): rho=+0.224  p=0.0002
+  senza PA11 ( 29 cloni): rho=+0.195  p=0.0015
+  senza PA12 ( 57 cloni): rho=+0.234  p=0.0003
+  senza PA13 ( 29 cloni): rho=+0.221  p=0.0003
+  senza PA14 (  5 cloni): rho=+0.207  p=0.0006
 
 con il p centrato: p < 0.05 in 10/10 versioni leave-one-out.
 
 risultato resta significativo (p<0.05) in 10/10 versioni leave-one-out con p definito.
 VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.
 
-paziente il cui contributo pesa di piu' (rho piu' basso se rimosso): PA11 (rho scende a +0.146)
+paziente il cui contributo pesa di piu' (rho piu' basso se rimosso): PA11 (rho scende a +0.195)
 [ok] figura: results/figures/loyo_clonal_expansion_error.png
 
 ==============================================================================
@@ -49,7 +50,7 @@ paziente il cui contributo pesa di piu' (rho piu' basso se rimosso): PA12 (rho s
 [ok] figura: results/figures/loyo_clonal_expansion_excess.png
 
 --- sensibilita' del block permutation (errore binario, leave-one-out) ---
-  p fra semi e numero di permutazioni: da 0.0009 a 0.0118; p < 0.05 in 10/10 esclusioni con tutte le impostazioni
+  p fra semi e numero di permutazioni: da 0.0000 a 0.0015; p < 0.05 in 10/10 esclusioni con tutte le impostazioni
 
 ==============================================================================
 Se entrambi gli outcome (errore ed eccesso) restano con p < 0.05 in tutte

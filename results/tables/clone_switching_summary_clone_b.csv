@@ -1,2 +1,2 @@
-clone_def,n_pairs_across,n_reps_within,n_patients,n_patients_across,n_patients_within,discord_across,discord_within,excess,lo,hi
-clone_b,1114,45120,14,11,14,0.12028725314183124,0.06363031914893617,0.056656933992895064,0.01748801996273354,0.1272249475294449
+clone_def,n_pairs_across,n_reps_within,n_pairs_ties_excluded,n_reps_ties_excluded,n_patients,n_patients_across,n_patients_within,discord_across,discord_within,excess,lo,hi
+clone_b,1024,41177,90,3943,14,11,14,0.083984375,0.02071544794424072,0.06326892705575929,0.022908030193907136,0.13421713713177374

@@ -15,7 +15,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0a Criteri | fatta | 4ef60ec |
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
-| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37 (04ebed5); chiusura 3 (giro 6): 2/4/22; limite portato a 10 giri; prossimo: giro 7 | - |
+| 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8 (61fb36b); chiusura 1: 2/9/38 (59098b6); chiusura 2: 2/3/37 (04ebed5); giro 6: 2/4/22 (b696162); giro 7 (nuove regole: solo dataset reale): 2/4/15; prossimo: giro 8 (ultimo) | - |
 | 3 Esecuzione finale | eseguita al commit 61fb36b (tutti rc = 0); RISULTATI_FINALI.md generato; manca il giro di chiusura | (commit Fase 3) |
 
 ## Note iniziali
@@ -326,6 +326,35 @@ Correzioni del giro 6 (fork TCR, fork CNV/sim/test e coordinatore):
   fold; default in --help solo se esistono; README: TRB produttiva, schema ingenuo, IC di 06,
   score medio entro paziente 0,572, fonti di Δ = −0,229 e delle 11 cellule).
 - Riesecuzioni: 04, 06-10, 21, 15-19, simulazioni, 20, 13 e 14 senza cache (impronta nuova).
+
+## Giro 7 = chiusura 4 (completo, 4 revisori, regole dell'utente: solo dataset reale)
+
+Esito: (a) 0/0/6, (b) 0/2/5, (c) 2/0/2, (d) 0/2/2 -> 2 ALTA, 4 MEDIA, 15 BASSA, 3 limiti noti
+nuovi; pytest completo 109 passati. ALTA + MEDIA: 5 (giro 5), 6 (giro 6), 6 (giro 7): condizione di
+stop dell'utente soddisfatta (due giri senza diminuzione; criteri cambiati al giro 7). L'utente ha
+deciso le correzioni e aperto il giro 8 come ultimo.
+- Pareggi dell'etichetta di maggioranza (decisione dell'utente): `majority_label` restituisce None
+  in caso di pareggio; le unita' in pareggio sono escluse dal calcolo principale in 06, 09, 10 e nei
+  consumatori 16-19, 21; sensibilita' "pareggi = errore" / "pareggi = corretti" in
+  `error_rate_tie_sensitivity` e `arbitration_tie_sensitivity`. Numeri (schema solo sangue):
+  Tumor 0.195 [0.110; 0.290] -> 0.170 [0.095; 0.252] (277 cloni, 10 pareggi; 0.199 e 0.164 nelle
+  sensibilita'); Adjacent_normal 0.059 [0.000; 0.093] -> 0.060 [0.000; 0.095] (117, 1 pareggio);
+  differenza +0.080 [0.000; 0.192] -> +0.059 [0.000; 0.160] (85 cloni). Scomposizione 38/18 ->
+  32/15; senza NK 0.141 -> 0.122. LOCO +0.027 -> +0.016, naive +0.035 -> +0.024; regole CD8
+  0.206 -> 0.180/0.181; split-half di 06 +0.057 -> +0.063; espansione clonale (errore) rho 0.177
+  -> 0.220, p 0.0009 -> 0.0004; H1-H4 rho -0.45/-0.50/-0.13/-0.13, p_Holm 0.58/0.58/1/1.
+- Soglia di inferCNV (decisione dell'utente): filtro del rumore con una sola soglia globale
+  (1,5 sd di tutta la matrice) invece che per blocco di 5.000 cellule. Finestre CNV: coordinate
+  reali dei geni (`cnv_windows.csv`); CDKN2A in 10 finestre, tutte attribuite a 9p21.
+  Numeri: AUC LOPO 0.837 +- 0.071 -> 0.836 +- 0.062; adiacenti predette maligne 30.8% -> 37.4%;
+  adiacenti "maligne" 41-58% -> 38-65%; AUC pooled score medio 0.531 -> 0.598, loci 0.698 ->
+  0.717; entro paziente loci 0.557 -> 0.566, score medio 0.572 -> 0.616.
+- MEDIA (b1 = d1): eccezioni al lignaggio stabile dichiarate (README, 09, 10) e verificate
+  (`clone_invariant_tcr_check`: 12 MAIT-like tutti concordanti, 0 iNKT). MEDIA (d2): README sulle
+  duttali adiacenti "maligne": i dati non distinguono artefatto, cellule tumorali e campo.
+- BASSA corrette; nuovi limiti noti (TISSUE_MAP, top-50 di 20) in `revisione/limiti_noti.md`.
+- Riesecuzioni: 05 (solo legenda; tabelle identiche), 06-10, 21, 15-19, simulazioni, 20, 13 e 14
+  senza cache; tutti rc = 0.
 
 ## Problemi respinti
 

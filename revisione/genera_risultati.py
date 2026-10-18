@@ -725,13 +725,14 @@ def main() -> None:
                             sch,
                             tis,
                             f(r.error),
-                            ci(r.lo, r.hi),
+                            ci(r.lo, r.hi) + ("*" if r.n_pat <= SMALL_K else ""),
                             n_(r.n),
                             f"{r.n_pat:.0f}",
                         ]
                     )
         L.append(
-            "\n**Tasso d'errore per compartimento e schema di riferimento** (`error_rate_schemes`)\n"
+            "\n**Tasso d'errore per compartimento e schema di riferimento** (`error_rate_schemes`; "
+            f"\\* IC non calibrato, <= {SMALL_K} pazienti)\n"
         )
         L.append(
             md_table(
@@ -1090,7 +1091,7 @@ def main() -> None:
         if not sd.empty:
             L.append(
                 f"\n**(d) Stabilita' XAI**: differenza controllo − LOPO {f(sim_d_eff, sign=True)} con effetto paziente "
-                f"({f(pe.difference.min(), sign=True)}; {f(pe.difference.max(), sign=True)}) e {f(sim_d_null, sign=True)} senza "
+                f"(da {f(pe.difference.min(), sign=True)} a {f(pe.difference.max(), sign=True)} sulle {len(pe)} repliche) e {f(sim_d_null, sign=True)} senza "
                 "(`sim_d_xai_stability`).\n"
             )
 

@@ -29,10 +29,10 @@ riporta la differenza con e senza un effetto paziente costruito, su pochi pazien
 con una sola forma di effetto. Il controllo non e' perfettamente appaiato: due
 sottoinsiemi casuali condividono in media piu' cellule di due training LOPO, quindi
 la differenza e' positiva anche senza effetto paziente (in simulazione circa +0,03).
-I geni comuni a tutti i fold includono geni di risposta immediata associati allo
-stress di dissociazione (FOS, CD69, BTG2, HSPH1, DUSP4, CREM nella versione
-pubblicata) e CTRB1, marcatore acinare (probabile RNA ambientale): non sono
-necessariamente biologia tumore/normale.
+I geni comuni a tutti i fold includono geni della firma di stress da dissociazione
+(FOS, BTG2, HSPH1 nella versione pubblicata), geni di risposta immediata che marcano
+anche attivazione o residenza tissutale delle T (CD69, DUSP4, CREM) e CTRB1, marcatore
+acinare (probabile RNA ambientale): non sono necessariamente biologia tumore/normale.
 
 Input
 -----
@@ -43,8 +43,9 @@ Input
 
 Output
 ------
-  results/tables/xai_jaccard_{task}.csv        matrice di Jaccard fra fold (top-50)
-  results/tables/xai_spearman_{task}.csv       matrice di Spearman fra fold
+  results/tables/xai_jaccard_{task}.csv        matrice di Jaccard fra fold (top-50); indice = paziente
+                                               escluso dal training del fold
+  results/tables/xai_spearman_{task}.csv       matrice di Spearman fra fold (stesso indice)
   results/tables/xai_summary_{task}.csv        Jaccard LOPO, controllo, differenza, Spearman, n geni comuni
   results/tables/xai_common_genes_{task}.csv   geni nei top-50 di tutti i fold (id e simbolo)
   results/figures/xai_per_patient_{task}.png
@@ -200,7 +201,7 @@ class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
 
 
 def main() -> None:
-    """Orchestra l'estrazione delle spiegazioni L1 sui 5 fold LOPO, il calcolo delle
+    """Orchestra l'estrazione delle spiegazioni L1 sui fold LOPO, il calcolo delle
     matrici di similarita' di Jaccard e Spearman e il confronto con il controllo casuale."""
     ap = argparse.ArgumentParser(
         formatter_class=_HelpFormatter,
@@ -289,7 +290,7 @@ def main() -> None:
     J.to_csv(TAB / f"xai_jaccard_{args.task}.csv")
     R.to_csv(TAB / f"xai_spearman_{args.task}.csv")
 
-    # Identificazione del nucleo di geni invarianti condivisi da tutti i 5 fold rispetto ai geni esclusivi
+    # Identificazione del nucleo di geni invarianti condivisi da tutti i fold rispetto ai geni esclusivi
     print(f"\n{'=' * 74}\n(2) GENI CONDIVISI DA TUTTI I FOLD\n{'=' * 74}")
     common = set.intersection(*tops.values())
     union = set.union(*tops.values())
@@ -320,12 +321,12 @@ def main() -> None:
             print(
                 f"  marcatori acinari (probabile RNA ambientale): {', '.join(acinar)}"
             )
-    print("\ngeni esclusivi di un solo fold (spiegazione paziente-specifica):")
+    print("\ngeni presenti solo nella spiegazione addestrata senza quel paziente:")
     for f in fs:
         others = set.union(*[tops[g] for g in fs if g != f])
         excl = tops[f] - others
         print(
-            f"  {labels[f]}: {len(excl)}/{TOP_K} geni non condivisi con nessun altro fold"
+            f"  senza {labels[f]}: {len(excl)}/{TOP_K} geni non condivisi con nessun altro fold"
         )
 
     # Esperimento di controllo: ricampionamento casuale di uguale taglia ignorando la struttura per paziente

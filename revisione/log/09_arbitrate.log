@@ -12,23 +12,34 @@ tasso d'errore dell'etichetta degli autori, per compartimento
 (riferimento = identita' clonale dai marcatori, pesata ugualmente fra compartimenti)
 
   PBMC             errore = 0.035  IC95% [0.013, 0.063]  (n=312, 10 pazienti)
-  Adjacent_normal  errore = 0.052  IC95% [0.030, 0.106]  (n=289, 5 pazienti)
-  Tumor            errore = 0.144  IC95% [0.080, 0.241]  (n=457, 11 pazienti)
+  Adjacent_normal  errore = 0.052  IC95% [0.031, 0.106]  (n=286, 5 pazienti)
+  Tumor            errore = 0.126  IC95% [0.071, 0.209]  (n=446, 11 pazienti)
+
+sensibilita' ai pareggi dell'etichetta di maggioranza:
+        version          tissue  n_units  n_ties  n_patients  error_rate     lo     hi
+  ties_excluded            PBMC      312       0          10      0.0353 0.0132 0.0628
+  ties_excluded Adjacent_normal      286       3           5      0.0524 0.0312 0.1062
+  ties_excluded           Tumor      446      11          11      0.1256 0.0712 0.2088
+  ties_as_error            PBMC      312       0          10      0.0353 0.0132 0.0628
+  ties_as_error Adjacent_normal      289       3           5      0.0623 0.0477 0.1118
+  ties_as_error           Tumor      457      11          11      0.1466 0.0814 0.2441
+ties_as_correct            PBMC      312       0          10      0.0353 0.0132 0.0628
+ties_as_correct Adjacent_normal      289       3           5      0.0519 0.0305 0.1056
+ties_as_correct           Tumor      457      11          11      0.1225 0.0707 0.2012
 
 differenza appaiata Tumor - PBMC, sugli STESSI cloni:
-  +0.156  IC95% [+0.046, +0.253]  IC esclude 0   (n=282 cloni, 10 pz)
+  +0.129  IC95% [+0.029, +0.212]  IC esclude 0   (n=272 cloni, 10 pz)
 
 direzione dell'errore (etichetta autori -> identita' clonale):
 tissue           lab   identity
-Tumor            CD8T  CD4T        47
+Tumor            CD8T  CD4T        41
 Adjacent_normal  CD8T  CD4T        13
-Tumor            NK    CD8T        12
+Tumor            NK    CD8T        11
 PBMC             CD8T  CD4T         9
-Tumor            NK    CD4T         6
+Tumor            NK    CD4T         4
 PBMC             CD4T  CD8T         2
-Adjacent_normal  CD4T  CD8T         1
-                 NK    CD8T         1
-Tumor            CD4T  CD8T         1
+Adjacent_normal  NK    CD8T         1
+                 CD4T  CD8T         1
 
 ==============================================================================
 (B) DOPPIETTO FISICO o CELLULA DI CONFINE?  (misure fisiche per classe annotata)

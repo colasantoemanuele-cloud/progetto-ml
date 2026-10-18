@@ -31,3 +31,7 @@ effect_mean006,10,expanded_percentile,400,0.81
 effect_mean006,10,percentile,400,0.8925
 effect_mean006,11,expanded_percentile,400,0.855
 effect_mean006,11,percentile,400,0.915
+coverage_pairs_real_sizes_continuous,11,expanded_percentile,400,0.9375
+coverage_pairs_real_sizes_continuous,11,percentile,400,0.89
+coverage_pairs_real_sizes_binary,11,expanded_percentile,400,0.9275
+coverage_pairs_real_sizes_binary,11,percentile,400,0.8825

@@ -10,7 +10,9 @@ banda si corregge lo stimatore):
    `clonal_expansion_joined` (5-59 per paziente); per k = 11 si aggiunge un undicesimo
    valore (40) scelto a mano. Le numerosita' reali delle coppie dell'eccesso (11
    pazienti, 13-282 coppie per paziente in `pairwise_discordance_clone_b`) sono piu'
-   sbilanciate: la copertura e' verificata con queste numerosita', non con quelle.
+   sbilanciate: la copertura e' verificata con `SIZES`, non con le numerosita' reali delle
+   coppie (per quelle c'e' lo scenario `coverage_pairs_real_sizes_*` di
+   `src/sim/sim_a_calibration.py`, senza banda nei test).
    400 repliche per scenario. (Fase 0, questo test con i semi 100 + k + 1 se l'esito e'
    binario, log in `revisione/log/fase0_pytest_slow.log`: l'intervallo percentile
    semplice dava 0.877-0.892, fuori banda; lo stimatore e' stato corretto con
@@ -249,27 +251,31 @@ def test_nadeau_bengio_calibration_and_power():
     assert power >= 0.5, f"potenza {power:.3f} < 0.50"
 
 
-def test_majority_label_ties_first_appearance():
-    assert scpipe.majority_label(["NK", "CD8T", "CD8T", "NK"]) == "NK"
-    assert scpipe.majority_label(["CD8T", "NK", "NK", "CD8T"]) == "CD8T"
+def test_majority_label_ties_are_undefined():
+    # pareggio: nessuna etichetta di maggioranza, indipendentemente dall'ordine
+    assert scpipe.majority_label(["NK", "CD8T", "CD8T", "NK"]) is None
+    assert scpipe.majority_label(["CD8T", "NK", "NK", "CD8T"]) is None
     assert scpipe.majority_label(["CD4T", "CD8T", "CD8T"]) == "CD8T"
-    # pareggio fra 4 etichette distinte: vince quella che compare per prima
+    assert scpipe.majority_label(["CD4T"]) == "CD4T"
+    assert scpipe.majority_label([]) is None
     lab = ["Endothelial", "CD8T", "Ductal", "Ductal", "Ductal", "NK", "NK", "NK", "B",
            "CD4T", "Endothelial", "B", "CD8T", "CD4T"]  # fmt: skip
-    assert scpipe.majority_label(lab) == "Ductal"
+    assert scpipe.majority_label(lab) is None
 
     def reference(labels):
         counts = {}
         for x in labels:
             counts[x] = counts.get(x, 0) + 1
         top = max(counts.values())
-        return next(x for x in labels if counts[x] == top)
+        winners = [x for x in counts if counts[x] == top]
+        return winners[0] if len(winners) == 1 else None
 
     rng = np.random.default_rng(0)
     names = ["CD4T", "CD8T", "NK", "B", "Ductal", "Myeloid"]
     for _ in range(500):
         lab = list(rng.choice(names, rng.integers(1, 15)))
         assert scpipe.majority_label(lab) == reference(lab)
+        assert scpipe.majority_label(lab[::-1]) == reference(lab)
 
 
 def test_macro_f1_uses_classes_present_in_test():

@@ -66,7 +66,8 @@ Argomenti
   --models (default tutti), --max-train (default 20000; 0 = tutte le cellule),
   --scheme (forza fold_group_5 / fold_random_5 / fold_lopo), --tag (default sc),
   --update (sostituisce nella tabella esistente solo i modelli e i task rieseguiti),
-  --from-table (non addestra: rigenera riepilogo, confronti e figure dalla tabella per fold)
+  --from-table (non addestra: rigenera riepilogo, confronti e figure dalla tabella per fold e
+                riscrive model_zoo_{tag}.csv invariato)
 
 Uso
 ---
@@ -440,7 +441,7 @@ def main() -> None:
     ap.add_argument(
         "--from-table",
         action="store_true",
-        help="non addestra: rigenera riepilogo, confronti e figure da model_zoo_{tag}.csv",
+        help="non addestra: rigenera riepilogo, confronti e figure da model_zoo_{tag}.csv (riscritto invariato)",
     )
     ap.add_argument(
         "--update",

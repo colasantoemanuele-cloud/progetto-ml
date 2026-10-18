@@ -15,10 +15,18 @@ la somma degli z-score dei loci, con media e deviazione standard di ciascun locu
 stimate su tutte le cellule di `X_cnv` (duttali e immunitarie di riferimento).
 
 Come in `13_infercnv.py`, inferCNV gira una sola volta con il riferimento formato
-dalle immunitarie di TUTTI i pazienti. Le coordinate delle finestre di `X_cnv` non
-sono restituite da infercnvpy: sono interpolate in modo uniforme fra il primo e
-l'ultimo gene annotato di ciascun cromosoma, quindi i confini dei loci sono
-approssimati (una finestra puo' cadere dentro o fuori un locus per qualche Mb).
+dalle immunitarie di TUTTI i pazienti e con la stessa soglia del rumore globale
+(`global_noise_filter` di 13, indipendente dall'ordine delle cellule). Le coordinate
+delle finestre non sono restituite da infercnvpy: sono ricostruite dai geni
+(`window_table` di 13, stessa costruzione di infercnvpy: la finestra i di un
+cromosoma copre i geni ordinati per start [i*step, i*step + 100)), con start del
+primo gene, end massimo e mediana degli start; sono salvate in `cnv_windows.csv`. Una
+finestra appartiene a un locus se il suo intervallo genomico si sovrappone al locus;
+le finestre sono larghe (100 geni: nelle regioni povere di geni, come 9p, fino a
+decine di Mb), quindi un locus include anche geni vicini e il segnale di un locus
+piccolo (CDKN2A) e' in pratica quello del braccio cromosomico circostante. Lo
+script controlla che le finestre che contengono il gene marcatore di ogni locus
+(CDKN2A, TP53, SMAD4, MYC, KRAS) siano attribuite al locus, e si ferma se no.
 L'AUC pooled mescola differenze fra pazienti e fra tessuti; l'AUC entro paziente
 (pazienti con almeno 10 duttali per tessuto) elimina le differenze fra pazienti
 (resta il contrasto fra campioni e librerie diversi dello stesso paziente). Il
@@ -28,9 +36,9 @@ si fa sulle AUC entro paziente di entrambi (non sulle pooled).
 
 Coordinate dei geni e metodo: le stesse di `13_infercnv.py` (Ensembl release 116,
 tabella in `data/interim/gene_positions_ensembl116.csv`, funzioni importate da 13);
-senza coordinate lo script si ferma (anche con copykat, perche' servono per mappare
-le finestre sui loci); `copykat` si usa solo con `--method copykat` e richiede
-`rpy2` e R (assenti dall'ambiente). Cromosomi: come in 13, entrano solo i geni dei
+senza coordinate lo script si ferma. Con `--method copykat` le coordinate delle
+finestre non sono ricostruibili e lo script si ferma (copykat richiede anche `rpy2`
+e R, assenti dall'ambiente). Cromosomi: come in 13, entrano solo i geni dei
 cromosomi 1-22, X e Y (esclusi `MT`, la cui espressione segue la frazione
 mitocondriale `pct_mt`, e i contig non standard); infercnvpy esclude X e Y, e lo
 script si ferma se `X_cnv` contiene finestre fuori da chr1-22. La cache e' riusata solo
@@ -49,6 +57,9 @@ Input
 Output
 ------
   data/interim/cnv_matrix.npz                    matrice X_cnv e coordinate delle finestre (cache)
+  results/tables/cnv_windows.csv                 coordinate reali di ogni finestra (colonna di X_cnv,
+                                                 cromosoma, start, end, mediana, n geni, primo e
+                                                 ultimo gene) e loci a cui e' attribuita
   data/interim/cnv_cache_fingerprint.json        impronta della cache (voce `cnv_matrix.npz`)
   data/interim/gene_positions_ensembl116.csv     coordinate dei geni (solo se scaricate)
   results/tables/cnv_loci_auc.csv                AUC pooled per segnale (score medio, loci, composito);
@@ -93,16 +104,53 @@ SEED = 0
 HERE = Path(__file__).resolve().parent
 
 IMMUNE_REF = ["CD8T", "CD4T", "NK", "B", "Myeloid", "Plasma"]
+# colonne delle coordinate delle finestre (da `window_table` di 13), salvate nella cache
+WIN_COLS = ["col", "chrom", "start", "end", "pos", "n_genes", "first_gene", "last_gene"]
 
 # Coordinate genomiche (GRCh38/hg38, in bp) e direzionalita' attesa dei loci citogenetici PDAC
 PDAC_LOCI = [
-    {"name": "CDKN2A_9p21", "chrom": "9", "start": 20e6, "end": 24e6, "direction": -1},
-    {"name": "TP53_17p13", "chrom": "17", "start": 0, "end": 10e6, "direction": -1},
-    {"name": "SMAD4_18q21", "chrom": "18", "start": 45e6, "end": 60e6, "direction": -1},
+    {
+        "name": "CDKN2A_9p21",
+        "gene": "CDKN2A",
+        "chrom": "9",
+        "start": 20e6,
+        "end": 24e6,
+        "direction": -1,
+    },
+    {
+        "name": "TP53_17p13",
+        "gene": "TP53",
+        "chrom": "17",
+        "start": 0,
+        "end": 10e6,
+        "direction": -1,
+    },
+    {
+        "name": "SMAD4_18q21",
+        "gene": "SMAD4",
+        "chrom": "18",
+        "start": 45e6,
+        "end": 60e6,
+        "direction": -1,
+    },
     {"name": "1p_loss", "chrom": "1", "start": 0, "end": 60e6, "direction": -1},
     {"name": "6q_loss", "chrom": "6", "start": 90e6, "end": 170e6, "direction": -1},
-    {"name": "MYC_8q24", "chrom": "8", "start": 120e6, "end": 145e6, "direction": +1},
-    {"name": "KRAS_12p12", "chrom": "12", "start": 20e6, "end": 30e6, "direction": +1},
+    {
+        "name": "MYC_8q24",
+        "gene": "MYC",
+        "chrom": "8",
+        "start": 120e6,
+        "end": 145e6,
+        "direction": +1,
+    },
+    {
+        "name": "KRAS_12p12",
+        "gene": "KRAS",
+        "chrom": "12",
+        "start": 20e6,
+        "end": 30e6,
+        "direction": +1,
+    },
     {"name": "20q_gain", "chrom": "20", "start": 30e6, "end": 65e6, "direction": +1},
 ]
 
@@ -115,89 +163,80 @@ def _infercnv13():
     return m
 
 
-def compute_cnv(
-    sub: ad.AnnData, method: str, window_size: int = 100, check_windows=None
-):
-    """Calcola la matrice completa `X_cnv` e ricostruisce la mappa genomica (cromosoma, posizione) delle finestre.
+def compute_cnv(sub: ad.AnnData, method: str, m13):
+    """Calcola `X_cnv` (soglia del rumore globale di 13) e le coordinate reali delle finestre.
 
-    `sub.var` deve avere le coordinate (`chromosome`, `start`) di `add_positions` di 13,
-    anche con copykat: servono a mappare le finestre sui loci. `check_windows` (da 13)
-    controlla che le finestre di inferCNV siano solo autosomiche.
+    `sub.var` deve avere le coordinate (`chromosome`, `start`, `end`) di `add_positions`
+    di 13. Le coordinate delle finestre sono ricostruite dai geni con `m13.window_table`
+    (stessa costruzione di infercnvpy); con copykat non sono ricostruibili e lo script
+    si ferma.
     """
-    import infercnvpy as cnv
-
     if "chromosome" not in sub.var:
         raise SystemExit(
             "[ERRORE] coordinate dei geni assenti: chiamare add_positions di 13."
         )
-    check_windows = check_windows or (lambda _chr_pos: None)
-
-    a = sub.copy()
-    if method == "infercnv":
-        a.layers["counts"] = a.X.copy()
-        sc.pp.normalize_total(a, target_sum=1e4)
-        sc.pp.log1p(a)
-        a = a[:, a.var["chromosome"].notna()].copy()
-        present = set(a.obs["ref_group"].astype(str).unique())
-        ref = [c for c in IMMUNE_REF if c in present]
-        if not ref:
-            raise SystemExit(
-                "[ERRORE] nessuna cellula immunitaria di riferimento nel sottoinsieme: "
-                "inferCNV non puo' stimare il profilo diploide."
-            )
-        if present <= set(ref):
-            raise SystemExit(
-                "[ERRORE] tutte le cellule sono di riferimento: nessuna duttale da valutare."
-            )
-        print(f"[..] infercnv, riferimento = {ref} di tutti i pazienti (lento) ...")
-        cnv.tl.infercnv(
-            a, reference_key="ref_group", reference_cat=ref, window_size=window_size
+    if method != "infercnv":
+        raise SystemExit(
+            "[ERRORE] le coordinate delle finestre sono ricostruibili solo con inferCNV: "
+            "usa --method infercnv."
         )
-        check_windows(a.uns["cnv"]["chr_pos"])
-    else:
-        print("[..] copykat (lento) ...")
-        cnv.tl.copykat(a, n_jobs=-1)
-
+    a = sub.copy()
+    a.layers["counts"] = a.X.copy()
+    sc.pp.normalize_total(a, target_sum=1e4)
+    sc.pp.log1p(a)
+    a = a[:, a.var["chromosome"].notna()].copy()
+    ref = m13.reference_categories(a.obs["ref_group"])
+    print(f"[..] infercnv, riferimento = {ref} di tutti i pazienti (lento) ...")
+    m13.run_infercnv_core(a, ref, m13.WINDOW_SIZE)
     X = a.obsm["X_cnv"]
     X = np.asarray(X.todense()) if issparse(X) else np.asarray(X)
-
-    # Ricostruzione del cromosoma e della coordinata di ciascuna finestra di X_cnv.
-    # infercnvpy restituisce solo la colonna d'inizio di ogni cromosoma (chr_pos), non le
-    # coordinate delle finestre: la posizione e' interpolata in modo UNIFORME fra il primo
-    # e l'ultimo gene annotato del cromosoma. I geni non sono equispaziati, quindi i
-    # confini dei loci in PDAC_LOCI sono applicati in modo approssimato.
-    chr_pos = a.uns["cnv"]["chr_pos"]
-    n_win = X.shape[1]
-    order = sorted(chr_pos.items(), key=lambda kv: kv[1])
-    win_chrom = np.empty(n_win, dtype=object)
-    for i, (chrom, start_col) in enumerate(order):
-        end_col = order[i + 1][1] if i + 1 < len(order) else n_win
-        win_chrom[start_col:end_col] = chrom.replace("chr", "")
-    var = a.var.copy()
-    var["chromosome"] = var["chromosome"].astype(str).str.replace("chr", "")
-    win_pos = np.full(n_win, np.nan)
-    for chrom, start_col in order:
-        cc = chrom.replace("chr", "")
-        end_col = next((sc_ for ch2, sc_ in order if sc_ > start_col), n_win)
-        genes = var[var.chromosome == cc].sort_values("start")
-        if len(genes) == 0:
-            continue
-        pos = np.linspace(genes.start.min(), genes.start.max(), end_col - start_col)
-        win_pos[start_col:end_col] = pos
-    windows = pd.DataFrame({"chrom": win_chrom, "pos": win_pos})
+    windows = m13.window_table(a, m13.WINDOW_SIZE)
     return X, windows, a.obs_names
+
+
+def locus_windows(windows: pd.DataFrame, locus: dict) -> np.ndarray:
+    """Finestre del locus: quelle il cui intervallo genomico (start del primo gene, end
+    dell'ultimo) si sovrappone al locus."""
+    return (
+        (windows.chrom == locus["chrom"])
+        & (windows.end >= locus["start"])
+        & (windows.start <= locus["end"])
+    ).values
+
+
+def check_marker_windows(windows: pd.DataFrame, genes: pd.DataFrame) -> None:
+    """Controllo esplicito: le finestre che contengono il gene marcatore di un locus
+    (es. CDKN2A, chr9:21,97-22,00 Mb) sono fra quelle attribuite al locus."""
+    for L in PDAC_LOCI:
+        g = L.get("gene")
+        if g is None:
+            continue
+        if g not in genes.index:
+            print(f"  {L['name']}: gene {g} senza coordinate, controllo non eseguito")
+            continue
+        gs, ge = float(genes.loc[g, "start"]), float(genes.loc[g, "end"])
+        has_gene = (
+            (windows.chrom == L["chrom"]) & (windows.start <= gs) & (windows.end >= ge)
+        ).values
+        in_locus = locus_windows(windows, L)
+        ok = has_gene.any() and bool(np.all(in_locus[has_gene]))
+        print(
+            f"  {L['name']}: {g} a chr{L['chrom']}:{gs / 1e6:.2f}-{ge / 1e6:.2f} Mb in "
+            f"{int(has_gene.sum())} finestre, tutte attribuite al locus: {ok} "
+            f"(finestre del locus: {int(in_locus.sum())})"
+        )
+        if not ok:
+            raise SystemExit(
+                f"[ERRORE] il gene {g} non cade nelle finestre di {L['name']}"
+            )
 
 
 def locus_score(X, windows, locus) -> np.ndarray:
     """Calcola lo score CNV medio moltiplicato per la direzione citogenetica attesa (+1 guadagno, -1 perdita)."""
-    m = (
-        (windows.chrom == locus["chrom"])
-        & (windows.pos >= locus["start"])
-        & (windows.pos <= locus["end"])
-    )
+    m = locus_windows(windows, locus)
     if m.sum() == 0:
         return np.full(X.shape[0], np.nan)
-    return X[:, m.values].mean(axis=1) * locus["direction"]
+    return X[:, m].mean(axis=1) * locus["direction"]
 
 
 def main() -> None:
@@ -247,7 +286,12 @@ def main() -> None:
         print(f"[ok] X_cnv da cache {cache}")
         npz = np.load(cache, allow_pickle=True)
         X, obs_names = npz["X"], npz["obs_names"]
-        windows = pd.DataFrame({"chrom": npz["win_chrom"], "pos": npz["win_pos"]})
+        if "win_start" not in npz:
+            raise SystemExit(
+                f"[ERRORE] la cache {cache} non ha le coordinate reali delle finestre "
+                "(versione precedente): cancellala per ricalcolare."
+            )
+        windows = pd.DataFrame({c: npz[f"win_{c}"] for c in WIN_COLS})
         cached, wanted = pd.Index(obs_names), sub.obs_names
         if len(cached.difference(wanted)) or len(wanted.difference(cached)):
             raise SystemExit(
@@ -268,20 +312,41 @@ def main() -> None:
                 "copykat non e' usato come ripiego (richiede rpy2 e R)."
             )
         t0 = time.time()
-        X, windows, obs_names = compute_cnv(
-            sub, method, m13.WINDOW_SIZE, m13.check_autosomal_windows
-        )
+        X, windows, obs_names = compute_cnv(sub, method, m13)
         print(f"[ok] X_cnv {X.shape} in {time.time() - t0:.0f}s")
         cache.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(
             cache,
             X=X,
             obs_names=np.array(obs_names),
-            win_chrom=windows.chrom.values,
-            win_pos=windows.pos.values,
+            **{f"win_{c}": windows[c].values for c in WIN_COLS},
         )
         m13.save_fingerprint(cache.name, m13.cnv_fingerprint(sub, method))
         sub = sub[obs_names].copy()
+
+    # Coordinate delle finestre: tabella e controllo dei geni marcatori dei loci
+    pos_tab = m13.gene_positions()
+    if pos_tab is None:
+        raise SystemExit(
+            f"[ERRORE] {m13.GENE_POS} assente: servono le coordinate dei geni."
+        )
+    pos_tab = pos_tab.dropna(subset=["hgnc_symbol"])
+    pos_tab = pos_tab[~pos_tab.hgnc_symbol.duplicated(keep=False)].set_index(
+        "hgnc_symbol"
+    )
+    gene_coord = pos_tab.rename(
+        columns={"start_position": "start", "end_position": "end"}
+    )
+    win_out = windows.copy()
+    win_out["loci"] = [
+        ";".join(L["name"] for L in PDAC_LOCI if locus_windows(windows, L)[k])
+        for k in range(len(windows))
+    ]
+    win_out.to_csv(TAB / "cnv_windows.csv", index=False)
+    print(
+        "\ncontrollo delle finestre dei loci (intervallo della finestra sovrapposto al locus):"
+    )
+    check_marker_windows(windows, gene_coord)
 
     obs = sub.obs
     duct = obs.all_celltype.values == "Ductal"
@@ -323,13 +388,7 @@ def main() -> None:
     for L in PDAC_LOCI:
         s = locus_score(X, windows, L)
         loci_scores[L["name"]] = s
-        nwin = int(
-            (
-                (windows.chrom == L["chrom"])
-                & (windows.pos >= L["start"])
-                & (windows.pos <= L["end"])
-            ).sum()
-        )
+        nwin = int(locus_windows(windows, L).sum())
         rows.append(
             {
                 "signal": L["name"],

@@ -26,7 +26,9 @@ Adjacent_normal e Tumor dello stesso paziente.
      E' la versione esplorativa: lo stimatore principale, non distorto, e' in
      `07_robustness.py`.
   2. Contaminazione da cellule T nella classe NK: c_hat = (f - q) / (pi - q), con f, pi
-     e q le frazioni di cellule con TCR fra le NK, le T e le non-T. "Cellula con TCR" =
+     e q le frazioni di cellule con TCR fra le NK, le T (CD4T, CD8T) e le non-T usate
+     per q (Ductal, Endothelial, CAF, Stellate, Myeloid, B, Acinar, Schwann; escluse
+     Platelet, Plasma ed Endocrine). "Cellula con TCR" =
      cellula con una catena TRB produttiva (`clone_b` definito): le cellule con sola
      TRA produttiva contano come TCR-. E' un limite
      superiore della frazione di T vere etichettate NK: c_hat non distingue le cellule
@@ -36,8 +38,10 @@ Adjacent_normal e Tumor dello stesso paziente.
 
 Regole: i cloni sono definiti entro paziente dalla sequenza nucleotidica esatta
 della CDR3 (non da `raw_clonotype_id`, che e' locale al campione). L'etichetta di
-maggioranza e' la moda; a parita' vince l'etichetta che compare per prima
-nell'ordine delle cellule (`scpipe.majority_label`). Nello split-half un clone con
+maggioranza e' la moda (`scpipe.majority_label`); se due o piu' etichette hanno lo
+stesso conteggio massimo non e' definita, e le coppie fra compartimenti e le repliche
+split-half con un'etichetta in pareggio sono escluse (conteggi nel riepilogo; colonna
+`tie` nelle tabelle per coppia e per replica). Nello split-half un clone con
 n dispari perde una cellula a caso (le due meta' hanno n // 2 cellule ciascuna).
 
 Input
@@ -53,7 +57,8 @@ Output
   results/tables/clone_switching_across_{cc}.csv    una riga per (clone, coppia di compartimenti)
   results/tables/clone_switching_within_{cc}.csv    repliche split-half (escluso da git: grande)
   results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni, pazienti
-                                                    (totali, del termine fra compartimenti, del basale)
+                                                    (totali, del termine fra compartimenti, del basale),
+                                                    coppie e repliche escluse per pareggio
   ({cc} = clone_b o clone_ab; se i cloni condivisi non bastano, questi tre file e la figura
   non vengono scritti e quelli di un'esecuzione precedente vengono cancellati)
   results/figures/clone_label_switching_{cc}.png
@@ -235,7 +240,7 @@ def build_clones(contigs: pd.DataFrame) -> pd.DataFrame:
 
 
 def majority(labels: pd.Series) -> str:
-    """Etichetta modale; pareggi risolti dalla prima comparsa (`scpipe.majority_label`)."""
+    """Etichetta modale (`scpipe.majority_label`); None in caso di pareggio."""
     return majority_label(labels.values)
 
 
@@ -268,9 +273,15 @@ def cross_compartment_switching(
                         "lab_b": majority(comp[b]),
                     }
                 )
-    out = pd.DataFrame(rows)
-    if not out.empty:
-        out["switch"] = out.lab_a != out.lab_b
+    return _mark_switch(pd.DataFrame(rows))
+
+
+def _mark_switch(out: pd.DataFrame) -> pd.DataFrame:
+    """Colonne `tie` (almeno un'etichetta in pareggio) e `switch` (NaN se `tie`)."""
+    if out.empty:
+        return out
+    out["tie"] = out.lab_a.isna() | out.lab_b.isna()
+    out["switch"] = np.where(out.tie, np.nan, (out.lab_a != out.lab_b).astype(float))
     return out
 
 
@@ -302,10 +313,7 @@ def within_compartment_baseline(
                     "lab_b": majority_label(lab[perm[h : 2 * h]]),
                 }
             )
-    out = pd.DataFrame(rows)
-    if not out.empty:
-        out["switch"] = out.lab_a != out.lab_b
-    return out
+    return _mark_switch(pd.DataFrame(rows))
 
 
 def cluster_excess_ci(
@@ -445,7 +453,7 @@ def main() -> None:
         f"\n[ok] cellule GEX: {len(gex):,} | con TCR appaiato: {gex.has_tcr.sum():,} "
         f"({gex.has_tcr.mean():.1%})"
     )
-    print("\n[qc] frazione di cellule con TCR produttivo per etichetta:")
+    print("\n[qc] frazione di cellule con catena TRB produttiva per etichetta:")
     rate = (
         gex.groupby("all_celltype", observed=True)
         .has_tcr.agg(frac_tcr="mean", n_tcr="sum", n_cells="size")
@@ -491,8 +499,17 @@ def main() -> None:
         .to_string()
     )
 
-    across = cross_compartment_switching(lym, cc)
-    within = within_compartment_baseline(lym, cc)
+    across_all = cross_compartment_switching(lym, cc)
+    within_all = within_compartment_baseline(lym, cc)
+    # coppie e repliche con un'etichetta in pareggio: confronto non definito, escluse
+    n_tie_a = int(across_all.tie.sum()) if not across_all.empty else 0
+    n_tie_w = int(within_all.tie.sum()) if not within_all.empty else 0
+    across = across_all[~across_all.tie] if not across_all.empty else across_all
+    within = within_all[~within_all.tie] if not within_all.empty else within_all
+    print(
+        f"[i] pareggi dell'etichetta di maggioranza esclusi: {n_tie_a} coppie fra "
+        f"compartimenti, {n_tie_w} repliche split-half"
+    )
 
     print("\n" + "=" * 74)
     print("SINTESI DISCORDANZA CLONALE")
@@ -530,6 +547,8 @@ def main() -> None:
                 "clone_def": cc,
                 "n_pairs_across": len(across),
                 "n_reps_within": len(within),
+                "n_pairs_ties_excluded": n_tie_a,
+                "n_reps_ties_excluded": n_tie_w,
                 "n_patients": n_pat,
                 "n_patients_across": across.patient.nunique(),
                 "n_patients_within": within.patient.nunique(),
@@ -551,7 +570,7 @@ def main() -> None:
     )
     print("\ntransizioni di etichetta piu' frequenti:")
     print(
-        across[across.switch]
+        across[across.switch == 1]
         .groupby(["lab_a", "lab_b"])
         .size()
         .sort_values(ascending=False)
@@ -559,8 +578,9 @@ def main() -> None:
         .to_string()
     )
 
-    across.to_csv(TAB / f"clone_switching_across_{cc}.csv", index=False)
-    within.to_csv(TAB / f"clone_switching_within_{cc}.csv", index=False)
+    # tabelle complete, con le coppie e le repliche in pareggio (colonna `tie`)
+    across_all.to_csv(TAB / f"clone_switching_across_{cc}.csv", index=False)
+    within_all.to_csv(TAB / f"clone_switching_within_{cc}.csv", index=False)
 
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.bar(

@@ -16,8 +16,9 @@ Input
 
 Output
 ------
-  results/tables/error_rate_blood.csv   errore per compartimento: n cloni, n pazienti, errore, IC;
-                                        con <= 5 pazienti anche il numero di ricampionature distinte
+  results/tables/error_rate_blood.csv   errore per compartimento: n cloni, pareggi esclusi (`n_ties`),
+                                        n pazienti, errore, IC; con <= 5 pazienti anche il numero di
+                                        ricampionature distinte
   results/figures/error_rate_blood.png  barre con IC; con <= 5 pazienti grigie tratteggiate
                                         (IC non calibrato)
 
