@@ -1,0 +1,115 @@
+[ok] uso cache data/raw/metadata/GSE278694_family.xml.tgz
+
+[ok] 88 campioni -> data/raw/metadata/samples.tsv
+
+==============================================================================
+GSE278694: 88 GSM
+==============================================================================
+
+Modalita inferite (verificare in samples.tsv):
+modality
+TCR       30
+scRNA     29
+Visium    21
+snRNA      8
+
+------------------------------------------------------------------------------
+Q1  scRNA e snRNA sugli STESSI pazienti?   [analisi cross-modalita]
+------------------------------------------------------------------------------
+modality  TCR  Visium  scRNA  snRNA
+patient                            
+PA01        1       1      1      0
+PA02        1       1      1      0
+PA03        1       1      0      0
+PA04        2       2      2      0
+PA05        2       2      2      0
+PA06        3       1      3      0
+PA07        2       0      2      0
+PA08        3       1      3      0
+PA09        3       0      3      0
+PA10        3       0      3      0
+PA11        2       2      2      0
+PA12        2       1      2      0
+PA13        2       0      2      0
+PA14        2       0      2      0
+PA15        1       0      1      0
+PA21        0       1      0      1
+PA22        0       1      0      0
+PA24        0       1      0      1
+PA29        0       1      0      1
+PA40        0       1      0      1
+PA47        0       1      0      0
+PA72        0       1      0      1
+PA85        0       1      0      1
+PA91        0       0      0      1
+PA98        0       1      0      1
+
+=> 0 pazienti con ENTRAMBE le modalita.
+   ESITO: coorti disgiunte; la modalita tecnica risulta confusa col paziente.
+          Escludere il trasferimento diretto scRNA -> snRNA non controllato.
+
+------------------------------------------------------------------------------
+Q2  Librerie TCR appaiate a librerie GEX?  [validazione clonale V(D)J]
+------------------------------------------------------------------------------
+pazienti con TCR: 15 | con GEX: 22 | con entrambi: 14
+   -> ['PA01', 'PA02', 'PA04', 'PA05', 'PA06', 'PA07', 'PA08', 'PA09', 'PA10', 'PA11', 'PA12', 'PA13', 'PA14', 'PA15']
+
+   ESITO: coorte con doppia libreria TCR + GEX disponibile.
+   Procedere con la verifica di intersezione dei barcode cellulari 16-nt nello step 01.
+
+------------------------------------------------------------------------------
+Q3  Annotazioni di cell type nei supplementary?  [classificazione citologica]
+------------------------------------------------------------------------------
+[ok] filelist.txt: 103 file di serie
+
+Candidati a livello di SERIE:
+   - GSM9060613_PA_01-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060614_PA_02-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060615_PA_03-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060616_PA_04-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060617_PA_04-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060618_PA_05-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060619_PA_05-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060620_PA_06-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060621_PA_06-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060622_PA_06-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060623_PA_07-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060624_PA_07-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060625_PA_08-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060626_PA_08-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060627_PA_08-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060628_PA_09-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060629_PA_09-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060630_PA_09-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060631_PA_10-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060632_PA_10-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060633_PA_10-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060634_PA_11-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060635_PA_11-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060636_PA_12-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060637_PA_12-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060638_PA_13-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060639_PA_13-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060640_PA_14-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060641_PA_14-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060642_PA_15-PBMC-VDJ_filtered_contig_annotations.csv.gz
+
+Candidati a livello di CAMPIONE (primi 10):
+   - GSM9060613: GSM9060613_PA_01-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060614: GSM9060614_PA_02-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060615: GSM9060615_PA_03-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060616: GSM9060616_PA_04-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060617: GSM9060617_PA_04-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060618: GSM9060618_PA_05-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060619: GSM9060619_PA_05-Tumor-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060620: GSM9060620_PA_06-Normal-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060621: GSM9060621_PA_06-PBMC-VDJ_filtered_contig_annotations.csv.gz
+   - GSM9060622: GSM9060622_PA_06-Tumor-VDJ_filtered_contig_annotations.csv.gz
+
+   ESITO: individuati file candidati per i metadati cellulari.
+   Nota: i file 'barcodes.tsv' contengono gli identificatori di colonna della matrice, non le etichette.
+
+==============================================================================
+Prossimo passo: verificare data/raw/metadata/samples.tsv per la corrispondenza tra
+le colonne `modality`, `patient` e `title`.
+==============================================================================

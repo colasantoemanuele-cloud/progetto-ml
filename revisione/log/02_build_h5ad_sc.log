@@ -1,0 +1,68 @@
+[ok] cache GSE278688_sc_matrix.mtx.gz (1093.8 MB)
+[ok] cache GSE278688_sc_barcodes.tsv.gz (0.9 MB)
+[ok] cache GSE278688_sc_features.tsv.gz (0.2 MB)
+[ok] cache GSE278688_sc_metadata.csv.gz (1.2 MB)
+[ok] barcodes: 199,184 | features: (30543, 3)
+[..] mtx: 30,543 geni x 199,184 cellule, 358,929,111 nonzero
+     chunk 1: 20,000,000/358,929,111 (6%)
+     chunk 2: 40,000,000/358,929,111 (11%)
+     chunk 3: 60,000,000/358,929,111 (17%)
+     chunk 4: 80,000,000/358,929,111 (22%)
+     chunk 5: 100,000,000/358,929,111 (28%)
+     chunk 6: 120,000,000/358,929,111 (33%)
+     chunk 7: 140,000,000/358,929,111 (39%)
+     chunk 8: 160,000,000/358,929,111 (45%)
+     chunk 9: 180,000,000/358,929,111 (50%)
+     chunk 10: 200,000,000/358,929,111 (56%)
+     chunk 11: 220,000,000/358,929,111 (61%)
+     chunk 12: 240,000,000/358,929,111 (67%)
+     chunk 13: 260,000,000/358,929,111 (72%)
+     chunk 14: 280,000,000/358,929,111 (78%)
+     chunk 15: 300,000,000/358,929,111 (84%)
+     chunk 16: 320,000,000/358,929,111 (89%)
+     chunk 17: 340,000,000/358,929,111 (95%)
+     chunk 18: 358,929,111/358,929,111 (100%)
+[..] costruisco CSR (cellule x geni) ...
+[ok] X (199184, 30543), 358,929,111 nnz, 1.44 GB (data)
+[qc] X sembra CONTE INTERE  min=1 max=4.26e+03 media=2.63
+[..] celle senza metadata: 0
+
+[ok] librerie: 29 | pazienti: 14
+library
+PDAC08-PBMC-GEX_out      11016
+PDAC04-Normal-GEX_out    10816
+PDAC11-PBMC-GEX_out       9976
+PDAC06-PBMC-GEX_out       9308
+PDAC12-PBMC-GEX_out       8880
+PDAC14-PBMC-GEX_out       8871
+PDAC11-Tumor-GEX_out      8688
+PDAC13-PBMC-GEX_out       8467
+PDAC07-PBMC-GEX_out       8180
+PDAC06-Normal-GEX_out     8178
+PDAC15-PBMC-GEX_out       7899
+PDAC05_PBMC_GEX_out       7823
+PDAC08-Normal-GEX_out     7453
+PDAC13-Tumor-GEX_out      7298
+PDAC09-PBMC-GEX_out       7285
+PDAC08-Tumor-GEX_out      7079
+PDAC04-Tumor-GEX_out      6846
+PDAC09-Normal-GEX_out     6453
+PDAC12-Tumor-GEX_out      6122
+PDAC06-Tumor-GEX_out      5408
+PDAC10-Normal-GEX_out     5364
+PDAC10-Tumor-GEX_out      5234
+PDAC09-Tumor-GEX_out      4880
+PDAC02-Tumor-GEX_out      4824
+PDAC01-Tumor-GEX_out      4807
+PDAC07-Tumor-GEX_out      4663
+PDAC05-Tumor-GEX_out      3438
+PDAC14-Tumor-GEX_out      2127
+PDAC10-PBMC-GEX_out       1801
+
+[ok] nessun probe barcode (chimica non multiplexata)
+[ok] geni mitocondriali: 13 | mediana pct_mt: 3.08
+
+[ok] scritto data/interim/sc_raw.h5ad (845 MB)
+AnnData object with n_obs × n_vars = 199184 × 30543
+    obs: 'tissue', 'patients', 'all_celltype', 'library', 'barcode', 'probe', 'n_counts', 'n_genes', 'pct_mt'
+    var: 'gene_symbol'

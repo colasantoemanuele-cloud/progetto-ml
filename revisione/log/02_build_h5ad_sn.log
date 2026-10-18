@@ -1,0 +1,37 @@
+[ok] cache GSE278689_sn_matrix.mtx.gz (106.2 MB)
+[ok] cache GSE278689_sn_barcodes.tsv.gz (0.2 MB)
+[ok] cache GSE278689_sn_features.tsv.gz (0.2 MB)
+[ok] cache GSE278689_sn_metadata.csv.gz (0.2 MB)
+[ok] barcodes: 32,005 | features: (30543, 3)
+[..] mtx: 30,543 geni x 32,005 cellule, 35,060,262 nonzero
+     chunk 1: 20,000,000/35,060,262 (57%)
+     chunk 2: 35,060,262/35,060,262 (100%)
+[..] costruisco CSR (cellule x geni) ...
+[ok] X (32005, 30543), 35,060,262 nnz, 0.14 GB (data)
+[qc] X sembra CONTE INTERE  min=1 max=5.18e+03 media=4.55
+[..] celle senza metadata: 0
+
+[ok] librerie: 8 | pazienti: 8
+library
+2021124_FFPE    6816
+2151198_FFPE    6336
+1869485_FFPE    6109
+2107809_FFPE    4684
+1942191_FFPE    3113
+2048540_FFPE    1693
+2051072_FFPE    1650
+2049529_FFPE    1604
+
+[ok] probe barcode (10x Flex), atteso nunique=1 per libreria:
+              nunique     first
+library                        
+1942191_FFPE        1  AACGGGAA
+2021124_FFPE        1  ATGTTGAC
+2049529_FFPE        1  AGTAGGCT
+2051072_FFPE        1  ACTTTAGG
+[ok] geni mitocondriali: 13 | mediana pct_mt: 2.88
+
+[ok] scritto data/interim/sn_raw.h5ad (86 MB)
+AnnData object with n_obs × n_vars = 32005 × 30543
+    obs: 'tissue', 'patients', 'all_celltype', 'library', 'barcode', 'probe', 'n_counts', 'n_genes', 'pct_mt'
+    var: 'gene_symbol'

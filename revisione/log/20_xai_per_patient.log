@@ -1,0 +1,82 @@
+[..] carico h5ad ...
+[ok] task1a_paired: 67,662 cellule | 5 pazienti
+
+cellule per paziente:
+  PA04: 17,658
+  PA06: 13,571
+  PA08: 14,516
+  PA09: 11,327
+  PA10: 10,590
+
+==========================================================================
+SPIEGAZIONI: una per fold LOPO (= una per paziente escluso)
+==========================================================================
+  fold 0 (escluso PA04): train 20,000 cellule | 4,087 geni con coefficiente non nullo
+  fold 1 (escluso PA06): train 20,000 cellule | 4,380 geni con coefficiente non nullo
+  fold 2 (escluso PA08): train 20,000 cellule | 3,887 geni con coefficiente non nullo
+  fold 3 (escluso PA09): train 20,000 cellule | 4,363 geni con coefficiente non nullo
+  fold 4 (escluso PA10): train 20,000 cellule | 3,919 geni con coefficiente non nullo
+
+==========================================================================
+(1) QUANTO SI ASSOMIGLIANO LE SPIEGAZIONI DEI 5 FOLD
+==========================================================================
+
+Jaccard sui top-50 geni (0 = spiegazioni disgiunte, 1 = identiche):
+       PA04   PA06   PA08   PA09   PA10
+PA04  1.000  0.235  0.235  0.282  0.282
+PA06  0.235  1.000  0.250  0.408  0.351
+PA08  0.235  0.250  1.000  0.389  0.220
+PA09  0.282  0.408  0.389  1.000  0.351
+PA10  0.282  0.351  0.220  0.351  1.000
+
+  media fuori diagonale: 0.300
+
+Spearman fra i vettori di coefficienti: media 0.234
+
+==========================================================================
+(2) GENI CONDIVISI DA TUTTI I FOLD
+==========================================================================
+geni nell'unione delle 5 spiegazioni : 124
+geni presenti in TUTTE e 5           : 9 (18% di top-50)
+  -> BTG2, CD69, CREM, CTRB1, DUSP4, FOS, GAPDH, HSPH1, VIM
+  geni di risposta immediata, associati allo stress di dissociazione: BTG2, CD69, CREM, DUSP4, FOS, HSPH1
+  marcatori acinari (probabile RNA ambientale): CTRB1
+
+geni esclusivi di un solo fold (spiegazione paziente-specifica):
+  PA04: 16/50 geni non condivisi con nessun altro fold
+  PA06: 13/50 geni non condivisi con nessun altro fold
+  PA08: 15/50 geni non condivisi con nessun altro fold
+  PA09: 5/50 geni non condivisi con nessun altro fold
+  PA10: 14/50 geni non condivisi con nessun altro fold
+
+==========================================================================
+(3) CONTROLLO: la variabilita' e' effetto-paziente o rumore?
+==========================================================================
+Ripeto lo stesso esperimento ignorando il paziente: sottoinsiemi casuali
+della stessa dimensione, campionati da tutte le cellule mescolate.
+
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+
+  Jaccard medio FRA PAZIENTI (LOPO)        : 0.300
+  Jaccard medio SENZA struttura (controllo): 0.459
+  differenza                                : +0.159
+
+  LETTURA: le spiegazioni sono piu' simili quando si ignora il paziente.
+  La variabilita' osservata in LOPO eccede quella di puro campionamento:
+  rimuovere UN paziente cambia cio' che il modello impara piu' di quanto
+  lo cambi rimuovere lo stesso numero di cellule prese a caso: e' cio' che
+  ci si aspetta se le cellule dello stesso paziente sono ridondanti fra
+  loro e l'unita' informativa e' il paziente, non la cellula.
+
+  CAUTELA: confrontare con results/tables/sim_d_xai_stability.csv (stessa
+  procedura su dati simulati con e senza effetto paziente): la grandezza e'
+  indicativa, non una stima calibrata dell'effetto.
+  Il controllo condivide piu' cellule fra repliche di due training LOPO:
+  parte della differenza c'e' anche senza effetto paziente.
+
+[ok] figura: results/figures/xai_per_patient_task1a_paired.png
+[ok] tabelle: results/tables/xai_*_task1a_paired.csv

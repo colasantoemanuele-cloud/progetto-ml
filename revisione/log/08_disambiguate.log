@@ -1,0 +1,97 @@
+[..] carico h5ad ...
+[ok] 199,184 cellule | TCR: 105,809
+
+==============================================================================
+(1) CONTRASTO APPAIATO: cloni presenti in TUTTI E TRE i compartimenti
+==============================================================================
+cloni: 123 | pazienti: 4 -> ['PA06', 'PA08', 'PA09', 'PA10']
+cellule: 9,263
+
+[!!] 4 pazienti (<= 5): l'IC del cluster bootstrap non e' calibrato
+     (con 4 pazienti copre ~82-83% in simulazione): nessun verdetto sugli IC.
+
+  exc_PBM_Adj            +0.0364  IC95% [-0.0208, +0.0571]
+  exc_PBM_Tum            +0.0844  IC95% [-0.0018, +0.1758]
+  exc_Adj_Tum            +0.0185  IC95% [-0.0137, +0.0493]
+
+DIFFERENZE APPAIATE (stesso clone, stesso paziente):
+  exc_PBM_Tum - exc_Adj_Tum = +0.0659  IC95% [+0.0119, +0.1264]  IC non calibrato; 35 ricampionature distinte, frazione > 0 = 1.000
+  exc_PBM_Tum - exc_PBM_Adj = +0.0480  IC95% [-0.0061, +0.1222]  IC non calibrato; 35 ricampionature distinte, frazione > 0 = 0.953
+
+per paziente:
+        exc_PBM_Adj      exc_PBM_Tum      exc_Adj_Tum     
+               mean size        mean size        mean size
+patient                                                   
+PA06         0.0536   36      0.1758   36      0.0493   36
+PA08         0.0571   52      0.0576   52      0.0084   52
+PA09        -0.0208   23      0.0468   23      0.0098   23
+PA10         0.0044   12     -0.0018   12     -0.0137   12
+
+Il confronto sugli stessi cloni riduce il confondimento fra paziente e coppia
+di compartimenti; restano le differenze di campionamento fra compartimenti.
+
+==============================================================================
+(2) MARCATORI: cloni discordanti vs CONCORDANTI (gruppo di controllo interno)
+==============================================================================
+cloni discordanti (excess>0.5): 46 | concordanti (excess<0.05): 707
+
+espressione media (log1p CP10K):
+                                         g_CD4  g_CD8A  g_CD8B  g_CD3D  g_NKG7  g_GNLY
+group      tissue          all_celltype                                               
+concordant Adjacent_normal CD4T          0.822   0.186   0.097   1.993   0.557   0.290
+                           CD8T          0.047   2.526   1.556   2.100   3.048   0.725
+                           NK            0.062   1.539   1.214   1.568   3.679   2.937
+           PBMC            CD4T          0.717   0.220   0.101   2.201   2.785   1.304
+                           CD8T          0.027   2.313   1.848   2.336   3.966   1.627
+                           NK            0.046   1.593   0.977   1.757   4.463   3.959
+           Tumor           CD4T          0.713   0.130   0.045   1.880   0.601   0.629
+                           CD8T          0.035   2.356   1.435   1.991   2.668   0.439
+                           NK            0.075   2.045   1.129   2.026   3.965   2.570
+discordant Adjacent_normal CD4T          0.688   0.000   0.000   2.167   1.526   0.171
+                           CD8T          0.122   1.851   0.952   1.900   2.942   0.314
+                           NK            0.000   2.626   1.486   1.979   3.744   2.718
+           PBMC            CD4T          0.832   0.055   0.006   2.340   3.852   2.472
+                           CD8T          0.083   2.337   1.834   2.516   4.292   2.762
+                           NK            0.676   0.559   0.248   1.827   4.441   4.211
+           Tumor           CD4T          0.860   0.033   0.000   2.231   2.438   1.436
+                           CD8T          0.566   0.114   0.051   1.742   2.633   1.776
+                           NK            0.423   0.957   0.686   2.293   3.926   2.532
+
+>>> CD8A nelle cellule chiamate CD8T, per tessuto: discordanti vs concordanti
+    (descrittivo per cellula; riassunto per paziente: frazione CD8A>0 piu' bassa
+     nei discordanti, pazienti con >= 5 cellule per gruppo)
+  PBMC             disc=  2.34 (n=  367)  conc=  2.31 (n= 5474)  frac CD8A>0: 0.89 vs 0.92  pazienti con frazione piu' bassa nei discordanti: 3/6
+  Adjacent_normal  disc=  1.85 (n=   62)  conc=  2.53 (n= 5960)  frac CD8A>0: 0.68 vs 0.90  pazienti con frazione piu' bassa nei discordanti: 2/2
+  Tumor            disc=  0.11 (n=  166)  conc=  2.36 (n= 5860)  frac CD8A>0: 0.07 vs 0.88  pazienti con frazione piu' bassa nei discordanti: 5/5
+
+Tumor, cellule CD8T: CD4 medio disc/conc = 16.3x (rapporto fra medie di log1p(CP10k), non fold-change)
+Frazione CD8A > 0 nelle CD8T del tumore: 0.07 nei cloni
+discordanti contro 0.88 nei concordanti (piu' bassa nei
+discordanti in 5/5 pazienti valutabili); un dropout di CD8A uguale nei due gruppi non
+produrrebbe questa differenza.
+Il dato e' compatibile con un'etichetta CD8T sbagliata (cellule CD4); resta
+aperta l'alternativa di un fenotipo CD4 citotossico (GNLY 1.78 nei discordanti contro 0.44 nei concordanti).
+[ok] doublet score da cache results/tables/doublet_scores.csv
+
+==============================================================================
+(3) ANALISI SCRUBLET: confronto TCR+ vs TCR- entro la medesima classe
+==============================================================================
+Confronto stratificato: TCR+ vs TCR- all'interno della stessa popolazione.
+
+(medie per cellula, descrittive; ultime colonne: pazienti concordi)
+      class  n_tcr_pos  n_tcr_neg  ds_tcr_pos  ds_tcr_neg   delta  n_patients_evaluable  n_patients_tcr_pos_higher
+       CD8T      50247       8692      0.0512      0.0687 -0.0174                    14                          5
+       CD4T      53044       3713      0.0446      0.0547 -0.0101                    14                          2
+         NK       1673      26526      0.1631      0.0482  0.1149                    14                         14
+   Platelet        219       1368      0.1463      0.0665  0.0798                    10                          7
+Endothelial        136       2285      0.1440      0.0663  0.0777                     9                          9
+   Stellate        153       2638      0.1034      0.0683  0.0350                     9                          9
+    Myeloid        137       8965      0.1181      0.0654  0.0527                    10                         10
+          B         84      26276      0.1018      0.0323  0.0696                     7                          7
+     Ductal         39       8674      0.1292      0.0564  0.0728                     4                          4
+
+INTERPRETAZIONE, per classe non-T:
+  delta ~ 0  -> punteggio compatibile con singoletto
+  delta > 0  -> punteggio piu' alto, compatibile con un profilo ibrido o un doppietto
+
+(CD8T/CD4T costituiscono il controllo negativo con delta atteso ~0.)

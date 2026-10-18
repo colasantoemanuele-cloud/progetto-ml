@@ -1,0 +1,56 @@
+[02:08:39] START 00_fetch_metadata
+[02:08:40] END 00_fetch_metadata rc=0 peakKB=117620 wall=0:00.44
+[02:08:40] START 00b_download_tcr
+[02:08:41] END 00b_download_tcr rc=0 peakKB=4176 wall=0:00.88
+[02:08:41] START 01_probe_labels
+[02:08:42] END 01_probe_labels rc=0 peakKB=204600 wall=0:01.02
+[02:08:42] START 01b_tcr_check
+[02:08:43] END 01b_tcr_check rc=0 peakKB=207072 wall=0:00.98
+[02:08:43] START 02_build_h5ad_sc
+[02:10:32] END 02_build_h5ad_sc rc=0 peakKB=7655848 wall=1:49.19
+[02:10:32] START 02_build_h5ad_sn
+[02:10:43] END 02_build_h5ad_sn rc=0 peakKB=1025472 wall=0:11.34
+[02:10:43] START 03_eda_qc_sc
+[02:10:50] END 03_eda_qc_sc rc=0 peakKB=421796 wall=0:07.01
+[02:10:50] START 03_eda_qc_sn
+[02:10:54] END 03_eda_qc_sn rc=0 peakKB=314820 wall=0:03.75
+[02:10:54] START 04_splits
+[02:10:59] END 04_splits rc=0 peakKB=410680 wall=0:04.63
+[02:11:26] START 06_clonotype_consistency
+[02:11:26] START 20_xai_per_patient
+[02:12:18] END 06_clonotype_consistency rc=0 peakKB=500832 wall=0:52.10
+[02:12:18] START 07_robustness_clone_ab
+[02:13:02] END 07_robustness_clone_ab rc=0 peakKB=3314720 wall=0:44.19
+[02:13:02] START 07_robustness_clone_b
+[02:13:05] END 20_xai_per_patient rc=0 peakKB=5973076 wall=1:38.96
+[02:13:05] START sim_a_calibration
+[02:13:43] END 07_robustness_clone_b rc=0 peakKB=3315116 wall=0:41.05
+[02:13:43] START 08_disambiguate
+[02:14:19] END 08_disambiguate rc=0 peakKB=3461544 wall=0:36.27
+[02:14:19] START 09_arbitrate
+[02:14:52] END 09_arbitrate rc=0 peakKB=3377500 wall=0:32.38
+[02:14:52] START 10_loco
+[02:16:18] END sim_a_calibration rc=0 peakKB=192912 wall=3:13.13
+[02:16:18] START sim_b_reference_schemes
+[02:17:58] END sim_b_reference_schemes rc=0 peakKB=256768 wall=1:40.64
+[02:17:58] START sim_c_block_permutation
+[02:18:36] END 10_loco rc=0 peakKB=3392984 wall=3:44.39
+[02:18:36] START 21_fig_blood_scheme
+[02:18:38] END 21_fig_blood_scheme rc=0 peakKB=252424 wall=0:02.35
+[02:18:38] START 15_inventory
+[02:18:40] END 15_inventory rc=0 peakKB=276556 wall=0:01.97
+[02:18:40] START 16_pseudobulk_patient
+[02:18:56] END 16_pseudobulk_patient rc=0 peakKB=3551556 wall=0:15.42
+[02:18:56] START 17_clonal_expansion
+[02:19:05] END 17_clonal_expansion rc=0 peakKB=1191152 wall=0:08.64
+[02:19:05] START 18_loyo_check
+[02:19:23] END 18_loyo_check rc=0 peakKB=1170676 wall=0:18.91
+[02:19:23] START 19_ni_score
+[02:19:26] END 19_ni_score rc=0 peakKB=226024 wall=0:02.51
+[02:20:12] END sim_c_block_permutation rc=0 peakKB=198400 wall=2:13.98
+[02:20:12] START sim_d_xai_stability
+[02:20:21] END sim_d_xai_stability rc=0 peakKB=288072 wall=0:08.43
+[02:20:44] START 13_infercnv
+[02:21:38] END 13_infercnv rc=0 peakKB=5964948 wall=0:54.27
+[02:21:38] START 14_cnv_loci
+[02:21:53] END 14_cnv_loci rc=0 peakKB=8583892 wall=0:14.56

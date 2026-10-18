@@ -1,0 +1,59 @@
+[ok] 287 cloni, 10 pazienti, da clonal_expansion_joined.csv
+
+==============================================================================
+leave-one-patient-out: errore di annotazione (0/1)
+==============================================================================
+tutti i 10 pazienti:  rho=+0.177  p=0.0009  media nulla=+0.012  p centrato=0.0015
+
+  senza PA05 ( 17 cloni): rho=+0.165  p=0.0033
+  senza PA06 ( 26 cloni): rho=+0.188  p=0.0039
+  senza PA07 ( 47 cloni): rho=+0.197  p=0.0014
+  senza PA08 ( 42 cloni): rho=+0.197  p=0.0015
+  senza PA09 ( 22 cloni): rho=+0.172  p=0.0024
+  senza PA10 ( 10 cloni): rho=+0.180  p=0.0020
+  senza PA11 ( 30 cloni): rho=+0.146  p=0.0118
+  senza PA12 ( 59 cloni): rho=+0.189  p=0.0022
+  senza PA13 ( 29 cloni): rho=+0.174  p=0.0028
+  senza PA14 (  5 cloni): rho=+0.164  p=0.0027
+
+con il p centrato: p < 0.05 in 10/10 versioni leave-one-out.
+
+risultato resta significativo (p<0.05) in 10/10 versioni leave-one-out con p definito.
+VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.
+
+paziente il cui contributo pesa di piu' (rho piu' basso se rimosso): PA11 (rho scende a +0.146)
+[ok] figura: results/figures/loyo_clonal_expansion_error.png
+
+==============================================================================
+leave-one-patient-out: eccesso di discordanza (continuo)
+==============================================================================
+tutti i 10 pazienti:  rho=+0.281  p=0.0000  media nulla=+0.027  p centrato=0.0000
+
+  senza PA05 ( 17 cloni): rho=+0.264  p=0.0000
+  senza PA06 ( 26 cloni): rho=+0.305  p=0.0000
+  senza PA07 ( 47 cloni): rho=+0.252  p=0.0001
+  senza PA08 ( 42 cloni): rho=+0.368  p=0.0000
+  senza PA09 ( 22 cloni): rho=+0.278  p=0.0000
+  senza PA10 ( 10 cloni): rho=+0.290  p=0.0000
+  senza PA11 ( 30 cloni): rho=+0.267  p=0.0000
+  senza PA12 ( 59 cloni): rho=+0.236  p=0.0004
+  senza PA13 ( 29 cloni): rho=+0.269  p=0.0000
+  senza PA14 (  5 cloni): rho=+0.273  p=0.0000
+
+con il p centrato: p < 0.05 in 10/10 versioni leave-one-out.
+
+risultato resta significativo (p<0.05) in 10/10 versioni leave-one-out con p definito.
+VERDETTO: nessuna esclusione di un singolo paziente porta p sopra 0.05.
+
+paziente il cui contributo pesa di piu' (rho piu' basso se rimosso): PA12 (rho scende a +0.236)
+[ok] figura: results/figures/loyo_clonal_expansion_excess.png
+
+--- sensibilita' del block permutation (errore binario, leave-one-out) ---
+  p fra semi e numero di permutazioni: da 0.0009 a 0.0118; p < 0.05 in 10/10 esclusioni con tutte le impostazioni
+
+==============================================================================
+Se entrambi gli outcome (errore ed eccesso) restano con p < 0.05 in tutte
+le versioni leave-one-out, il risultato di 17 non dipende da un singolo
+paziente (resta l'associazione fra 10 pazienti, non una generalizzazione).
+Se non lo sono, questo costituisce il risultato da riportare.
+==============================================================================

@@ -1,0 +1,34 @@
+[ok] 30 file VDJ da scaricare
+[ok]   cache  GSM9060613_PA_01-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060614_PA_02-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060615_PA_03-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060616_PA_04-Normal-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060617_PA_04-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060618_PA_05-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060619_PA_05-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060620_PA_06-Normal-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060621_PA_06-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060622_PA_06-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060623_PA_07-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060624_PA_07-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060625_PA_08-Normal-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060626_PA_08-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060627_PA_08-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060628_PA_09-Normal-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060629_PA_09-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060630_PA_09-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060631_PA_10-Normal-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060632_PA_10-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060633_PA_10-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060634_PA_11-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060635_PA_11-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060636_PA_12-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060637_PA_12-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060638_PA_13-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060639_PA_13-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060640_PA_14-PBMC-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060641_PA_14-Tumor-VDJ_filtered_contig_annotations.csv.gz
+[ok]   cache  GSM9060642_PA_15-PBMC-VDJ_filtered_contig_annotations.csv.gz
+
+[ok] scaricati/validi: 30 | falliti: 0
+14M	data/raw/tcr

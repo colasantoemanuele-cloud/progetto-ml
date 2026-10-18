@@ -1,0 +1,69 @@
+[ok] sc_raw.h5ad: 199,184 cellule x 30,543 geni
+[qc] X sembra CONTE INTERE
+[qc] min=1 max=4.26e+03 media=2.63
+[chk] librerie=29 pazienti=14
+[ok] riepilogo: n_cells=199,184, n_genes=30,543, n_libraries=29, n_patients=14, n_cells_PBMC=89,506, n_patients_PBMC=11, n_cells_Tumor=71,414, n_patients_Tumor=13, n_cells_Adjacent_normal=38,264, n_patients_Adjacent_normal=5
+
+[qc] geni/cellula (mediana per libreria): 1176 - 2403
+[qc] pct_mt (mediana per libreria): 1.63 - 6.21
+
+[qc] librerie con pct_mt piu alto:
+                       n_cells  median_genes  median_pct_mt
+library                                                    
+PDAC02-Tumor-GEX_out      4824        1445.5       6.207110
+PDAC11-PBMC-GEX_out       9976        1504.0       4.974525
+PDAC09-Normal-GEX_out     6453        1555.0       4.187980
+
+[eda] composizione celltype x tissue
+tissue        Adjacent_normal   PBMC  Tumor  total
+all_celltype                                      
+CD8T                    13100  23233  22606  58939
+CD4T                    11608  28878  16271  56757
+NK                       1211  23697   3291  28199
+B                        8813  10151   7396  26360
+Myeloid                  1699   1749   5654   9102
+Ductal                    334      9   8370   8713
+Stellate                  265      1   2525   2791
+CAF                       232      1   2423   2656
+Endothelial               408      2   2011   2421
+Platelet                    0   1587      0   1587
+Plasma                    541    198    325   1064
+Acinar                     16      0    284    300
+Schwann                    14      0    221    235
+Endocrine                  23      0     37     60
+
+[split] supporto per paziente (n pazienti = 14)
+              n_patients_ge_1  n_patients_ge_10  n_patients_ge_50  n_patients_ge_100  n_cells  n_patients_total
+all_celltype                                                                                                   
+CD8T                       14                14                14                 14    58939                14
+CD4T                       14                14                14                 14    56757                14
+NK                         14                14                14                 14    28199                14
+B                          14                14                14                 13    26360                14
+Myeloid                    14                14                14                 13     9102                14
+Ductal                     13                13                12                 12     8713                14
+Stellate                   13                13                10                  9     2791                14
+CAF                        14                13                11                  9     2656                14
+Endothelial                14                13                13                  8     2421                14
+Platelet                   10                10                 9                  6     1587                14
+Plasma                     14                12                 6                  3     1064                14
+Acinar                      7                 3                 1                  1      300                14
+Schwann                    12                 5                 1                  1      235                14
+Endocrine                  12                 2                 0                  0       60                14
+
+[split] valutazione di supporto per classe:
+  CD8T            58,939 cellule | 14 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  CD4T            56,757 cellule | 14 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  NK              28,199 cellule | 14 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  B               26,360 cellule | 14 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Myeloid          9,102 cellule | 14 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Ductal           8,713 cellule | 13 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Stellate         2,791 cellule | 13 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  CAF              2,656 cellule | 13 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Endothelial      2,421 cellule | 13 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Platelet         1,587 cellule | 10 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Plasma           1,064 cellule | 12 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Acinar             300 cellule |  3 pazienti con >=10 | fragile: solo LOPO, riporta la varianza
+  Schwann            235 cellule |  5 pazienti con >=10 | OK per StratifiedGroupKFold a 5 fold
+  Endocrine           60 cellule |  2 pazienti con >=10 | NON APPRENDIBILE cross-patient -> accorpa o escludi
+
+[ok] tabelle in results/tables/  figure in results/figures/

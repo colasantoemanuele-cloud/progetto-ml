@@ -1,0 +1,54 @@
+[..] carico h5ad ...
+[ok] outcome da arbitration_blood.csv (schema 'blood', solo tessuto Tumor)
+
+[ok] pazienti con outcome + predittori: 10 -> ['PA05', 'PA06', 'PA07', 'PA08', 'PA09', 'PA10', 'PA11', 'PA12', 'PA13', 'PA14']
+[i] esclusi (mancano outcome/troppo pochi cloni): ['PA01', 'PA02', 'PA04']
+
+==============================================================================
+TEST DI CORRELAZIONE A LIVELLO DI PAZIENTE (n=10)
+==============================================================================
+Tre ipotesi, formulate dopo i moduli 08-10 e prima di calcolare le covariate.
+Permutazione Monte Carlo (20000 permutazioni). Holm-Bonferroni sui 3 test.
+
+  exhaustion_score     rho=-0.467  p_perm=0.1759  IC95% boot=[-0.961, +0.321]
+      H1: esaurimento CD8T tumorali -> piu' errore (deriva CD8->CD4/NK ipotizzata)
+      direzione osservata coerente con l'ipotesi: False
+
+  myeloid_fraction     rho=-0.539  p_perm=0.1131  IC95% boot=[-0.987, +0.384]
+      H2: piu' contesto mieloide -> piu' errore (doppietti/ambient)
+      direzione osservata coerente con l'ipotesi: False
+
+  caf_fraction         rho=-0.152  p_perm=0.6733  IC95% boot=[-0.894, +0.701]
+      H3: piu' fibrosi -> qualita' peggiore -> piu' errore (speculativa)
+      direzione osservata coerente con l'ipotesi: False
+
+------------------------------------------------------------------------------
+p-value corretti (Holm-Bonferroni, su 3 test):
+  exhaustion_score     p_adj = 0.3518   non significativo
+  myeloid_fraction     p_adj = 0.3394   non significativo
+  caf_fraction         p_adj = 0.6733   non significativo
+
+==============================================================================
+n=10 pazienti: qualsiasi risultato qui e' IPOTESI-GENERANTE, non
+confermativo. Un IC bootstrap su 10-14 punti e' largo per costruzione.
+Un p<0.05 con n così piccolo va replicato prima di essere creduto;
+un p>0.05 non e' evidenza di assenza di effetto, e' assenza di potenza.
+==============================================================================
+
+[..] PCA pseudobulk (descrittiva, non un test) ...
+[ok] figura: results/figures/pseudobulk_patient_pca.png (10 pazienti)
+
+==============================================================================
+NOTA METODOLOGICA SULL'ESCLUSIONE DI SCANSIONI TRANSCRITTOMICHE
+==============================================================================
+
+  Valutare la correlazione col tasso d'errore su tutti i ~20.000 geni per n=10-14
+  pazienti e selezionare i p-value minori produrrebbe un'inflazione massiva di
+  falsi positivi. Con 20.000 test indipendenti sotto ipotesi nulla, circa 1.000
+  geni risulterebbero nominalmente "p<0.05" per puro effetto del campionamento,
+  generando una lista priva di validita' statistica. Un'esplorazione genome-wide
+  richiederebbe sia il controllo del False Discovery Rate (es. Benjamini-Hochberg)
+  sia una potenza statistica adeguata (tipicamente n>50 campioni indipendenti per
+  screening non guidati da ipotesi a priori), condizioni non compatibili con una
+  coorte di 14 pazienti.
+

@@ -16,7 +16,7 @@ pytest 9.1.1, ruff 0.15.20. Macchina: 12 core, 30 GB RAM.
 | 0b Test | fatta | 12a356d |
 | 1 Correzioni | fatta (A1-A7, B1-B7, C1-C4, D1-D5); pytest veloce 98 passati, ruff pulito | 52ace44 |
 | 2 Loop | giro 1: 1/18/29 (8058701); giro 2: 0/4/16 (50b8095); giro 3: 0/5/8; prossimo: Fase 3 e giro di chiusura | - |
-| 3 Esecuzione finale | da fare | - |
+| 3 Esecuzione finale | eseguita al commit 61fb36b (tutti rc = 0); RISULTATI_FINALI.md generato; manca il giro di chiusura | (commit Fase 3) |
 
 ## Note iniziali
 
@@ -235,6 +235,16 @@ Esito: 0 ALTA, 5 MEDIA, 8 BASSA; pytest veloce 101 passati, ruff pulito; README 
   docstring di sim_c, 08, 10.
 - Nessuna riesecuzione necessaria (nessun calcolo cambiato sui dati reali); tutto viene
   rieseguito nella Fase 3, salvo 05, 11, 12 (vedi sotto).
+
+## Fase 3 (esecuzione finale, prima del giro di chiusura, su richiesta dell'utente)
+
+Comandi del README in ordine, codice 61fb36b, log `revisione/log/NN_nome.log`, stato e picchi
+in `revisione/log/_status.txt`; note complete in `revisione/note_esecuzione.md` (copiate in
+RISULTATI_FINALI.md). Tutti rc = 0. 02 ricrea `sc_raw.h5ad` identico byte per byte; 04 ricrea
+`splits_sc.csv` identico; tabelle e figure identiche all'ultimo giro salvo l'ordine delle righe
+di `ni_score_holm_joint.csv` (Holm ora restituisce l'ordine di ingresso). Non rieseguiti: 05, 11,
+12 (codice di calcolo invariato, verificato con git diff e confronto AST di scpipe). Cache usate:
+Scrublet, inferCNV (ricalcolata senza cache nel giro 1, identica). Nessun numero del README cambia.
 
 ## Problemi respinti
 

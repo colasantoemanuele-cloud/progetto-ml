@@ -1,0 +1,72 @@
+celle totali: 199,184 | indice non parsato: 0
+librerie GEX distinte: 29
+library
+PDAC08-PBMC      11016
+PDAC04-Normal    10816
+PDAC11-PBMC       9976
+PDAC06-PBMC       9308
+PDAC12-PBMC       8880
+PDAC14-PBMC       8871
+
+contig TCR grezzi: 7,858
+  dopo is_cell=True: 7,858
+  dopo high_confidence=True: 7,858
+  dopo productive=True: 6,206
+  dopo chain in TRA/TRB: 6,206
+
+barcode TCR unici (PA01-Tumor, filtrati): 3,101
+barcode GEX unici (libreria PDAC01-Tumor):        4,807
+
+======================================================================
+intersezione osservata : 2,646
+attesa per puro caso   : 20   (whitelist 737,280)
+arricchimento          : 130.9x
+frazione TCR ritrovata in GEX : 85.3%
+frazione GEX con un TCR       : 55.0%
+======================================================================
+
+>>> Validazione su PA01-Tumor: etichette delle 2,646 cellule con TCR produttivo
+
+                 n     %
+all_celltype            
+CD8T          1533  57.9
+CD4T          1019  38.5
+Stellate        35   1.3
+NK              33   1.2
+Endothelial     14   0.5
+Myeloid         10   0.4
+Ductal           1   0.0
+CAF              1   0.0
+
+precision (etichetta in CD4T/CD8T)     : 96.4%
+precision (etichetta in CD4T/CD8T/NK)   : 97.7%
+
+Un riarrangiamento TCR produttivo identifica una cellula T. Le cellule non-T
+in questa tabella riflettono doppietti etorotipici, RNA ambientale o discordanza di annotazione.
+Su una sola libreria e' un controllo preliminare, non una stima del tasso di discordanza.
+
+cellule etichettate T con TCR rilevato  : 91.1%
+(frazione delle cellule annotate T con un TCR produttivo rilevato)
+
+======================================================================
+Analisi cellule DUTTALI per tessuto e paziente
+======================================================================
+tissue    Adjacent_normal  Tumor   All
+patients                              
+PA01                    0    270   270
+PA02                    0    278   278
+PA04                    1    152   153
+PA05                    0   1296  1296
+PA06                   26   2354  2380
+PA07                    0    188   188
+PA08                  210    809  1019
+PA09                   14    981   995
+PA10                   83    726   809
+PA11                    0    389   389
+PA12                    0    230   230
+PA13                    0    678   678
+PA14                    0     19    19
+All                   334   8370  8704
+
+I pazienti dotati di cellule duttali in entrambi i compartimenti solidi (Tumor e Adjacent_normal)
+consentono il contrasto intra-paziente controllato per l'effetto individuale.

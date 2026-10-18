@@ -1,0 +1,136 @@
+[ok] cache  sc_metadata.csv.gz  (1.17 MB)
+[ok] cache  sc_barcodes.tsv.gz  (0.91 MB)
+[ok] cache  sn_metadata.csv.gz  (0.20 MB)
+[ok] cache  sn_barcodes.tsv.gz  (0.16 MB)
+[ok] cache  tcr_PA01_tumor.csv.gz  (0.27 MB)
+
+==============================================================================
+Q3a: metadata scRNA: sc_metadata.csv.gz
+==============================================================================
+Prime righe grezze:
+     | "","tissue","patients","all_celltype"
+     | "PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1","Tumor","PA01","CD8T"
+     | "PDAC01-Tumor-GEX_out_AAACCTGAGGGTGTTG-1","Tumor","PA01","CD4T"
+
+shape: (199184, 4)
+colonne (4): ['Unnamed: 0', 'tissue', 'patients', 'all_celltype']
+
+>>> candidate colonne ETICHETTA: ['all_celltype']
+
+--- all_celltype  (14 valori distinti) ---
+all_celltype
+CD8T           58939
+CD4T           56757
+NK             28199
+B              26360
+Myeloid         9102
+Ductal          8713
+Stellate        2791
+CAF             2656
+Endothelial     2421
+Platelet        1587
+Plasma          1064
+Acinar           300
+Schwann          235
+Endocrine         60
+
+>>> candidate colonne CAMPIONE/PAZIENTE: ['tissue', 'patients']
+
+--- tissue  (3 valori distinti) ---
+tissue
+PBMC               89506
+Tumor              71414
+Adjacent_normal    38264
+
+--- patients  (14 valori distinti) ---
+patients
+PA08    25548
+PA06    22894
+PA11    18664
+PA09    18618
+PA04    17662
+PA13    15765
+PA12    15002
+PA07    12843
+PA10    12399
+PA05    11261
+PA14    10998
+PA15     7899
+PA02     4824
+PA01     4807
+
+==============================================================================
+Q3b: metadata snRNA: sn_metadata.csv.gz
+==============================================================================
+Prime righe grezze:
+     | ,tissue,patients,all_celltype
+     | 1869485_FFPE_AAACAAGCAAGCTATG-1,Tumor,PA85,Endocrine
+     | 1869485_FFPE_AAACAAGCAATTAGAC-1,Tumor,PA85,Acinar
+
+shape: (32005, 4)
+colonne (4): ['Unnamed: 0', 'tissue', 'patients', 'all_celltype']
+
+>>> candidate colonne ETICHETTA: ['all_celltype']
+
+--- all_celltype  (14 valori distinti) ---
+all_celltype
+Ductal         7247
+Myeloid        5391
+Plasma         5143
+Acinar         4588
+B              3516
+CAF            3098
+Endothelial    1085
+Endocrine      1053
+CD4T            374
+Stellate        293
+NK              130
+CD8T             62
+Schwann          23
+Platelet          2
+
+>>> candidate colonne CAMPIONE/PAZIENTE: ['tissue', 'patients']
+
+--- tissue  (1 valori distinti) ---
+tissue
+Tumor    32005
+
+--- patients  (8 valori distinti) ---
+patients
+PA24    6816
+PA98    6336
+PA85    6109
+PA21    4684
+PA91    3113
+PA40    1693
+PA72    1650
+PA29    1604
+
+==============================================================================
+Q2: intersezione barcode TCR <-> GEX  [validazione ortogonale]
+==============================================================================
+TCR shape: (7858, 18)
+TCR colonne: ['barcode', 'is_cell', 'contig_id', 'high_confidence', 'length', 'chain', 'v_gene', 'd_gene', 'j_gene', 'c_gene', 'full_length', 'productive']
+barcode TCR unici (PA01 Tumor): 3101
+colonna barcode usata nel metadata sc: 'Unnamed: 0'
+esempi: ['PDAC01-Tumor-GEX_out_AAACCTGAGATAGTCA-1', 'PDAC01-Tumor-GEX_out_AAACCTGAGGGTGTTG-1', 'PDAC01-Tumor-GEX_out_AAACCTGCAAGTCTGT-1']
+barcode 10x estratti dal metadata: 199184/199184
+[!] non trovo PA01 Tumor in 'tissue'. Uso TUTTE le cellule (stima non stratificata per libreria).
+
+barcode GEX nel sottoinsieme : 175385
+intersezione TCR ∩ GEX       : 2757
+frazione TCR recuperata      : 88.9%
+frazione GEX con TCR         : 1.6%
+
+ESITO: barcode appaiati confermati per la validazione V(D)J.
+  Nota metodologica: il TCR e' un marcatore positivo ma non rilevato in tutte le cellule T.
+  Permette di stimare la precisione delle annotazioni sulle cellule T.
+
+==============================================================================
+RIEPILOGO
+==============================================================================
+scRNA: 199,184 cellule
+snRNA: 32,005 nuclei
+
+Le colonne etichetta identificano le popolazioni cellulari (Ductal, CAF, Macrophage, CD8T, ...),
+consentendo di procedere alla costruzione delle matrici sparse h5ad nello step 02.

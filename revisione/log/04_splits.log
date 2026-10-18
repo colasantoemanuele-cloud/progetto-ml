@@ -1,0 +1,188 @@
+[ok] sc_raw.h5ad: 199,184 cellule
+[i] pazienti con Tumor: 13 | con Adjacent_normal: 5 | con entrambi: 5 -> ['PA04', 'PA06', 'PA08', 'PA09', 'PA10']
+
+==========================================================================
+task1a_all: 109,618 cellule | 2 classi | 13 pazienti | valutazione primaria: 5-fold per paziente
+==========================================================================
+                 n_cells  n_patients
+y                                   
+Tumor              71377          13
+Adjacent_normal    38241           5
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5         0      1      2      3      4
+y                                                 
+Adjacent_normal   5359   8172   7441  10816   6453
+Tumor            16043  12697  16633  11663  14341
+[ok] nessuna classe assente da alcun fold (min = 5359 cellule)
+[i]  LOPO: 8/26 celle (classe, paziente) vuote -> quei pazienti non contribuiscono a quella classe. Metrica per-classe, non macro.
+[i]  split casuale: 13.0/13 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+==========================================================================
+task1a_paired: 67,662 cellule | 2 classi | 5 pazienti | valutazione primaria: LOPO
+==========================================================================
+                 n_cells  n_patients
+y                                   
+Adjacent_normal    38241           5
+Tumor              29421           5
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5         0     1     2     3     4
+y                                             
+Adjacent_normal  10816  8172  6453  7441  5359
+Tumor             6842  5399  4874  7075  5231
+[ok] nessuna classe assente da alcun fold (min = 4874 cellule)
+[ok] LOPO: ogni paziente ha tutte le 2 classi
+[i]  split casuale: 5.0/5 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+==========================================================================
+task2_v1: 70,547 cellule | 9 classi | 13 pazienti | valutazione primaria: 5-fold per paziente
+==========================================================================
+             n_cells  n_patients
+y                               
+CD8T           22606          13
+CD4T           16271          13
+Ductal          8370          13
+B               7396          13
+Myeloid         5654          13
+NK              3291          13
+Stellate        2525          13
+CAF             2423          13
+Endothelial     2011          13
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5     0     1     2     3     4
+y                                         
+B             1162   367  2483  2357  1027
+CAF            749   413   504   189   568
+CD4T          3578  2925  3663  3079  3026
+CD8T          4969  4320  5279  3959  4079
+Ductal         659  1790  1745   908  3268
+Endothelial    354   266   594   381   416
+Myeloid       1011   585   879  1359  1820
+NK             303   408  1300   827   453
+Stellate       651   580   565   249   480
+[ok] nessuna classe assente da alcun fold (min = 189 cellule)
+[ok] LOPO: ogni paziente ha tutte le 9 classi
+[i]  split casuale: 13.0/13 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+==========================================================================
+task2_v2: 70,547 cellule | 8 classi | 13 pazienti | valutazione primaria: 5-fold per paziente
+==========================================================================
+             n_cells  n_patients
+y                               
+CD8T           22606          13
+CD4T           16271          13
+Ductal          8370          13
+B               7396          13
+Myeloid         5654          13
+Fibroblast      4948          13
+NK              3291          13
+Endothelial     2011          13
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5     0     1     2     3     4
+y                                         
+B              811  2039  1027  1162  2357
+CD4T          3189  3399  3026  3578  3079
+CD8T          4627  4972  4079  4969  3959
+Ductal        1809  1726  3268   659   908
+Endothelial    670   190   416   354   381
+Fibroblast    1420   642  1048  1400   438
+Myeloid        665   799  1820  1011  1359
+NK             461  1247   453   303   827
+[ok] nessuna classe assente da alcun fold (min = 190 cellule)
+[ok] LOPO: ogni paziente ha tutte le 8 classi
+[i]  split casuale: 13.0/13 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+==========================================================================
+task2_hier1: 71,377 cellule | 3 classi | 13 pazienti | valutazione primaria: 5-fold per paziente
+==========================================================================
+            n_cells  n_patients
+y                              
+Immune        55543          13
+Epithelial     8654          13
+Stromal        7180          13
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5      0      1     2      3     4
+y                                            
+Epithelial     1395   3236   948   1868  1207
+Immune        10980  12721  9742  12719  9381
+Stromal        1185   1515  1414   1918  1148
+[ok] nessuna classe assente da alcun fold (min = 948 cellule)
+[ok] LOPO: ogni paziente ha tutte le 3 classi
+[i]  split casuale: 13.0/13 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+==========================================================================
+task2_hier3: 42,168 cellule | 3 classi | 13 pazienti | valutazione primaria: 5-fold per paziente
+==========================================================================
+      n_cells  n_patients
+y                        
+CD8T    22606          13
+CD4T    16271          13
+NK       3291          13
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5     0     1     2     3     4
+y                                         
+CD4T          3189  2221  3122  4025  3714
+CD8T          4627  4480  4818  5409  3272
+NK             461   753   407   649  1021
+[ok] nessuna classe assente da alcun fold (min = 407 cellule)
+[ok] LOPO: ogni paziente ha tutte le 3 classi
+[i]  split casuale: 13.0/13 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+==========================================================================
+rare: 14,854 cellule | 5 classi | 13 pazienti | valutazione primaria: LOPO
+==========================================================================
+         n_cells  n_patients
+y                           
+Ductal      8370          13
+Myeloid     5654          13
+Plasma       325          12
+Acinar       284           7
+Schwann      221          12
+
+[ok] ogni paziente sta in esattamente un fold (nessun leakage di gruppo)
+
+classe x fold_group_5:
+fold_group_5     0     1     2     3     4
+y                                         
+Acinar          47     0     7   206    24
+Ductal        2820   745  1837  1487  1481
+Myeloid        827  1487   946  1316  1078
+Plasma          51    94    44    95    41
+Schwann         18   130    20    32    21
+
+ATTESO: fold con classi assenti: {1: ['Acinar']}
+     -> 5-fold non valutabile per queste classi. Usa fold_lopo.
+[i]  LOPO: 8/65 celle (classe, paziente) vuote -> quei pazienti non contribuiscono a quella classe. Metrica per-classe, non macro.
+[i]  split casuale: 13.0/13 pazienti per fold -> ogni paziente e' sia in train sia in test (controllo negativo).
+
+[ok] scritto data/interim/splits_sc.csv
+
+         task  n_cells  n_classes  n_patients primary_eval
+   task1a_all   109618          2          13  group_5fold
+task1a_paired    67662          2           5         LOPO
+     task2_v1    70547          9          13  group_5fold
+     task2_v2    70547          8          13  group_5fold
+  task2_hier1    71377          3          13  group_5fold
+  task2_hier3    42168          3          13  group_5fold
+         rare    14854          5          13         LOPO
+
+[i] pazienti appaiati (Tumor + Adjacent_normal): ['PA04', 'PA06', 'PA08', 'PA09', 'PA10']
+
+[ok] audit superato.

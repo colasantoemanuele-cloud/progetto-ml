@@ -1,0 +1,123 @@
+  fold 0 (escluso P0): train 2,400 cellule | 297 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 289 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 289 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 274 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 302 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'patient_effect', 'rep': 0, 'jaccard_lopo': np.float64(0.505462890291672), 'jaccard_control': np.float64(0.6214957555518106), 'difference': np.float64(0.11603286526013856)}
+  fold 0 (escluso P0): train 2,400 cellule | 286 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 289 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 278 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 283 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 278 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'patient_effect', 'rep': 1, 'jaccard_lopo': np.float64(0.4800132556936771), 'jaccard_control': np.float64(0.6143281059358778), 'difference': np.float64(0.13431485024220075)}
+  fold 0 (escluso P0): train 2,400 cellule | 273 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 261 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 273 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 269 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 280 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'patient_effect', 'rep': 2, 'jaccard_lopo': np.float64(0.5018521133534304), 'jaccard_control': np.float64(0.683030951254392), 'difference': np.float64(0.18117883790096156)}
+  fold 0 (escluso P0): train 2,400 cellule | 255 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 247 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 265 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 248 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 257 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'patient_effect', 'rep': 3, 'jaccard_lopo': np.float64(0.5470559050374042), 'jaccard_control': np.float64(0.6759747227573321), 'difference': np.float64(0.12891881771992786)}
+  fold 0 (escluso P0): train 2,400 cellule | 267 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 271 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 259 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 280 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 274 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'patient_effect', 'rep': 4, 'jaccard_lopo': np.float64(0.507347556445497), 'jaccard_control': np.float64(0.6642077996576109), 'difference': np.float64(0.1568602432121139)}
+  fold 0 (escluso P0): train 2,400 cellule | 246 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 235 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 234 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 226 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 237 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'no_patient_effect', 'rep': 0, 'jaccard_lopo': np.float64(0.5859995501250729), 'jaccard_control': np.float64(0.6115200573683105), 'difference': np.float64(0.025520507243237622)}
+  fold 0 (escluso P0): train 2,400 cellule | 237 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 251 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 234 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 252 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 236 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'no_patient_effect', 'rep': 1, 'jaccard_lopo': np.float64(0.5510576025281907), 'jaccard_control': np.float64(0.603082531708259), 'difference': np.float64(0.05202492918006829)}
+  fold 0 (escluso P0): train 2,400 cellule | 243 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 234 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 236 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 243 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 238 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'no_patient_effect', 'rep': 2, 'jaccard_lopo': np.float64(0.5093815498227263), 'jaccard_control': np.float64(0.5467504309416074), 'difference': np.float64(0.03736888111888104)}
+  fold 0 (escluso P0): train 2,400 cellule | 234 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 226 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 226 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 239 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 238 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'no_patient_effect', 'rep': 3, 'jaccard_lopo': np.float64(0.48061036288159986), 'jaccard_control': np.float64(0.531238451327126), 'difference': np.float64(0.05062808844552613)}
+  fold 0 (escluso P0): train 2,400 cellule | 222 geni con coefficiente non nullo
+  fold 1 (escluso P1): train 2,400 cellule | 238 geni con coefficiente non nullo
+  fold 2 (escluso P2): train 2,400 cellule | 230 geni con coefficiente non nullo
+  fold 3 (escluso P3): train 2,400 cellule | 216 geni con coefficiente non nullo
+  fold 4 (escluso P4): train 2,400 cellule | 233 geni con coefficiente non nullo
+  replica 1/5 completata
+  replica 2/5 completata
+  replica 3/5 completata
+  replica 4/5 completata
+  replica 5/5 completata
+{'condition': 'no_patient_effect', 'rep': 4, 'jaccard_lopo': np.float64(0.6177318233423854), 'jaccard_control': np.float64(0.6045926652473945), 'difference': np.float64(-0.013139158094990888)}
+        condition  rep  jaccard_lopo  jaccard_control  difference
+   patient_effect    0         0.505            0.621       0.116
+   patient_effect    1         0.480            0.614       0.134
+   patient_effect    2         0.502            0.683       0.181
+   patient_effect    3         0.547            0.676       0.129
+   patient_effect    4         0.507            0.664       0.157
+no_patient_effect    0         0.586            0.612       0.026
+no_patient_effect    1         0.551            0.603       0.052
+no_patient_effect    2         0.509            0.547       0.037
+no_patient_effect    3         0.481            0.531       0.051
+no_patient_effect    4         0.618            0.605      -0.013
+no_patient_effect mean         0.549            0.579       0.030
+   patient_effect mean         0.508            0.652       0.143
