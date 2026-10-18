@@ -246,10 +246,19 @@ def run_fold(
     return {"rows": rows, "chosen": chosen, "diag": diag}
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Esegue la cross-validation dei metodi di selezione e calcola la stabilita' di Jaccard."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="Confronto di sei criteri di selezione dei geni (prestazione e Jaccard).",
     )
     ap.add_argument("--h5ad", type=Path, required=True, help="AnnData scRNA-seq")

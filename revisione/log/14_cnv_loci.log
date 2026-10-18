@@ -1,5 +1,9 @@
 [..] carico h5ad ...
-[ok] X_cnv da cache data/interim/cnv_matrix.npz
+[..] coordinate dei geni (Ensembl 116) ...
+[ok] 14 geni su cromosomi non standard (MT, contig) esclusi
+[ok] posizioni per 19,579/30,543 geni
+[..] infercnv, riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] di tutti i pazienti (lento) ...
+[ok] X_cnv (101219, 1672) in 38s
 
 duttali: 8,370 tumorali | 334 normali adiacenti
 
@@ -31,7 +35,7 @@ AUC tumore-vs-normale PDAC_COMPOSITE, per paziente con abbastanza normali:
 
 ==========================================================================
 AUC PDAC_COMPOSITE pooled 0.70 (score medio 0.53)
-AUC PDAC_COMPOSITE entro paziente: media 0.56 su 4 pazienti
+AUC entro paziente (media su 4 pazienti): PDAC_COMPOSITE 0.56, score medio 0.57
 ESITO: entro paziente le duttali tumorali e adiacenti si sovrappongono
   anche sui loci PDAC; l'eventuale separazione pooled riflette soprattutto
   differenze fra pazienti (compatibile con effetto di campo peri-tumorale

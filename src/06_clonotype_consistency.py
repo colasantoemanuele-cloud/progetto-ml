@@ -20,11 +20,15 @@ Adjacent_normal e Tumor dello stesso paziente.
      (`n_patients_across` e `n_patients_within` nel riepilogo). IC 95% con cluster
      bootstrap sull'unione dei pazienti dei due termini (`n_patients`; si ricampionano i
      pazienti, non le coppie ne' le repliche; 2.000 repliche, intervallo "expanded
-     percentile", vedi `scpipe.cluster_bootstrap`).
+     percentile"), calcolato da `cluster_excess_ci` di questo script: la statistica e'
+     la differenza fra due medie pooled su insiemi di pazienti diversi, non la media
+     pooled verificata in `tests/test_stats.py`, quindi la sua copertura non e' verificata.
      E' la versione esplorativa: lo stimatore principale, non distorto, e' in
      `07_robustness.py`.
   2. Contaminazione da cellule T nella classe NK: c_hat = (f - q) / (pi - q), con f, pi
-     e q le frazioni di cellule con TCR fra le NK, le T e le non-T. E' un limite
+     e q le frazioni di cellule con TCR fra le NK, le T e le non-T. "Cellula con TCR" =
+     cellula con una catena TRB produttiva (`clone_b` definito): le cellule con sola
+     TRA produttiva contano come TCR-. E' un limite
      superiore della frazione di T vere etichettate NK: c_hat non distingue le cellule
      T mal etichettate dai doppietti fisici T+NK, e la stima della frazione di
      doppietti in `10_loco.py` (d1, d2) e' compatibile con una quota consistente di
@@ -45,7 +49,7 @@ Input
 Output
 ------
   results/tables/nk_contamination.csv               (non dipende da --clone-def)
-  results/tables/tcr_rate_by_celltype.csv           frazione di cellule con TCR per etichetta (idem)
+  results/tables/tcr_rate_by_celltype.csv           frazione di cellule con TRB produttiva per etichetta (idem)
   results/tables/clone_switching_across_{cc}.csv    una riga per (clone, coppia di compartimenti)
   results/tables/clone_switching_within_{cc}.csv    repliche split-half (escluso da git: grande)
   results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni, pazienti

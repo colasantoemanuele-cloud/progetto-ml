@@ -4,8 +4,13 @@ Bande dichiarate PRIMA dell'esecuzione (non si allargano: se un test esce dalla
 banda si corregge lo stimatore):
 
 1. Cluster bootstrap sui pazienti (IC 95% della media pooled), con 10 e con 11
-   pazienti di numerosita' diseguale come nei dati (5-59 cloni per paziente),
-   esito continuo e binario: copertura empirica dell'IC in [0.90, 0.99].
+   pazienti di numerosita' diseguale (5-59 osservazioni per paziente), esito continuo e
+   binario: copertura empirica dell'IC in [0.90, 0.99].
+   Numerosita': per k = 10 i numeri di cloni dei 10 pazienti di
+   `clonal_expansion_joined` (5-59 per paziente); per k = 11 si aggiunge un undicesimo
+   valore (40) scelto a mano. Le numerosita' reali delle coppie dell'eccesso (11
+   pazienti, 13-282 coppie per paziente in `pairwise_discordance_clone_b`) sono piu'
+   sbilanciate: la copertura e' verificata con queste numerosita', non con quelle.
    400 repliche per scenario. (Fase 0, questo test con i semi 100 + k + 1 se l'esito e'
    binario, log in `revisione/log/fase0_pytest_slow.log`: l'intervallo percentile
    semplice dava 0.877-0.892, fuori banda; lo stimatore e' stato corretto con
@@ -29,6 +34,9 @@ banda si corregge lo stimatore):
    n = 90) frazione di p < 0.05 in [0.00, 0.08] per ciascun k (il test puo' essere conservativo, non
    deve superare il livello); con effetto noto (logistica contro Dummy, n = 120)
    frazione di p < 0.05 >= 0.50 (k = 5). 400 repliche per k sotto H0, 100 con effetto.
+   Il test usa gli stessi semi di `src/sim/sim_a_calibration.py` (55_000 + k sotto H0,
+   51_005 con effetto): le sue repliche sono le prime della simulazione, quindi e' un
+   sottoinsieme della stessa verifica, non una seconda verifica indipendente.
 6. Regola della maggioranza, macro-F1 sulle classi presenti, livello espanso:
    proprieta' esatte (nessuna banda).
 7. Test di permutazione di Spearman (`scpipe.permutation_corr_test`, unita' = righe,
@@ -331,3 +339,16 @@ def test_holm_excludes_undefined_p():
     assert np.isnan(adj["a"])
     assert adj["b"] == pytest.approx(0.02) and adj["c"] == pytest.approx(0.04)
     assert list(adj) == ["a", "b", "c"]
+
+
+def test_permutation_tests_nan_input_are_nan():
+    # un valore mancante non deve produrre il p minimo
+    x = np.arange(10.0)
+    y = x.copy()
+    y[3] = np.nan
+    with pytest.warns(UserWarning):
+        rho, p = scpipe.permutation_corr_test(x, y, n_perm=200)
+    assert np.isnan(rho) and np.isnan(p)
+    with pytest.warns(UserWarning):
+        r = scpipe.block_permutation_test(x, y, np.repeat(["A", "B"], 5), n_perm=200)
+    assert np.isnan(r["p"]) and np.isnan(r["p_centered"])

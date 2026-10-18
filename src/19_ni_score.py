@@ -29,11 +29,13 @@ Output
   results/tables/ni_score_joined.csv       outcome e variabili cliniche per paziente
   results/tables/ni_score_test.csv         rho, p grezzo e IC di H4
   results/tables/ni_score_holm_joint.csv   p grezzo e p di Holm per H1-H4 (colonna
-                                           p_holm_family_of_{n}, n = numero di test; 4 con
-                                           --previous-tests, 1 senza)
+                                           p_holm_family_of_{n}, n = numero di test con p
+                                           definito; 4 con --previous-tests, 1 senza)
   results/figures/ni_score_vs_error.png
-  (con meno di 6 pazienti lo script si ferma e cancella test, Holm e figura di
-  un'esecuzione precedente)
+  (i pazienti con NI score mancante o non numerico sono esclusi dal test, con i loro
+  ID stampati; ni_score_joined.csv li contiene tutti. Con meno di 6 pazienti con NI
+  score definito lo script si ferma e cancella test, Holm e figura di un'esecuzione
+  precedente)
 
 Argomenti
 ---------
@@ -232,6 +234,16 @@ def main() -> None:
     print(f"# {H4_TEXT}")
     print("#" * 78)
 
+    # Pazienti senza NI score numerico e finito: esclusi dal test, con i loro ID
+    ni = pd.to_numeric(df["NI score"], errors="coerce")
+    bad = ~np.isfinite(ni.to_numpy(dtype=float))
+    if bad.any():
+        print(
+            f"[!!] NI score mancante o non numerico per {int(bad.sum())} pazienti, "
+            f"esclusi dal test: {sorted(df.patient[bad])}"
+        )
+    df = df.loc[~bad].assign(**{"NI score": ni[~bad]})
+
     # Test di correlazione per H4: permutazione Monte Carlo e intervallo bootstrap
     if len(df) < 6:
         # niente risultati di un'esecuzione precedente in results/
@@ -241,7 +253,9 @@ def main() -> None:
             FIG / "ni_score_vs_error.png",
         ):
             path.unlink(missing_ok=True)
-        raise SystemExit(f"[ERRORE] solo {len(df)} pazienti con outcome e NI score.")
+        raise SystemExit(
+            f"[ERRORE] solo {len(df)} pazienti con outcome e NI score definito (minimo 6)."
+        )
     x, y = df["NI score"].values.astype(float), df.error_rate.values
     rho, p = permutation_corr_test(x, y, N_PERM, SEED)
     lo, hi = bootstrap_ci_corr(x, y)
@@ -295,13 +309,16 @@ def main() -> None:
         marker = "  [H4: questo script]" if k == "H4_ni_score" else ""
         print(f"  {k:20s} p_adj = {v:.4f}   {sig}{marker}")
 
-    # il nome della colonna dichiara la dimensione della famiglia (4 con il comando del README)
-    col = f"p_holm_family_of_{len(all_p)}"
+    # il nome della colonna dichiara la dimensione della famiglia, cioe' i p definiti
+    # (holm_bonferroni esclude i p NaN): 4 con il comando del README
+    m = int(sum(np.isfinite(v) for v in all_p.values()))
+    col = f"p_holm_family_of_{m}"
     pd.DataFrame({"p_raw": pd.Series(all_p), col: pd.Series(adj)}).rename_axis(
         "hypothesis"
     ).to_csv(TAB / "ni_score_holm_joint.csv")
     print(
-        f"[ok] ni_score_holm_joint.csv: famiglia di {len(all_p)} test (colonna {col})"
+        f"[ok] ni_score_holm_joint.csv: famiglia di {m} test con p definito su "
+        f"{len(all_p)} (colonna {col})"
     )
 
     print("\n" + "=" * 78)

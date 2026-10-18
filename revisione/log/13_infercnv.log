@@ -18,8 +18,11 @@ PA12                    0    230   230
 PA13                    0    678   678
 PA14                    0     19    19
 All                   334   8370  8704
-
-[ok] CNV score da cache data/interim/cnv_scores.csv
+[..] coordinate dei geni (Ensembl 116) ...
+[ok] 14 geni su cromosomi non standard (MT, contig) esclusi
+[ok] posizioni per 19,579/30,543 geni
+[..] infercnv: riferimento = ['CD8T', 'CD4T', 'NK', 'B', 'Myeloid', 'Plasma'] (tutti i pazienti)
+[ok] CNV in 37s
 
 ==========================================================================
 ETICHETTA DI MALIGNITA' (soglia per paziente sugli immuni di riferimento)

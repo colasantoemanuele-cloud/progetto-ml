@@ -254,10 +254,19 @@ def audit(name: str, df: pd.DataFrame) -> bool:
     return ok
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Punto di ingresso per la generazione e validazione delle tabelle di partizionamento."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="Task di classificazione e partizioni di validazione (per paziente e casuali).",
     )
     ap.add_argument(
@@ -288,10 +297,16 @@ def main() -> None:
     all_ok, frames, rows = True, [], []
     for name, df in tasks.items():
         # servono almeno 2 pazienti e 2 classi per uno split per paziente
-        if df.patient.nunique() < 2 or df.y.nunique() < 2 or len(df) < N_FOLDS:
+        # StratifiedKFold a N_FOLDS richiede almeno N_FOLDS cellule nella classe piu' numerosa
+        if (
+            df.patient.nunique() < 2
+            or df.y.nunique() < 2
+            or df.y.value_counts().max() < N_FOLDS
+        ):
             print(
                 f"[!!] {name}: {len(df)} cellule, {df.patient.nunique()} pazienti, "
-                f"{df.y.nunique()} classi: task saltato (servono almeno {N_FOLDS} cellule, "
+                f"{df.y.nunique()} classi: task saltato (servono {N_FOLDS} cellule nella classe piu' "
+                "numerosa, "
                 "2 pazienti e 2 classi)"
             )
             continue

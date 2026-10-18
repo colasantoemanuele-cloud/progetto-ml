@@ -399,10 +399,19 @@ def compare(res: pd.DataFrame, task: str) -> None:
     )
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Punto di ingresso principale per l'esecuzione del benchmark multi-modello."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="Confronto di 13 classificatori con validazione per paziente.",
     )
     ap.add_argument("--h5ad", type=Path, help="obbligatorio senza --from-table")

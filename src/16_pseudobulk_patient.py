@@ -46,6 +46,8 @@ Output
   results/tables/pseudobulk_hypothesis_tests.csv  rho, p, IC e p di Holm per H1-H3
   results/figures/pseudobulk_patient_pca.png (non scritta, e quella precedente cancellata,
   se i pazienti con abbastanza cellule non bastano per la PCA)
+  Con meno di 6 pazienti lo script si ferma e cancella le due tabelle e la figura di
+  un'esecuzione precedente.
 
 Argomenti
 ---------
@@ -267,6 +269,7 @@ def main() -> None:
         # niente tabelle di un'esecuzione precedente: 19 le rileggerebbe come H1-H3
         for name in ("pseudobulk_patient_table.csv", "pseudobulk_hypothesis_tests.csv"):
             (TAB / name).unlink(missing_ok=True)
+        (FIG / "pseudobulk_patient_pca.png").unlink(missing_ok=True)
         return
 
     df.to_csv(TAB / "pseudobulk_patient_table.csv", index=False)

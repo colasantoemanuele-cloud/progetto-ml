@@ -18,7 +18,8 @@ Output
 ------
   results/tables/error_rate_blood.csv   errore per compartimento: n cloni, n pazienti, errore, IC;
                                         con <= 5 pazienti anche il numero di ricampionature distinte
-  results/figures/error_rate_blood.png
+  results/figures/error_rate_blood.png  barre con IC; con <= 5 pazienti grigie tratteggiate
+                                        (IC non calibrato)
 
 Argomenti
 ---------
@@ -84,14 +85,8 @@ def main() -> None:
 
     r.to_csv(TAB / "error_rate_blood.csv", index=False)
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(
-        r.tissue,
-        r.error,
-        yerr=[r.error - r.lo, r.hi - r.error],
-        capsize=5,
-        color="#d95f02",
-        alpha=0.85,
-    )
+    # barre con <= SMALL_K pazienti grigie tratteggiate: IC non calibrato
+    loco.bar_with_calibration(ax, r.tissue, r.error, r.lo, r.hi, r.n_pat)
     for i, row in enumerate(r.itertuples()):
         ax.text(
             i,

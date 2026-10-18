@@ -210,10 +210,19 @@ def check_counts(X: sp.csr_matrix) -> None:
         )
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Esegue la pipeline completa di download, assemblaggio CSR, calcolo metriche QC e scrittura atomica .h5ad."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="Conversione delle matrici MatrixMarket di GEO in AnnData (.h5ad).",
     )
     ap.add_argument(

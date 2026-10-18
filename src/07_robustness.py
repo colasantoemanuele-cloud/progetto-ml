@@ -47,7 +47,13 @@ Output ({cc} = definizione di clone, clone_b o clone_ab)
                                                     (IC con <= 5 pazienti in grigio tratteggiato:
                                                     non calibrati)
   Se una sezione non ha dati, le sue tabelle e figure non vengono scritte e quelle di
-  un'esecuzione precedente vengono cancellate.
+  un'esecuzione precedente vengono cancellate (con --no-markers anche
+  discordant_clone_markers_{cc}.csv); se nessuna coppia di compartimenti ha almeno 3
+  pazienti, excess_by_compartment_pair_{cc}.csv contiene la sola intestazione.
+  ambient_vs_real_tcr.png (sezione C) viene prodotta anche quando le sezioni A-B non
+  hanno dati.
+  "Cellula con TCR" (`has_tcr`) = cellula con una catena TRB produttiva
+  (`clone_b` definito): le cellule con sola TRA produttiva contano come TCR-.
 
 Argomenti
 ---------
@@ -333,9 +339,9 @@ def plot_pairs(per_pair: pd.DataFrame, cc: str) -> None:
             continue
         pp = per_pair[m]
         bars = ax.errorbar(
-            pp.excess,
+            pp.excess.to_numpy(),
             np.arange(len(per_pair))[m],
-            xerr=[pp.excess - pp.lo, pp.hi - pp.excess],
+            xerr=[(pp.excess - pp.lo).to_numpy(), (pp.hi - pp.excess).to_numpy()],
             fmt="o",
             capsize=4,
             color=color,
@@ -349,6 +355,44 @@ def plot_pairs(per_pair: pd.DataFrame, cc: str) -> None:
     ax.set_xlabel("eccesso di discordanza (IC95%, cluster bootstrap sui pazienti)")
     fig.tight_layout()
     fig.savefig(FIG / f"excess_by_pair_{cc}.png", dpi=140)
+    plt.close(fig)
+
+
+def plot_ambient(gex: pd.DataFrame) -> None:
+    """Figura della sezione C: UMI del TCR e catene appaiate per classe (non dipende da {cc})."""
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    order = [
+        c
+        for c in [
+            "CD8T",
+            "CD4T",
+            "NK",
+            "Stellate",
+            "Endothelial",
+            "Platelet",
+            "Myeloid",
+            "Ductal",
+            "B",
+        ]
+        if c in gex.all_celltype.unique()
+    ]
+    d = gex[gex.has_tcr & gex.all_celltype.isin(order)]
+    axes[0].boxplot(
+        [d.loc[d.all_celltype == c, "log_umi"] for c in order],
+        tick_labels=order,
+        showfliers=False,
+    )
+    axes[0].set_ylabel("log10(UMI TRB + 1)")
+    axes[0].set_title("UMI del TCR: T reale vs ambient")
+    axes[0].tick_params(axis="x", rotation=60)
+
+    fp = d.groupby("all_celltype", observed=True).paired.mean().reindex(order)
+    axes[1].bar(order, fp.values, color="#1b9e77", alpha=0.85)
+    axes[1].set_ylabel("frazione con TRA+TRB appaiate")
+    axes[1].set_title("catene appaiate")
+    axes[1].tick_params(axis="x", rotation=60)
+    fig.tight_layout()
+    fig.savefig(FIG / "ambient_vs_real_tcr.png", dpi=140)
     plt.close(fig)
 
 
@@ -465,6 +509,8 @@ def main() -> None:
         "\nLa dipendenza di c_hat dalla classe di riferimento q documenta la sensibilita' al rumore di fondo."
     )
     print("Si riporta pertanto l'intero intervallo inter-riferimento.")
+    # figura della sezione C, prodotta anche se le sezioni A-B non hanno dati
+    plot_ambient(gex)
 
     # Sezioni (A) e (B): stimatore non distorto a coppie e cluster bootstrap sui pazienti
     cc = args.clone_def
@@ -557,7 +603,21 @@ def main() -> None:
                 else np.nan,
             }
         )
-    per_pair = pd.DataFrame(rows)
+    # colonne fisse: con nessuna coppia valutabile la tabella resta con la sola intestazione
+    per_pair = pd.DataFrame(
+        rows,
+        columns=[
+            "comp_a",
+            "comp_b",
+            "n_pairs",
+            "n_patients",
+            "excess",
+            "lo",
+            "hi",
+            "ic_calibrato",
+            "significativo",
+        ],
+    )
     print(per_pair.round(4).to_string(index=False))
     per_pair.to_csv(TAB / f"excess_by_compartment_pair_{cc}.csv", index=False)
 
@@ -565,7 +625,10 @@ def main() -> None:
     print(pw.groupby("patient").excess.agg(["mean", "size"]).round(4).to_string())
 
     # Sezione (D): verifica dell'espressione (RNA, CP10k) di CD4 e CD8A/CD8B nei cloni discordanti
-    if not args.no_markers and "g_CD8A" in gex.columns:
+    if args.no_markers or "g_CD8A" not in gex.columns:
+        # sezione D non eseguita: niente tabella di un'esecuzione precedente
+        (TAB / f"discordant_clone_markers_{cc}.csv").unlink(missing_ok=True)
+    else:
         print("\n" + "=" * 78)
         print("(D) TRANSIZIONE CD4T -> CD8T: verifica sui marcatori canonici")
         print("=" * 78)
@@ -608,42 +671,6 @@ def main() -> None:
                 "numero insufficiente di cloni fortemente discordanti per la verifica."
             )
             (TAB / f"discordant_clone_markers_{cc}.csv").unlink(missing_ok=True)
-
-    # Generazione delle figure diagnostiche (UMI TCR e intervalli di confidenza per coppia di compartimenti)
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
-    order = [
-        c
-        for c in [
-            "CD8T",
-            "CD4T",
-            "NK",
-            "Stellate",
-            "Endothelial",
-            "Platelet",
-            "Myeloid",
-            "Ductal",
-            "B",
-        ]
-        if c in gex.all_celltype.unique()
-    ]
-    d = gex[gex.has_tcr & gex.all_celltype.isin(order)]
-    axes[0].boxplot(
-        [d.loc[d.all_celltype == c, "log_umi"] for c in order],
-        tick_labels=order,
-        showfliers=False,
-    )
-    axes[0].set_ylabel("log10(UMI TRB + 1)")
-    axes[0].set_title("UMI del TCR: T reale vs ambient")
-    axes[0].tick_params(axis="x", rotation=60)
-
-    fp = d.groupby("all_celltype", observed=True).paired.mean().reindex(order)
-    axes[1].bar(order, fp.values, color="#1b9e77", alpha=0.85)
-    axes[1].set_ylabel("frazione con TRA+TRB appaiate")
-    axes[1].set_title("catene appaiate")
-    axes[1].tick_params(axis="x", rotation=60)
-    fig.tight_layout()
-    fig.savefig(FIG / "ambient_vs_real_tcr.png", dpi=140)
-    plt.close(fig)
 
     plot_pairs(per_pair, cc)
 

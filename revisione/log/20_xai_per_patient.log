@@ -37,7 +37,7 @@ Spearman fra i vettori di coefficienti: media 0.234
 (2) GENI CONDIVISI DA TUTTI I FOLD
 ==========================================================================
 geni nell'unione delle 5 spiegazioni : 124
-geni presenti in TUTTE e 5           : 9 (18% di top-50)
+geni presenti in tutte le 5       : 9 (18% di top-50)
   -> BTG2, CD69, CREM, CTRB1, DUSP4, FOS, GAPDH, HSPH1, VIM
   geni di risposta immediata, associati allo stress di dissociazione: BTG2, CD69, CREM, DUSP4, FOS, HSPH1
   marcatori acinari (probabile RNA ambientale): CTRB1
@@ -73,8 +73,8 @@ della stessa dimensione, campionati da tutte le cellule mescolate.
   se le cellule dello stesso paziente
   sono ridondanti. La simulazione ha pochi pazienti e una sola forma di
   effetto: e' un'indicazione, non una stima calibrata.
-  Il controllo condivide piu' cellule fra repliche di due training LOPO:
-  parte della differenza c'e' anche senza effetto paziente.
+  Le repliche del controllo condividono fra loro piu' cellule di due training
+  LOPO: parte della differenza c'e' anche senza effetto paziente.
 
 [ok] figura: results/figures/xai_per_patient_task1a_paired.png
 [ok] tabelle: results/tables/xai_*_task1a_paired.csv

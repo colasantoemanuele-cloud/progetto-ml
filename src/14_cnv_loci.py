@@ -23,7 +23,8 @@ L'AUC pooled mescola differenze fra pazienti e fra tessuti; l'AUC entro paziente
 (pazienti con almeno 10 duttali per tessuto) elimina le differenze fra pazienti
 (resta il contrasto fra campioni e librerie diversi dello stesso paziente). Il
 messaggio finale tiene conto di entrambe: una separazione pooled che non si ritrova
-entro paziente non e' attribuita ai loci.
+entro paziente non e' attribuita ai loci, e il confronto fra loci PDAC e score medio
+si fa sulle AUC entro paziente di entrambi (non sulle pooled).
 
 Coordinate dei geni e metodo: le stesse di `13_infercnv.py` (Ensembl release 116,
 tabella in `data/interim/gene_positions_ensembl116.csv`, funzioni importate da 13);
@@ -137,7 +138,17 @@ def compute_cnv(
         sc.pp.normalize_total(a, target_sum=1e4)
         sc.pp.log1p(a)
         a = a[:, a.var["chromosome"].notna()].copy()
-        ref = [c for c in IMMUNE_REF if c in a.obs["ref_group"].unique()]
+        present = set(a.obs["ref_group"].astype(str).unique())
+        ref = [c for c in IMMUNE_REF if c in present]
+        if not ref:
+            raise SystemExit(
+                "[ERRORE] nessuna cellula immunitaria di riferimento nel sottoinsieme: "
+                "inferCNV non puo' stimare il profilo diploide."
+            )
+        if present <= set(ref):
+            raise SystemExit(
+                "[ERRORE] tutte le cellule sono di riferimento: nessuna duttale da valutare."
+            )
         print(f"[..] infercnv, riferimento = {ref} di tutti i pazienti (lento) ...")
         cnv.tl.infercnv(
             a, reference_key="ref_group", reference_cat=ref, window_size=window_size
@@ -402,6 +413,8 @@ def main() -> None:
             f"su {len(by_pat)} pazienti"
         )
     within = by_pat.auc_PDAC_COMPOSITE.mean() if not by_pat.empty else np.nan
+    # confronto con lo score medio alla stessa scala (entro paziente, non pooled)
+    within_mean = by_pat["auc_MEAN_|CNV|"].mean() if not by_pat.empty else np.nan
 
     # Esito: la separazione pooled e' attribuita ai loci solo se si ritrova entro paziente
     print("\n" + "=" * 74)
@@ -414,21 +427,20 @@ def main() -> None:
         print("  sui loci.")
     else:
         print(
-            f"AUC PDAC_COMPOSITE entro paziente: media {within:.2f} su {len(by_pat)} pazienti"
+            f"AUC entro paziente (media su {len(by_pat)} pazienti): PDAC_COMPOSITE "
+            f"{within:.2f}, score medio {within_mean:.2f}"
         )
-        if within >= 0.65 and comp_auc > mean_auc + 0.05:
+        if within >= 0.65 and within > within_mean + 0.05:
             print(
                 "ESITO: i loci PDAC separano le duttali tumorali dalle adiacenti anche"
             )
-            print("  entro paziente, meglio dello score medio.")
+            print("  entro paziente, meglio dello score medio entro paziente.")
         elif within >= 0.65:
             print(
                 "ESITO: entro paziente le duttali tumorali e adiacenti si separano, ma i"
             )
-            print(
-                "  loci PDAC non fanno meglio dello score medio: la separazione non e'"
-            )
-            print("  attribuibile ai loci.")
+            print("  loci PDAC non fanno meglio dello score medio entro paziente: la")
+            print("  separazione non e' attribuibile ai loci.")
         elif within < 0.6:
             print(
                 "ESITO: entro paziente le duttali tumorali e adiacenti si sovrappongono"

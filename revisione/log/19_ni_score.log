@@ -39,7 +39,7 @@ p-value corretti (Holm-Bonferroni, famiglia completa):
   exhaustion_score     p_adj = 0.5277   non significativo
   myeloid_fraction     p_adj = 0.4526   non significativo
   caf_fraction         p_adj = 1.0000   non significativo
-[ok] ni_score_holm_joint.csv: famiglia di 4 test (colonna p_holm_family_of_4)
+[ok] ni_score_holm_joint.csv: famiglia di 4 test con p definito su 4 (colonna p_holm_family_of_4)
 
 ==============================================================================
 n=10 pazienti: come per H1-H3, questo e' un test a bassa potenza.

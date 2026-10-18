@@ -42,7 +42,10 @@ trascrittoma stesso, in tre stadi:
    Cache: `cnv_scores.csv` e' riusata solo se la sua impronta, salvata in
    `data/interim/cnv_cache_fingerprint.json`, coincide con quella calcolata ora
    (hash delle cellule, dei conteggi, dei geni, della tabella delle coordinate, del
-   gruppo di riferimento e dei parametri di inferCNV); altrimenti lo script si ferma.
+   gruppo di riferimento, della versione di infercnvpy e dei parametri di inferCNV:
+   window_size, step, lfc_clip, dynamic_threshold, exclude_chromosomes); altrimenti lo
+   script si ferma. Se il sottoinsieme non ha cellule immunitarie di riferimento, o ha
+   solo quelle, lo script si ferma prima di inferCNV.
 
 2. Classificazione Leave-One-Patient-Out: Random Forest bilanciato sulle duttali del
    tessuto `Tumor` dei pazienti con almeno 150 duttali. Normalizzazione (log1p CP10k)
@@ -76,9 +79,10 @@ Output
   results/tables/external_test_predictions.csv  predizione per ogni duttale adiacente
   results/tables/external_test_summary.csv      frazione di duttali adiacenti predette maligne
   results/figures/malignancy.png
-  (se nessun fold LOPO e' valutabile o le duttali adiacenti sono 20 o meno, i file
-  corrispondenti non vengono scritti e quelli di un'esecuzione precedente vengono
-  cancellati)
+  (se nessun fold LOPO e' valutabile, `malignancy_lopo.csv` resta vuoto e
+  `malignancy_lopo_summary.csv` non viene scritto, e quello di un'esecuzione precedente
+  viene cancellato; se le duttali adiacenti sono 20 o meno, i file `external_test_*`
+  non vengono scritti e quelli precedenti vengono cancellati)
 
 Argomenti
 ---------
@@ -250,7 +254,7 @@ def run_infercnv(adata: ad.AnnData) -> np.ndarray:
     sc.pp.log1p(a)
     a = a[:, a.var["chromosome"].notna()].copy()
 
-    ref = [c for c in IMMUNE_REF if c in a.obs["ref_group"].unique()]
+    ref = reference_categories(a.obs["ref_group"])
     print(f"[..] infercnv: riferimento = {ref} (tutti i pazienti)")
     cnv.tl.infercnv(
         a, reference_key="ref_group", reference_cat=ref, window_size=WINDOW_SIZE
@@ -258,6 +262,39 @@ def run_infercnv(adata: ad.AnnData) -> np.ndarray:
     check_autosomal_windows(a.uns["cnv"]["chr_pos"])
     score = np.asarray(np.abs(a.obsm["X_cnv"]).mean(axis=1)).ravel()
     return score
+
+
+def reference_categories(ref_group: pd.Series) -> list[str]:
+    """Categorie immunitarie di riferimento presenti; si ferma se il riferimento e'
+    vuoto o se tutte le cellule sono di riferimento (nessuna cellula da valutare)."""
+    present = set(ref_group.astype(str).unique())
+    ref = [c for c in IMMUNE_REF if c in present]
+    if not ref:
+        raise SystemExit(
+            "[ERRORE] nessuna cellula immunitaria di riferimento nel sottoinsieme "
+            f"(attese categorie fra {IMMUNE_REF}): inferCNV non puo' stimare il profilo diploide."
+        )
+    if present <= set(ref):
+        raise SystemExit(
+            "[ERRORE] tutte le cellule sono di riferimento: nessuna duttale da valutare."
+        )
+    return ref
+
+
+def infercnv_params() -> dict:
+    """Versione di infercnvpy e parametri di `infercnv` usati (quelli passati e i default)."""
+    import inspect
+
+    import infercnvpy as cnv
+
+    sig = inspect.signature(cnv.tl.infercnv).parameters
+    params = {
+        k: sig[k].default
+        for k in ("lfc_clip", "step", "dynamic_threshold", "exclude_chromosomes")
+    }
+    params["exclude_chromosomes"] = list(params["exclude_chromosomes"] or [])
+    params["window_size"] = WINDOW_SIZE
+    return {"infercnvpy_version": cnv.__version__, "infercnv_params": params}
 
 
 def check_autosomal_windows(chr_pos: dict) -> None:
@@ -295,6 +332,7 @@ def cnv_fingerprint(sub: ad.AnnData, method: str) -> dict:
         "ensembl_release": ENSEMBL_RELEASE,
         "chromosomes": CHROM_RULE,
         "window_size": WINDOW_SIZE,
+        **infercnv_params(),
         "reference": IMMUNE_REF,
         "cells": _digest("\n".join(sub.obs_names).encode()),
         "ref_group": _digest("\n".join(sub.obs["ref_group"].astype(str)).encode()),

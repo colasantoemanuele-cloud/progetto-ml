@@ -18,7 +18,13 @@ Verifica su dati simulati i due stimatori usati per l'inferenza nella pipeline.
 2. Cluster bootstrap della media pooled (`scpipe.cluster_bootstrap`, intervallo
    "expanded percentile") e, per confronto, l'intervallo percentile semplice usato
    nella versione precedente. Pazienti k in {4, 5, 10, 11} con numerosita' diseguale
-   come nei dati (5-59 osservazioni per paziente); effetto paziente casuale.
+   (5-59 osservazioni per paziente: per k <= 10 i primi k valori di `SIZES`); effetto
+   paziente casuale.
+   Numerosita': per k = 10 i numeri di cloni dei 10 pazienti di
+   `clonal_expansion_joined` (5-59 per paziente); per k = 11 si aggiunge un undicesimo
+   valore (40) scelto a mano. Le numerosita' reali delle coppie dell'eccesso (11
+   pazienti, 13-282 coppie per paziente in `pairwise_discordance_clone_b`) sono piu'
+   sbilanciate: la copertura e' verificata con queste numerosita', non con quelle.
    - esito continuo: media vera 0.06, effetto paziente N(0, 0.05), rumore N(0, 0.15);
    - esito binario: p del paziente ~ Beta(2, 8) (media 0.2);
    - H0 sulla media: media vera 0 (continuo); frazione di IC che escludono 0;
@@ -26,8 +32,9 @@ Verifica su dati simulati i due stimatori usati per l'inferenza nella pipeline.
    400 repliche per scenario, 1.000 repliche bootstrap ciascuna (le analisi ne usano
    2.000; la copertura non e' stata verificata con 2.000 repliche).
    Gli scenari continui non sono simulazioni indipendenti: per ogni k il generatore
-   riparte dallo stesso seme (1000 + k), quindi `H0_mean0` ed `effect_mean006` usano
-   gli stessi dati di `coverage_continuous`, traslati. Per costruzione la frazione di
+   riparte dallo stesso seme (1000 + k), quindi `H0_mean0` usa gli stessi dati di
+   `coverage_continuous` traslati (media vera 0 invece di 0.06) ed `effect_mean006` usa
+   gli stessi dati, identici. Per costruzione la frazione di
    IC che escludono 0 sotto H0 e' 1 - copertura (es. 0,18 = 1 - 0,82 con 4 pazienti):
    non e' una verifica separata della copertura.
 

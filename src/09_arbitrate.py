@@ -40,7 +40,10 @@ Output
   results/figures/error_rate_by_compartment.png (IC con <= 5 pazienti in grigio tratteggiato),
   results/figures/doublet_physical.png
   Se la sezione A non ha dati, le sue tabelle e la figura non vengono scritte e quelle di
-  un'esecuzione precedente vengono cancellate.
+  un'esecuzione precedente vengono cancellate; se nessun compartimento ha almeno 3
+  pazienti, error_rate_by_compartment.csv contiene la sola intestazione e la figura
+  viene cancellata. Se la sezione B non ha classi con almeno 20 cellule,
+  doublet_physical.csv contiene la sola intestazione e la figura viene cancellata.
 
 Argomenti
 ---------
@@ -147,7 +150,7 @@ def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
     return cluster_bootstrap(by_pat, n, SEED)
 
 
-def clone_identity(lym: pd.DataFrame) -> pd.DataFrame:
+def clone_identity(lym: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Determina l'identita' CD4T/CD8T del clone mediando con peso uniforme le frazioni compartimentali."""
     lym = lym.assign(
         cd8_pos=(lym.g_CD8A > 0) | (lym.g_CD8B > 0),
@@ -389,6 +392,7 @@ def partB(gex: pd.DataFrame) -> None:
     out.to_csv(TAB / "doublet_physical.csv", index=False)
     if out.empty:
         print("nessuna classe con almeno 20 cellule: niente misure dei doppietti.")
+        (FIG / "doublet_physical.png").unlink(missing_ok=True)
         return
     print(out.round(2).to_string(index=False))
 

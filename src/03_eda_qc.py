@@ -239,10 +239,19 @@ def patient_support(obs: pd.DataFrame, tag: str, thresholds=(1, 10, 50, 100)) ->
         )
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Apre l'archivio AnnData in modalita backed='r' (sola lettura dei metadati) ed esegue l'intera suite QC/EDA."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="QC descrittivo per libreria, composizione e supporto per paziente (nessun filtro).",
     )
     ap.add_argument(

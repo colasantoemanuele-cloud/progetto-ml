@@ -285,5 +285,5 @@ def test_04_splits_patient_disjoint():
         assert (per_patient == 1).all(), scheme
     assert out.fold_group_5.nunique() == 5
     assert out.fold_lopo.nunique() == 13
-    # controllo negativo: lo split casuale mette ogni paziente in piu' fold
+    # controllo positivo: lo split casuale mette ogni paziente in piu' fold (il controllo puo' fallire)
     assert (out.groupby("patient").fold_random_5.nunique() > 1).all()

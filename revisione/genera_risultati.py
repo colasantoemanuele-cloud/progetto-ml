@@ -13,11 +13,12 @@ in cui il valore precedente e' la stessa stima arrotondata diversamente (indicat
 codice passando il valore esatto) e il valore esatto dista meno di 0,001 da quello
 precedente. Le note
 sull'esecuzione (commit, memoria, script non rieseguiti) sono lette da
-`revisione/note_esecuzione.md`, se esiste, e copiate in fondo.
+`revisione/note_esecuzione.md`, se esiste, e copiate in fondo, seguite dai limiti noti del
+codice (`revisione/limiti_noti.md`).
 
 Input
 -----
-  results/tables/*.csv, revisione/note_esecuzione.md (facoltativo)
+  results/tables/*.csv, revisione/note_esecuzione.md e revisione/limiti_noti.md (facoltativi)
 
 Output
 ------
@@ -44,6 +45,7 @@ import pandas as pd
 TAB = Path("results/tables")
 OUT = Path("revisione/RISULTATI_FINALI.md")
 NOTE = Path("revisione/note_esecuzione.md")
+LIMITS = Path("revisione/limiti_noti.md")
 MISSING: list[str] = []
 SMALL_K = (
     5  # pazienti: con <= SMALL_K l'IC del cluster bootstrap non e' calibrato (sim_a)
@@ -159,11 +161,14 @@ def main() -> None:
     )
     mal, ext = t("malignancy_lopo_summary"), t("external_test_summary")
     loci, loci_p = t("cnv_loci_auc"), t("cnv_loci_auc_by_patient")
-    auc_pat = (
-        loci_p.loc[loci_p.patient != "_mean", "auc_PDAC_COMPOSITE"]
-        if not loci_p.empty
-        else pd.Series(dtype=float)
-    )
+    if {"patient", "auc_PDAC_COMPOSITE"} <= set(loci_p.columns):
+        auc_pat = loci_p.loc[loci_p.patient != "_mean", "auc_PDAC_COMPOSITE"]
+    else:
+        if not loci_p.empty:
+            MISSING.append(
+                "cnv_loci_auc_by_patient: colonne patient / auc_PDAC_COMPOSITE"
+            )
+        auc_pat = pd.Series(dtype=float)
     sa_nb, sa_cb = t("sim_a_nadeau_bengio"), t("sim_a_cluster_bootstrap")
     sb, sc_, sd = (
         t("sim_b_reference_schemes"),
@@ -1094,6 +1099,8 @@ def main() -> None:
         MISSING.append(f"interruzione della generazione: {type(e).__name__}: {e}")
     if NOTE.exists():
         L.append("\n" + NOTE.read_text())
+    if LIMITS.exists():
+        L.append("\n" + LIMITS.read_text())
     if MISSING:
         L.append(
             "\n## Valori mancanti\n\n" + "\n".join(f"- {m}" for m in MISSING) + "\n"

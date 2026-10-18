@@ -268,10 +268,19 @@ def plot_gap(res: pd.DataFrame, tag: str) -> None:
         print(f"[ok] figura: results/figures/gap_{tag}_{task}.png")
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Punto di ingresso principale per l'addestramento e la valutazione dei modelli baseline."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="Modelli di riferimento: split casuale contro split per paziente.",
     )
     ap.add_argument("--h5ad", type=Path, required=True, help="AnnData scRNA-seq")

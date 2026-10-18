@@ -292,10 +292,19 @@ def permutation_corr_test(
     Le permutazioni sono `n_perm` estrazioni casuali (non l'enumerazione di tutte
     le n! permutazioni: il test non e' esatto). p con la correzione +1 di
     Phipson & Smyth (2010). Restituisce (rho, p). Se x o y e' costante rho non e'
-    definito: restituisce (NaN, NaN) con un avviso, invece di un p minimo spurio.
+    definito: restituisce (NaN, NaN) con un avviso, invece di un p minimo spurio; lo
+    stesso con valori mancanti o non finiti.
     """
     rng = np.random.default_rng(seed)
     n = len(x)
+    if not (
+        np.isfinite(np.asarray(x, float)).all()
+        and np.isfinite(np.asarray(y, float)).all()
+    ):
+        warnings.warn(
+            "permutation_corr_test: valori mancanti o non finiti", stacklevel=2
+        )
+        return np.nan, np.nan
     rx = pd.Series(x).rank().values
     ry = pd.Series(y).rank().values
     if np.ptp(rx) == 0 or np.ptp(ry) == 0:
@@ -329,8 +338,17 @@ def block_permutation_test(
       - p_centered : p bilaterale |rho_perm - null_mean| >= |rho - null_mean|.
     Entrambi i p sono Monte Carlo con correzione +1 (Phipson & Smyth).
     Calibrazione del p non centrato in `tests/test_stats.py`.
-    Se x o y e' costante rho non e' definito: tutti i valori sono NaN, con un avviso.
+    Se x o y e' costante, o contiene valori mancanti o non finiti, rho non e' definito:
+    tutti i valori sono NaN, con un avviso.
     """
+    if not (
+        np.isfinite(np.asarray(x, float)).all()
+        and np.isfinite(np.asarray(y, float)).all()
+    ):
+        warnings.warn(
+            "block_permutation_test: valori mancanti o non finiti", stacklevel=2
+        )
+        return {"rho": np.nan, "p": np.nan, "null_mean": np.nan, "p_centered": np.nan}
     rng = np.random.default_rng(seed)
     # Ordinamento stabile per paziente: ogni blocco occupa un intervallo contiguo
     order = np.argsort(group, kind="stable")

@@ -312,6 +312,21 @@ stop se ALTA + MEDIA non diminuisce per due giri di fila o se un problema corret
 estensioni (NaN dopo l'input costante; un calcolo rimasto fuori dal blocco protetto), non
 correzioni annullate.
 
+Correzioni del giro 6 (fork TCR, fork CNV/sim/test e coordinatore):
+- ALTA: `permutation_corr_test` e `block_permutation_test` restituiscono NaN anche con valori
+  mancanti o non finiti (nuovo test); 19 esclude i pazienti senza NI score stampandone gli ID e
+  nomina la colonna di Holm con il numero di p definiti. Generatore: `auc_pat` protetto.
+- MEDIA: 20 accetta solo `fold_lopo` e controlla che ogni fold escluda un solo paziente; README
+  riga 2: "struttura per campione" (libreria = paziente x tessuto, meccanismo non misurato) al
+  posto della firma del paziente; 14: confronto con lo score medio sulle AUC entro paziente;
+  13 e 14: riferimento immunitario vuoto -> messaggio chiaro.
+- BASSA: corrette tutte (figure di 10 e 21 con IC non calibrati segnati; uscite anticipate di
+  07, 09, 10, 16; docstring di 06, 07, 09, 10, 13, sim_a, test; impronta CNV con versione e
+  parametri di infercnvpy; 04 con la classe piu' numerosa < 5; 20 con intestazioni dal numero di
+  fold; default in --help solo se esistono; README: TRB produttiva, schema ingenuo, IC di 06,
+  score medio entro paziente 0,572, fonti di Δ = −0,229 e delle 11 cellule).
+- Riesecuzioni: 04, 06-10, 21, 15-19, simulazioni, 20, 13 e 14 senza cache (impronta nuova).
+
 ## Problemi respinti
 
 - Giro 1, n. 13 (RISULTATI_FINALI.md assente): il file e' un prodotto della Fase 3; la bozza e'

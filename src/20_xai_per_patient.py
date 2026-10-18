@@ -48,11 +48,11 @@ Output
   results/tables/xai_summary_{task}.csv        Jaccard LOPO, controllo, differenza, Spearman, n geni comuni
   results/tables/xai_common_genes_{task}.csv   geni nei top-50 di tutti i fold (id e simbolo)
   results/figures/xai_per_patient_{task}.png
-  (i file dipendono solo da --task: un'esecuzione con un altro --scheme li sovrascrive)
+  (i file dipendono solo da --task)
 
 Argomenti
 ---------
-  --h5ad, --splits (obbligatori), --task (default task1a_paired), --scheme (default fold_lopo)
+  --h5ad, --splits (obbligatori), --task (default task1a_paired), --scheme (solo fold_lopo: ogni fold deve escludere un solo paziente)
 
 Uso
 ---
@@ -190,11 +190,20 @@ def control_explanations(X, y, n_train, genes, rng, n_control=N_CONTROL):
     return ctrl_tops
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
+
+    def _get_help_string(self, action):
+        if action.default is None or action.required:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def main() -> None:
     """Orchestra l'estrazione delle spiegazioni L1 sui 5 fold LOPO, il calcolo delle
     matrici di similarita' di Jaccard e Spearman e il confronto con il controllo casuale."""
     ap = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_HelpFormatter,
         description="Stabilita' fra pazienti delle spiegazioni L1: fold LOPO contro controllo.",
     )
     ap.add_argument("--h5ad", type=Path, required=True, help="AnnData scRNA-seq")
@@ -205,7 +214,7 @@ def main() -> None:
     ap.add_argument(
         "--scheme",
         default="fold_lopo",
-        choices=["fold_group_5", "fold_lopo", "fold_random_5"],
+        choices=["fold_lopo"],
         help="colonna dei fold (un fold per paziente)",
     )
     args = ap.parse_args()
@@ -221,6 +230,14 @@ def main() -> None:
 
     sp_df = pd.read_csv(args.splits)
     sub = sp_df[sp_df.task == args.task]
+    if sub.empty:
+        raise SystemExit(f"[ERRORE] task {args.task} assente da {args.splits}")
+    # ogni fold deve escludere un solo paziente: le spiegazioni sono etichettate per paziente
+    per_fold = sub.groupby(args.scheme).patient.nunique()
+    if (per_fold != 1).any():
+        raise SystemExit(
+            f"[ERRORE] {args.scheme}: fold con piu' di un paziente; serve uno split LOPO"
+        )
     idx = adata.obs_names.get_indexer(sub.cell_id.values)
     if (idx < 0).any():
         raise SystemExit(
@@ -251,7 +268,7 @@ def main() -> None:
 
     # Calcolo delle matrici simmetriche di similarita' (Jaccard sui top-K e Spearman globale)
     print(
-        f"\n{'=' * 74}\n(1) QUANTO SI ASSOMIGLIANO LE SPIEGAZIONI DEI 5 FOLD\n{'=' * 74}"
+        f"\n{'=' * 74}\n(1) QUANTO SI ASSOMIGLIANO LE SPIEGAZIONI DEI {len(coefs)} FOLD\n{'=' * 74}"
     )
     fs = sorted(coefs)
     names = [labels[f] for f in fs]
@@ -276,9 +293,9 @@ def main() -> None:
     print(f"\n{'=' * 74}\n(2) GENI CONDIVISI DA TUTTI I FOLD\n{'=' * 74}")
     common = set.intersection(*tops.values())
     union = set.union(*tops.values())
-    print(f"geni nell'unione delle 5 spiegazioni : {len(union)}")
+    print(f"geni nell'unione delle {len(fs)} spiegazioni : {len(union)}")
     print(
-        f"geni presenti in TUTTE e 5           : {len(common)} ({len(common) / TOP_K:.0%} di top-{TOP_K})"
+        f"geni presenti in tutte le {len(fs)}       : {len(common)} ({len(common) / TOP_K:.0%} di top-{TOP_K})"
     )
     ids = sorted(common)
     sym = (
@@ -376,8 +393,10 @@ def main() -> None:
         print(
             "  confrontata con dati simulati; nessuna conclusione da questa sola differenza."
         )
-    print("  Il controllo condivide piu' cellule fra repliche di due training LOPO:")
-    print("  parte della differenza c'e' anche senza effetto paziente.")
+    print(
+        "  Le repliche del controllo condividono fra loro piu' cellule di due training"
+    )
+    print("  LOPO: parte della differenza c'e' anche senza effetto paziente.")
 
     pd.DataFrame(
         [

@@ -6,7 +6,12 @@ Scopo
 -----
 1. Arbitrato con tre schemi di riferimento per l'identita' CD4/CD8 del clone (vedi
    09_arbitrate.py per le frazioni f8/f4 e il margine minimo 0.20):
-   - `naive`: il riferimento include il compartimento giudicato (circolare);
+   - `naive`: il riferimento include il compartimento giudicato (circolare). A
+     differenza di 09_arbitrate.py, che tiene solo i cloni con >= 3 cellule in almeno
+     2 compartimenti, `naive` tiene anche i cloni presenti in un solo compartimento
+     (per i quali il riferimento e' solo il compartimento giudicato): per questo i
+     tassi di `naive` (error_rate_schemes.csv) e di 09 (error_rate_by_compartment.csv)
+     sono diversi;
    - `loco` (leave-one-compartment-out): il riferimento sono gli altri compartimenti
      del clone. Con cloni presenti in due soli compartimenti, giudicare il sangue
      usa il tumore come riferimento (in simulazione questo gonfia l'errore del sangue,
@@ -63,7 +68,9 @@ Output
   results/tables/doublet_mixture.csv                  d1, d2 con IC: mediane/medie, pooled/per compartimento
   results/tables/doublet_mixture_boot.csv             repliche bootstrap di d1, d2 (mediane, pooled;
                                                       cancellata se la stima pooled non e' possibile)
-  results/figures/error_rate_loco.png
+  results/figures/error_rate_loco.png  (schema loco; barre con <= 5 pazienti grigie
+                                       tratteggiate: IC non calibrato; cancellata se lo schema
+                                       non ha compartimenti valutabili)
 
 Argomenti
 ---------
@@ -589,6 +596,42 @@ def mixture(gex: pd.DataFrame) -> None:
         )
 
 
+def bar_with_calibration(ax, labels, est, lo, hi, n_pat) -> None:
+    """Barre con IC; quelle con <= SMALL_K pazienti grigie e tratteggiate (IC non calibrato).
+
+    Usata anche da 21_fig_blood_scheme.py.
+    """
+    from matplotlib.patches import Patch
+
+    est, lo, hi = (np.asarray(v, dtype=float) for v in (est, lo, hi))
+    cal = np.asarray(n_pat) > SMALL_K
+    bars = ax.bar(
+        list(labels),
+        est,
+        yerr=[est - lo, hi - est],
+        capsize=5,
+        color=["#d95f02" if c else "#bbbbbb" for c in cal],
+        alpha=0.85,
+    )
+    for b, c in zip(bars, cal):
+        if not c:
+            b.set_hatch("//")
+    if not cal.all():
+        ax.legend(
+            handles=[
+                Patch(
+                    color="#d95f02", alpha=0.85, label=f"IC 95% (> {SMALL_K} pazienti)"
+                ),
+                Patch(
+                    facecolor="#bbbbbb",
+                    hatch="//",
+                    label=f"IC non calibrato (<= {SMALL_K} pazienti)",
+                ),
+            ],
+            fontsize=8,
+        )
+
+
 def main() -> None:
     """Punto di ingresso principale per l'arbitrato naive/LOCO/blood e i controlli di robustezza."""
     ap = argparse.ArgumentParser(
@@ -716,16 +759,12 @@ def main() -> None:
     mixture(gex)
 
     r = res[1]
-    if not r.empty:
+    if r.empty:
+        # niente figura di un'esecuzione precedente in results/
+        (FIG / "error_rate_loco.png").unlink(missing_ok=True)
+    else:
         fig, ax = plt.subplots(figsize=(6.5, 4))
-        ax.bar(
-            r.tissue,
-            r.error,
-            yerr=[r.error - r.lo, r.hi - r.error],
-            capsize=5,
-            color="#d95f02",
-            alpha=0.85,
-        )
+        bar_with_calibration(ax, r.tissue, r.error, r.lo, r.hi, r.n_pat)
         ax.set_ylabel("tasso d'errore dell'etichetta")
         ax.set_title("LOCO: riferimento disgiunto dal compartimento giudicato")
         fig.tight_layout()
