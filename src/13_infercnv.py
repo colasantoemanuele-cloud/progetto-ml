@@ -26,6 +26,11 @@ trascrittoma stesso, in tre stadi:
    `Adjacent_normal` (la frazione per paziente e' nella colonna `frac_malig`).
    I pazienti con meno di 20 immunitarie non hanno soglia: le loro duttali restano
    senza etichetta (NaN) e sono escluse dalla classificazione.
+   RNA ambientale acinare: i geni degli enzimi acinari sono raggruppati nel genoma
+   (CTRC, CELA2A/2B in 1p36.21 e CELA3A/3B in 1p36.12, dentro il locus `1p_loss` di
+   14_cnv_loci.py; PRSS1/2 in 7q34). L'RNA ambientale acinare, abbondante nel tessuto
+   adiacente, puo' creare pseudo-guadagni in queste regioni nelle duttali e quindi
+   influenzare lo score e l'AUC tumore contro adiacente.
 
    Coordinate dei geni: Ensembl release 116 (GRCh38), la stessa delle cache precedenti
    dell'11/07/2026 (ora in `data/interim/cache_cnv_20260711/`: le coordinate delle loro

@@ -407,16 +407,23 @@ def part2(lym: pd.DataFrame, pw: pd.DataFrame) -> None:
             )
             print("produrrebbe questa differenza.")
             print(
-                "Il dato e' compatibile con un'etichetta CD8T sbagliata (cellule CD4); resta"
+                "Le cellule discordanti etichettate CD8T sono della linea CD4: l'etichetta"
             )
-            print("aperta l'alternativa di un fenotipo CD4 citotossico", end="")
-            if "mean_GNLY_disc" in t:
+            print("CD8T e' sbagliata.")
+            if "mean_GNLY_disc" in t and t.mean_GNLY_disc > t.mean_GNLY_conc:
+                # CD4 citotossiche: restano della linea CD4 (non sono un'eccezione alla
+                # stabilita' del lignaggio); il loro programma effettore e' una possibile
+                # causa dell'etichetta CD8T, non un'alternativa all'errore
                 print(
-                    f" (GNLY {t.mean_GNLY_disc:.2f} nei discordanti contro "
-                    f"{t.mean_GNLY_conc:.2f} nei concordanti)."
+                    f"GNLY piu' alto nei discordanti ({t.mean_GNLY_disc:.2f} contro "
+                    f"{t.mean_GNLY_conc:.2f}) suggerisce che una parte siano CD4"
                 )
-            else:
-                print(".")
+                print(
+                    "citotossiche, il cui programma effettore puo' aver portato l'annotazione"
+                )
+                print(
+                    "verso CD8T: e' una possibile causa dell'errore, non un'alternativa all'errore."
+                )
         else:
             print(
                 "CD8A simile fra discordanti e concordanti: nessuna evidenza di etichetta"

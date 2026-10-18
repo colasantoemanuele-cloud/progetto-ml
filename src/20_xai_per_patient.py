@@ -30,9 +30,14 @@ con una sola forma di effetto. Il controllo non e' perfettamente appaiato: due
 sottoinsiemi casuali condividono in media piu' cellule di due training LOPO, quindi
 la differenza e' positiva anche senza effetto paziente (in simulazione circa +0,03).
 I geni comuni a tutti i fold includono geni della firma di stress da dissociazione
-(FOS, BTG2, HSPH1 nella versione pubblicata), geni di risposta immediata che marcano
-anche attivazione o residenza tissutale delle T (CD69, DUSP4, CREM) e CTRB1, marcatore
-acinare (probabile RNA ambientale): non sono necessariamente biologia tumore/normale.
+(FOS, BTG2, HSPH1 nella versione pubblicata) e geni legati all'attivazione delle T:
+CD69 e CREM sono geni di risposta immediata (CD69 marca anche la residenza tissutale
+e puo' essere indotto dalla stessa dissociazione); DUSP4 non e' un gene di risposta
+immediata classico ma una fosfatasi delle MAPK inducibile, associata alle T infiltranti
+attivate o esauste. CTRB1 e' un marcatore acinare (probabile RNA ambientale): riflette
+la composizione del tessuto, non una proprieta' delle cellule. GAPDH e' anche un gene
+della glicolisi regolato da HIF-1 (ipossia). Questi geni non sono necessariamente
+biologia tumore/normale delle cellule classificate.
 
 Input
 -----
@@ -97,9 +102,10 @@ TOP_K = 50  # Cardinalita' del sottoinsieme di geni principali per la metrica di
 N_CONTROL = (
     5  # Numero di repliche casuali per il controllo privo di struttura di gruppo
 )
-# Firma dello stress da dissociazione (geni precoci e da shock termico), geni di risposta
-# immediata che marcano anche attivazione o residenza tissutale delle T, e marcatori acinari,
-# per il commento sui geni comuni a tutti i fold
+# Firma dello stress da dissociazione (geni precoci e da shock termico), geni legati
+# all'attivazione o alla residenza tissutale delle T (CD69 e CREM di risposta immediata,
+# CD69 inducibile anche dalla dissociazione; DUSP4 fosfatasi MAPK inducibile, T attivate
+# o esauste) e marcatori acinari, per il commento sui geni comuni a tutti i fold
 DISSOCIATION = {"FOS", "FOSB", "JUN", "JUNB", "EGR1", "BTG2", "DUSP1", "IER2", "NR4A1",
                 "HSPA1A", "HSPA1B", "HSPH1"}  # fmt: skip
 T_ACTIVATION = {"CD69", "DUSP4", "CREM"}
@@ -296,7 +302,8 @@ def main() -> None:
     ).to_csv(TAB / f"xai_common_genes_{args.task}.csv", index=False)
     if common:
         print(f"  -> {', '.join(sorted(map(str, sym)))}")
-        # firma di dissociazione, attivazione/residenza delle T, acinari (RNA ambientale)
+        # firma di dissociazione, attivazione/residenza delle T, acinari (RNA ambientale,
+        # composizione del tessuto)
         diss = sorted(set(sym) & DISSOCIATION)
         tact = sorted(set(sym) & T_ACTIVATION)
         acinar = sorted(set(sym) & ACINAR)
@@ -304,13 +311,17 @@ def main() -> None:
             print(f"  firma dello stress da dissociazione: {', '.join(diss)}")
         if tact:
             print(
-                "  risposta immediata che marca anche attivazione o residenza tissutale "
-                f"delle T: {', '.join(tact)}"
+                "  attivazione o residenza tissutale delle T (CD69, CREM: risposta "
+                "immediata, CD69 inducibile anche dalla dissociazione; DUSP4: fosfatasi "
+                f"MAPK inducibile, T attivate o esauste): {', '.join(tact)}"
             )
         if acinar:
             print(
-                f"  marcatori acinari (probabile RNA ambientale): {', '.join(acinar)}"
+                "  marcatori acinari (probabile RNA ambientale: composizione del "
+                f"tessuto, non proprieta' delle cellule): {', '.join(acinar)}"
             )
+        if "GAPDH" in sym:
+            print("  GAPDH: anche gene della glicolisi regolato da HIF-1 (ipossia)")
     print("\ngeni presenti solo nella spiegazione addestrata senza quel paziente:")
     for f in fs:
         others = set.union(*[tops[g] for g in fs if g != f])

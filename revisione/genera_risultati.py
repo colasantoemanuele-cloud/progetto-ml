@@ -150,6 +150,12 @@ def main() -> None:
     eb, pdiff = t("error_rate_blood"), t("error_rate_paired_diff")
     dec, rules = t("error_decomposition_blood"), t("error_rate_identity_rules")
     schemes = t("error_rate_schemes")
+    cab10, cab09 = t("error_rate_clone_ab"), t("error_rate_by_compartment_clone_ab")
+    ties10, ties06 = (
+        t("error_rate_tie_sensitivity"),
+        t("clone_switching_tie_sensitivity_clone_b"),
+    )
+    mix_nk = t("doublet_mixture_error_nk")
     mk, tri = t("marker_test_disc_vs_conc"), t("triple_clones_summary")
     tcr_rate, mix = t("tcr_rate_by_celltype"), t("doublet_mixture")
     ce, cps = t("clonal_expansion_tests"), t("clonal_expansion_perm_sensitivity")
@@ -492,7 +498,13 @@ def main() -> None:
             "il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non "
             "e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. "
             f"Gli IC con {SMALL_K} pazienti o meno (Adjacent_normal, differenza appaiata) non sono "
-            "calibrati (vedi Simulazioni).\n"
+            "calibrati (vedi Simulazioni). "
+            "Sensibilita' alla definizione di clone: l'errore Tumor dello schema solo sangue e' "
+            f"{f(v(eb, 'error', tissue='Tumor'))} con il clone definito dalla sola TRB e "
+            f"{f(v(cab10, 'error', clone_def='clone_ab', scheme='blood', tissue='Tumor'))} "
+            f"{ci(v(cab10, 'lo', clone_def='clone_ab', scheme='blood', tissue='Tumor'), v(cab10, 'hi', clone_def='clone_ab', scheme='blood', tissue='Tumor'))} "
+            f"con la coppia TRA+TRB ({n_(v(cab10, 'n', clone_def='clone_ab', scheme='blood', tissue='Tumor'))} cloni, "
+            f"{v(cab10, 'n_pat', clone_def='clone_ab', scheme='blood', tissue='Tumor'):.0f} pazienti; `error_rate_clone_ab`).\n"
         )
 
         # --- dataset
@@ -740,6 +752,90 @@ def main() -> None:
                 rr, ["Schema", "Compartimento", "Errore", "IC 95%", "Cloni", "Pazienti"]
             )
         )
+        # sensibilita' alla definizione di clone: TRB (principale) contro TRA+TRB
+        rr = []
+        for r in cab10.itertuples() if not cab10.empty else []:
+            if r.tissue == "PBMC" and r.scheme == "blood":
+                continue
+            rr.append(
+                [
+                    "10",
+                    r.scheme,
+                    r.tissue,
+                    r.clone_def,
+                    f(r.error),
+                    ci(r.lo, r.hi) + ("*" if r.n_pat <= SMALL_K else ""),
+                    n_(r.n),
+                    f"{r.n_ties:.0f}",
+                    f"{r.n_pat:.0f}",
+                ]
+            )
+        for r in cab09.itertuples() if not cab09.empty else []:
+            rr.append(
+                [
+                    "09",
+                    "arbitrato (n_comp >= 2)",
+                    r.tissue,
+                    r.clone_def,
+                    f(r.error_rate),
+                    ci(r.lo, r.hi) + ("*" if r.n_patients <= SMALL_K else ""),
+                    n_(r.n_clone_comp),
+                    f"{r.n_ties:.0f}",
+                    f"{r.n_patients:.0f}",
+                ]
+            )
+        L.append(
+            "\n**Definizione di clone: sola TRB (`clone_b`, principale) contro TRA+TRB (`clone_ab`)** "
+            "(`error_rate_clone_ab` di 10, `error_rate_by_compartment_clone_ab` di 09; con `clone_ab` "
+            f"entrano solo le cellule con le due catene; pareggi esclusi; \\* IC non calibrato, <= {SMALL_K} pazienti)\n"
+        )
+        L.append(
+            md_table(
+                rr,
+                [
+                    "Script",
+                    "Schema",
+                    "Compartimento",
+                    "Clone",
+                    "Errore",
+                    "IC 95%",
+                    "Cloni",
+                    "Pareggi",
+                    "Pazienti",
+                ],
+            )
+        )
+        rr = [
+            [
+                r.version,
+                r.quantity,
+                f(r.value, sign=r.quantity.startswith("diff")),
+                ci(r.lo, r.hi, sign=r.quantity.startswith("diff"))
+                + ("*" if r.n_patients <= SMALL_K else ""),
+                n_(r.n_units),
+                f"{r.n_patients:.0f}",
+            ]
+            for r in (ties10.itertuples() if not ties10.empty else [])
+            if r.scheme == "blood"
+        ]
+        L.append(
+            "\n**Pareggi dell'etichetta di maggioranza, schema solo sangue** (`error_rate_tie_sensitivity`; "
+            "esclusi = principale, contati come errore, contati come corretti)\n"
+        )
+        L.append(
+            md_table(
+                rr, ["Versione", "Quantita'", "Valore", "IC 95%", "Unita'", "Pazienti"]
+            )
+        )
+        if not ties06.empty:
+            L.append(
+                "\nSplit-half di 06 (`clone_switching_tie_sensitivity_clone_b`): eccesso "
+                + "; ".join(
+                    f"{r.version} {f(r.excess, sign=True)} IC {ci(r.lo, r.hi, sign=True)}"
+                    for r in ties06.itertuples()
+                )
+                + ".\n"
+            )
         rr = []
         for r in pdiff.itertuples() if not pdiff.empty else []:
             rr.append(
@@ -848,6 +944,10 @@ def main() -> None:
                     ci(r.d1_lo, r.d1_hi),
                     f(r.d2),
                     ci(r.d2_lo, r.d2_hi),
+                    f"{r.n_boot_valid:.0f}",
+                    ""
+                    if np.isnan(getattr(r, "n_distinct_resamples", np.nan))
+                    else f"{r.n_distinct_resamples:.0f}",
                 ]
                 for r in mix.itertuples()
             ]
@@ -856,11 +956,55 @@ def main() -> None:
         )
         L.append(
             md_table(
-                rr, ["Statistica", "Strato", "Pazienti", "d1", "IC d1", "d2", "IC d2"]
+                rr,
+                [
+                    "Statistica",
+                    "Strato",
+                    "Pazienti",
+                    "d1",
+                    "IC d1",
+                    "d2",
+                    "IC d2",
+                    "Repliche valide",
+                    "Ricamp. distinte",
+                ],
+            )
+        )
+        rr = [
+            [
+                r.statistic,
+                n_(r.n_nk_tcr_pos_cells),
+                n_(r.n_clones),
+                f"{r.n_patients_with_error_nk:.0f}",
+                f(r.d1),
+                ci(r.d1_lo, r.d1_hi),
+                f(r.d2),
+                ci(r.d2_lo, r.d2_hi),
+                f"{r.n_boot_valid:.0f}",
+            ]
+            for r in (mix_nk.itertuples() if not mix_nk.empty else [])
+        ]
+        L.append(
+            "\n**NK-TCR+ dei cloni del Tumor contati come errore** (`doublet_mixture_error_nk`, schema solo sangue; IC non calibrati)\n"
+        )
+        L.append(
+            md_table(
+                rr,
+                [
+                    "Statistica",
+                    "Cellule NK-TCR+",
+                    "Cloni",
+                    "Pazienti con NK in errore",
+                    "d1",
+                    "IC d1",
+                    "d2",
+                    "IC d2",
+                    "Repliche valide",
+                ],
             )
         )
         L.append(
-            "\nFonte: `doublet_mixture` (B5: medie e strati per compartimento). d1 e d2 non sono indipendenti; la copertura dei loro IC non e' verificata.\n"
+            "\nFonte: `doublet_mixture` (B5: medie e strati per compartimento). d1 e d2 non sono indipendenti; la copertura dei loro IC non e' verificata (`ic_calibrato` falso in tutte le righe); ricampionature distinte per gli strati con <= 5 pazienti.\n"
         )
 
         L.append("### Espansione clonale ed errore (17, 18)\n")

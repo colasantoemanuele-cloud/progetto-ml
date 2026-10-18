@@ -5,9 +5,11 @@
 Scopo
 -----
 1. Arbitrato (sezione A). Presupposto: il lignaggio CD4/CD8 di un clone T maturo e'
-   di norma stabile fra tessuti, con eccezioni note (CD4 citotossiche, CD4+CD8αα+ e
-   doppi positivi nei tessuti, MAIT, NKT, γδ; controllo dei TCR semi-invarianti in
-   10_loco.py, `clone_invariant_tcr_check.csv`). Per ogni (clone, compartimento) con almeno 3 cellule si calcolano la
+   di norma stabile fra tessuti, con eccezioni note (CD4+CD8αα+ e doppi positivi nei
+   tessuti, MAIT, NKT; controllo dei TCR semi-invarianti in 10_loco.py,
+   `clone_invariant_tcr_check.csv`). Le CD4 citotossiche non sono un'eccezione: restano
+   della linea CD4. Le cellule T γδ non sono risolte dal saggio αβ: una cellula γδ con
+   un trascritto TRB verrebbe trattata come un clone αβ. Per ogni (clone, compartimento) con almeno 3 cellule si calcolano la
    frazione di cellule CD8+ (CD8A > 0 o CD8B > 0) e CD4+ (CD4 > 0 senza CD8A/CD8B);
    l'identita' del clone e' CD8T o CD4T secondo la media, a peso uguale, di queste
    frazioni sui compartimenti in cui il clone compare (scartata se il margine
@@ -20,6 +22,9 @@ Scopo
    hanno lo stesso conteggio massimo non e' definita: la coppia clone-compartimento e'
    esclusa dal tasso principale (colonna `tie` in arbitration.csv, `n_ties` nel tasso) e
    contata come errore o come corretta nella sensibilita' (arbitration_tie_sensitivity.csv).
+   Sensibilita' alla definizione di clone: lo stesso errore con il clone definito dalla
+   coppia TRA+TRB (`clone_ab`, solo cellule con entrambe le catene) invece della sola
+   TRB (error_rate_by_compartment_clone_ab.csv).
 
 2. Misure fisiche dei doppietti (sezione B): UMI totali per goccia (`n_counts`; in un
    doppietto T+NK attesi circa n_counts(NK TCR-) + n_counts(CD8T)) e UMI del TCR per
@@ -43,6 +48,10 @@ Output
                                                  con <= 5 pazienti (copertura sotto il 95% in
                                                  `sim_a`), e allora si riportano anche le
                                                  ricampionature distinte (`n_distinct_resamples`)
+  results/tables/error_rate_by_compartment_clone_ab.csv
+                                                 sensibilita': stesso errore con il clone
+                                                 definito da TRB (`clone_b`, principale) e da
+                                                 TRA+TRB (`clone_ab`, solo cellule con le due catene)
   results/tables/doublet_physical.csv            mediane di n_counts, n_genes, UMI TCR per 1000, per classe x TCR
   results/figures/error_rate_by_compartment.png (IC con <= 5 pazienti in grigio tratteggiato),
   results/figures/doublet_physical.png
@@ -148,8 +157,13 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
         .reset_index()
     )
     w["clone_b"] = w.cdr3_TRB
+    # clone TRA+TRB (sensibilita'): definito solo con entrambe le catene, come in 07
+    paired = w.cdr3_TRA.notna() & w.cdr3_TRB.notna()
+    w["clone_ab"] = np.where(paired, w.cdr3_TRA + "|" + w.cdr3_TRB, np.nan)
     w["umi_tcr"] = w[["umi_TRA", "umi_TRB"]].sum(axis=1, min_count=1)
-    return w[["patient", "tissue", "barcode16", "clone_b", "umi_TRB", "umi_tcr"]]
+    return w[
+        ["patient", "tissue", "barcode16", "clone_b", "clone_ab", "umi_TRB", "umi_tcr"]
+    ]
 
 
 def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
@@ -384,11 +398,69 @@ def partA(lym: pd.DataFrame) -> None:
     plt.close(fig)
 
 
+def clone_def_sensitivity(lym: pd.DataFrame) -> pd.DataFrame:
+    """Errore per compartimento con il clone definito dalla sola TRB (`clone_b`,
+    principale) o dalla coppia TRA+TRB (`clone_ab`, sensibilita').
+
+    Stesse regole della sezione A (identita', margine, `n_comp >= 2`, pareggi
+    esclusi); con `clone_ab` entrano solo le cellule con entrambe le catene.
+    """
+    rows = []
+    for clone_def in ("clone_b", "clone_ab"):
+        x = lym[lym[clone_def].notna()].assign(clone_b=lambda d: d[clone_def])
+        per, ident = clone_identity(x)
+        conf = ident[(ident.identity != "ambiguous") & (ident.n_comp >= 2)]
+        j = per.merge(
+            conf[["patient", "clone_b", "identity"]], on=["patient", "clone_b"]
+        )
+        j["tie"] = j.lab.isna()
+        tset = {"CD4T", "CD8T", "NK"}
+        keep = j.lab.isin(tset) | (
+            j.tie & j.lab_top.map(lambda t: bool(set(t.split("|")) & tset))
+        )
+        j = j[keep]
+        for tis in COMPS:
+            g_all = j[j.tissue == tis]
+            g = g_all[~g_all.tie]
+            if g.patient.nunique() < 3:
+                continue
+            by = {
+                p: (gg.lab != gg.identity).values.astype(float)
+                for p, gg in g.groupby("patient")
+            }
+            m, lo, hi = cluster_boot(by)
+            k = g.patient.nunique()
+            n_dist = (
+                small_k_diagnostics(by, N_BOOT, SEED)["n_distinct_resamples"]
+                if k <= SMALL_K
+                else np.nan
+            )
+            rows.append(
+                {
+                    "clone_def": clone_def,
+                    "tissue": tis,
+                    "n_clone_comp": len(g),
+                    "n_ties": int(g_all.tie.sum()),
+                    "n_patients": k,
+                    "error_rate": m,
+                    "lo": lo,
+                    "hi": hi,
+                    "ic_calibrato": k > SMALL_K,
+                    "n_distinct_resamples": n_dist,
+                }
+            )
+    out = pd.DataFrame(rows)
+    print("\nsensibilita' alla definizione di clone (TRB contro TRA+TRB):")
+    print(out.round(4).to_string(index=False))
+    return out
+
+
 def drop_stale_partA() -> None:
     """Cancella le tabelle e la figura della sezione A di un'esecuzione precedente."""
     for path in (
         TAB / "arbitration.csv",
         TAB / "error_rate_by_compartment.csv",
+        TAB / "error_rate_by_compartment_clone_ab.csv",
         TAB / "arbitration_tie_sensitivity.csv",
         FIG / "error_rate_by_compartment.png",
     ):
@@ -584,6 +656,9 @@ def main() -> None:
         drop_stale_partA()
     else:
         partA(lym)
+        clone_def_sensitivity(lym).to_csv(
+            TAB / "error_rate_by_compartment_clone_ab.csv", index=False
+        )
     partB(gex)
 
 

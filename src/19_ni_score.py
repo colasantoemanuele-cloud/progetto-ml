@@ -10,7 +10,10 @@ score`). I 14 pazienti con `scRNA-seq = Yes` corrispondono ai 14 pazienti del da
 single-cell. Ipotesi H4, formulata prima di calcolare la correlazione (stesso testo
 stampato dallo script, `H4_TEXT`): NI score piu' alto -> microambiente piu'
 immunosoppresso -> piu' T esauste -> piu' errore di annotazione delle T nel tumore
-(attesa: rho > 0). Il gruppo dicotomico (`NI group`: 11 High contro 3 Low) e' troppo sbilanciato:
+(attesa: rho > 0). H4 passa per "piu' T esauste", quindi eredita i problemi di H1
+(16_pseudobulk_patient.py): una deriva da CD8 a CD4T non e' plausibile, la direzione
+ipotizzata e' opposta alla maggior parte degli errori osservati (CD4 -> CD8T) e i geni
+di esaurimento sono alti anche nelle Treg e nelle CD4 Tfh-like. Il gruppo dicotomico (`NI group`: 11 High contro 3 Low) e' troppo sbilanciato:
 si usa il punteggio continuo.
 
 Test: Spearman con permutazione Monte Carlo (20.000 permutazioni casuali, non

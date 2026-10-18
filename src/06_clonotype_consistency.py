@@ -28,7 +28,10 @@ Adjacent_normal e Tumor dello stesso paziente.
   2. Contaminazione da cellule T nella classe NK: c_hat = (f - q) / (pi - q), con f, pi
      e q le frazioni di cellule con TCR fra le NK, le T (CD4T, CD8T) e le non-T usate
      per q (Ductal, Endothelial, CAF, Stellate, Myeloid, B, Acinar, Schwann; escluse
-     Platelet, Plasma ed Endocrine). "Cellula con TCR" =
+     Platelet, Plasma ed Endocrine; le piastrine non hanno nucleo ne' trascritti TCR
+     propri, quindi le Platelet con TCR di `tcr_rate_by_celltype.csv` sono
+     probabilmente aggregati piastrine-cellule T catturati nella stessa gocciolina).
+     "Cellula con TCR" =
      cellula con una catena TRB produttiva (`clone_b` definito): le cellule con sola
      TRA produttiva contano come TCR-. E' un limite
      superiore della frazione di T vere etichettate NK: c_hat non distingue le cellule
@@ -41,7 +44,9 @@ della CDR3 (non da `raw_clonotype_id`, che e' locale al campione). L'etichetta d
 maggioranza e' la moda (`scpipe.majority_label`); se due o piu' etichette hanno lo
 stesso conteggio massimo non e' definita, e le coppie fra compartimenti e le repliche
 split-half con un'etichetta in pareggio sono escluse (conteggi nel riepilogo; colonna
-`tie` nelle tabelle per coppia e per replica). Nello split-half un clone con
+`tie` nelle tabelle per coppia e per replica); come sensibilita' le stesse coppie
+e repliche sono contate come discordanti oppure come concordi
+(`clone_switching_tie_sensitivity_{cc}.csv`). Nello split-half un clone con
 n dispari perde una cellula a caso (le due meta' hanno n // 2 cellule ciascuna).
 
 Input
@@ -59,7 +64,10 @@ Output
   results/tables/clone_switching_summary_{cc}.csv   eccesso, IC 95% cluster bootstrap, cloni, pazienti
                                                     (totali, del termine fra compartimenti, del basale),
                                                     coppie e repliche escluse per pareggio
-  ({cc} = clone_b o clone_ab; se i cloni condivisi non bastano, questi tre file e la figura
+  results/tables/clone_switching_tie_sensitivity_{cc}.csv
+                                                    eccesso con i pareggi esclusi (principale),
+                                                    contati discordanti, contati concordi
+  ({cc} = clone_b o clone_ab; se i cloni condivisi non bastano, questi quattro file e la figura
   non vengono scritti e quelli di un'esecuzione precedente vengono cancellati)
   results/figures/clone_label_switching_{cc}.png
 
@@ -519,6 +527,7 @@ def main() -> None:
         # niente tabelle o figure di un'esecuzione precedente in results/
         for path in (
             TAB / f"clone_switching_summary_{cc}.csv",
+            TAB / f"clone_switching_tie_sensitivity_{cc}.csv",
             TAB / f"clone_switching_across_{cc}.csv",
             TAB / f"clone_switching_within_{cc}.csv",
             FIG / f"clone_label_switching_{cc}.png",
@@ -560,6 +569,38 @@ def main() -> None:
             }
         ]
     ).to_csv(TAB / f"clone_switching_summary_{cc}.csv", index=False)
+
+    # Sensibilita' ai pareggi: esclusi (principale), contati discordanti, contati concordi
+    srows = []
+    for version, val in (
+        ("ties_excluded", None),
+        ("ties_as_error", 1.0),
+        ("ties_as_correct", 0.0),
+    ):
+        if val is None:
+            a_v, w_v = across, within
+        else:
+            a_v = across_all.assign(switch=across_all.switch.fillna(val))
+            w_v = within_all.assign(switch=within_all.switch.fillna(val))
+        s_lo, s_hi = cluster_excess_ci(a_v, w_v)
+        srows.append(
+            {
+                "clone_def": cc,
+                "version": version,
+                "n_pairs_across": len(a_v),
+                "n_reps_within": len(w_v),
+                "n_patients": len(set(a_v.patient) | set(w_v.patient)),
+                "discord_across": a_v.switch.mean(),
+                "discord_within": w_v.switch.mean(),
+                "excess": a_v.switch.mean() - w_v.switch.mean(),
+                "lo": s_lo,
+                "hi": s_hi,
+            }
+        )
+    tie_sens = pd.DataFrame(srows)
+    tie_sens.to_csv(TAB / f"clone_switching_tie_sensitivity_{cc}.csv", index=False)
+    print("\nsensibilita' ai pareggi dell'etichetta di maggioranza:")
+    print(tie_sens.round(4).to_string(index=False))
 
     print("\nper coppia di compartimenti:")
     print(

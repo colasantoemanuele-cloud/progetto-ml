@@ -34,9 +34,11 @@ Stimatori con il paziente come unita' (calibrazione in `tests/test_stats.py`):
                                verificata solo per la media pooled con 10-11 pazienti
                                (banda [0.90, 0.99]); non e' verificata per altre
                                statistiche ricampionate con lo stesso intervallo
-                               (Spearman in 16, 17, 19; d1/d2 in 10) ne' con 4-5
-                               pazienti, dove in simulazione resta sotto il 95%
-                               (`src/sim/sim_a_calibration.py`).
+                               (Spearman in 16, 17, 19; d1/d2 in 10). In simulazione
+                               (`src/sim/sim_a_calibration.py`) con 5 pazienti la
+                               copertura e' dentro la banda (0,915-0,925) ma i falsi
+                               positivi sotto H0 sono 0,085; con 4 pazienti la
+                               copertura e' 0,82-0,83.
   - `small_k_diagnostics`    : con <= `SMALL_K` (= 5) pazienti, ricampionature distinte e
                                frazione di repliche > 0 (descrittive, non un test).
   - `block_permutation_test` : correlazione di Spearman pooled, permutando l'esito
@@ -236,8 +238,11 @@ def cluster_bootstrap(by_pat: dict, n_boot: int = 2000, seed: int = 0) -> tuple:
     `by_pat` mappa paziente -> array delle osservazioni (cloni, coppie, ...).
     Il punto e' la media di tutte le osservazioni concatenate; l'intervallo e'
     "expanded percentile" (vedi `expanded_alpha`) con k = numero di pazienti.
-    Copertura verificata in `tests/test_stats.py` con 10 e 11 pazienti; con 4-5
-    pazienti l'intervallo resta troppo stretto (vedi `src/sim/sim_a_calibration.py`).
+    Copertura verificata in `tests/test_stats.py` con 10 e 11 pazienti. In `sim_a`
+    (`src/sim/sim_a_calibration.py`, `results/tables/sim_a_cluster_bootstrap.csv`)
+    con 5 pazienti la copertura e' dentro la banda [0.90, 0.99] (0,915-0,925), ma il
+    tasso di falsi positivi sotto H0 e' 0,085, sopra la banda [0, 0.08]; con 4
+    pazienti la copertura e' 0,82-0,83, fuori banda.
     Restituisce (media, lo, hi); con meno di 2 pazienti lo e hi sono NaN (la media
     resta quella delle osservazioni disponibili, NaN se non ce ne sono).
     """

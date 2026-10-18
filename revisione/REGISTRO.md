@@ -373,6 +373,43 @@ Riesecuzioni: ramo TCR, simulazioni, 20, 13, 14, 00-04 e 11 --from-table; tutti 
 ricostruito e' identico. pytest completo 114 passati; ruff pulito. Loop chiuso (regola
 dell'utente: dopo il giro 8 si chiude in ogni caso).
 
+## Rifinitura finale (passaggio unico, senza loop di revisione)
+
+Richiesta dell'utente dopo il commit 640dad2: correzioni di testo biologico e due piccole
+analisi, senza cambiare il calcolo principale. Copia di `results/tables/` salvata prima delle
+modifiche (99 tabelle).
+
+- Testi biologici (README §1 e §7, docstring di 09 e 10, messaggio stampato di 08): le CD4
+  citotossiche restano della linea CD4 e non sono un'eccezione; le cellule discordanti
+  etichettate CD8T nel tumore sono della linea CD4, e GNLY piu' alto (1,78 contro 0,44) indica
+  una possibile causa dell'errore, non un'alternativa; le γδ non sono risolte dal saggio αβ.
+- Avvertenze aggiunte: RNA ambientale acinare (CTRC, CELA2A/2B, CELA3A/3B in 1p36 dentro
+  `1p_loss`, PRSS1/2 in 7q34; coordinate controllate in `gene_positions_ensembl116.csv` e
+  `cnv_windows.csv`) in 13, 14 e README; `1p_loss` e `6q_loss` distali; piastrine con TCR come
+  aggregati piastrine-T (06, README); limiti di H1 (geni alti in Treg e Tfh-like CXCL13+, deriva
+  CD8 -> CD4T non plausibile), H2 (mieloidi CD4+ darebbero errori CD8 -> CD4T, che sono 0), H3
+  (CAF poco recuperati dalla dissociazione), H4 (eredita H1) in 16, 19 e README; geni XAI
+  (DUSP4 fosfatasi MAPK inducibile, CD69 indotto anche dalla dissociazione, CTRB1 composizione
+  del tessuto, GAPDH glicolisi/HIF-1) in 20 e README. I testi delle ipotesi salvati nelle tabelle
+  (`HYPOTHESES` di 16, `H4_TEXT` di 19) non sono cambiati.
+- Analisi aggiunte: `error_rate_clone_ab.csv` (10) e `error_rate_by_compartment_clone_ab.csv`
+  (09), errore con il clone TRA+TRB; le righe `clone_b` riproducono esattamente le tabelle
+  principali. Errore Tumor, solo sangue: 0,154 [0,084; 0,227], 227 cloni, 10 pazienti (contro
+  0,170 [0,095; 0,252], 277 cloni). `doublet_mixture.csv`: `ic_calibrato` (falso in tutte le
+  righe: la copertura di d1/d2 non e' verificata) e `n_distinct_resamples` (111 per
+  Adjacent_normal, 5 pazienti); `doublet_mixture_error_nk.csv`: `n_boot_valid` (500).
+- Coerenza: STATO riga 22 (0,170; +0,059); docstring di `scpipe` (con 5 pazienti copertura
+  dentro la banda, falsi positivi 0,085 sotto H0); sensibilita' ai pareggi in 06
+  (`clone_switching_tie_sensitivity_clone_b`: +0,052 e +0,058 contro +0,063), tolta da
+  `non_risolti.md` per 06.
+- Riesecuzioni: 06, 08, 09, 10, 21, 16, 17, 18, 19, tutte rc = 0. 20 non rieseguito (cambiano
+  solo docstring, commenti e messaggi stampati). Confronto con la copia: 97 tabelle identiche
+  byte per byte; `doublet_mixture` e `doublet_mixture_error_nk` con sole colonne nuove e tutti
+  gli altri valori identici; 3 tabelle nuove.
+- Controllo dei numeri del README con `revisione/verifica_numeri_readme.py`: 0 numeri non
+  trovati (tabella delle fonti e testo). pytest -m "not slow" 108 passati (pytest-xdist non e'
+  nell'ambiente, quindi senza `-n auto`); ruff pulito.
+
 ## Problemi respinti
 
 - Giro 1, n. 13 (RISULTATI_FINALI.md assente): il file e' un prodotto della Fase 3; la bozza e'

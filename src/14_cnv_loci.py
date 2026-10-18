@@ -8,7 +8,10 @@ Lo score CNV globale (`mean |X_cnv|`) aggrega l'intero genoma e risente dei
 programmi trascrizionali tessuto-specifici. Questo modulo restringe il calcolo ai
 loci con alterazioni ricorrenti nell'adenocarcinoma duttale pancreatico e misura
 l'AUC tumore-vs-adiacente delle duttali, sia pooled sia entro paziente:
-  - perdite attese (`direction = -1`): 9p21 (`CDKN2A`), 17p13 (`TP53`), 18q21 (`SMAD4`), 1p, 6q
+  - perdite attese (`direction = -1`): 9p21 (`CDKN2A`), 17p13 (`TP53`), 18q21 (`SMAD4`),
+    `1p_loss` (0-60 Mb) e `6q_loss` (90-170 Mb): questi due coprono la parte distale
+    dei bracci, non i bracci interi (le finestre attribuite, larghe, arrivano a 84 Mb
+    su 1p e partono da 64 Mb su 6q, vedi `cnv_windows.csv`)
   - guadagni attesi (`direction = +1`): 8q24 (`MYC`), 12p12 (`KRAS`), 20q
 Calcola uno score direzionale per locus e un indice composito (`PDAC_COMPOSITE`):
 la somma degli z-score dei loci, con media e deviazione standard di ciascun locus
@@ -27,6 +30,10 @@ decine di Mb), quindi un locus include anche geni vicini e il segnale di un locu
 piccolo (CDKN2A) e' in pratica quello del braccio cromosomico circostante. Lo
 script controlla che le finestre che contengono il gene marcatore di ogni locus
 (CDKN2A, TP53, SMAD4, MYC, KRAS) siano attribuite al locus, e si ferma se no.
+RNA ambientale acinare: CTRC, CELA2A/2B (1p36.21) e CELA3A/3B (1p36.12) cadono dentro
+`1p_loss`, PRSS1/2 in 7q34. L'RNA ambientale acinare, abbondante nel tessuto adiacente,
+puo' creare pseudo-guadagni in queste regioni nelle duttali adiacenti e influenzare
+l'AUC tumore contro adiacente, in particolare per `1p_loss`.
 L'AUC pooled mescola differenze fra pazienti e fra tessuti; l'AUC entro paziente
 (pazienti con almeno 10 duttali per tessuto) elimina le differenze fra pazienti
 (resta il contrasto fra campioni e librerie diversi dello stesso paziente). Il

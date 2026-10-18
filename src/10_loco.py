@@ -30,8 +30,10 @@ Scopo
    oppure come corretta (`error_rate_tie_sensitivity.csv`). La regola non dipende
    dall'ordine dei barcode.
    Presupposto: il lignaggio CD4/CD8 di un clone T maturo e' di norma stabile fra
-   tessuti, con eccezioni note (CD4 citotossiche, CD4+CD8αα+ e doppi positivi nei
-   tessuti, MAIT, NKT, γδ). Il controllo dei cloni a TCR semi-invariante (MAIT-like:
+   tessuti, con eccezioni note (CD4+CD8αα+ e doppi positivi nei tessuti, MAIT, NKT).
+   Le CD4 citotossiche non sono un'eccezione: restano della linea CD4. Le cellule T γδ
+   non sono risolte dal saggio αβ: una cellula γδ con un trascritto TRB verrebbe
+   trattata come un clone αβ. Il controllo dei cloni a TCR semi-invariante (MAIT-like:
    TRAV1-2 con TRAJ33/12/20; iNKT: TRAV10 con TRAJ18) fra le unita' del Tumor e' in
    `clone_invariant_tcr_check.csv`.
 
@@ -62,7 +64,8 @@ Scopo
 5. Sensibilita' (blood): scomposizione dell'errore nel Tumor (cloni CD4 nel sangue
    etichettati CD8T, cloni etichettati NK, altri), tasso escludendo le etichette NK,
    e regole d'identita' piu' severe per CD8+ (solo CD8B > 0; CD8A >= 2 UMI;
-   CD8B > 0 oppure CD8A >= 2 UMI).
+   CD8B > 0 oppure CD8A >= 2 UMI). Per tutti gli schemi, lo stesso errore con il
+   clone definito dalla coppia TRA+TRB (`clone_ab`) invece della sola TRB.
 
 Input
 -----
@@ -82,12 +85,19 @@ Output
                                                       (errore, corretto, pareggio) e frazione fra le
                                                       NK-TCR+
   results/tables/doublet_mixture_error_nk.csv         d1, d2 con IC per le NK-TCR+ dei cloni del
-                                                      Tumor contati come errore (schema blood)
+                                                      Tumor contati come errore (schema blood);
+                                                      `n_boot_valid` = repliche con stima definita
   results/tables/error_rate_paired_diff.csv           differenze appaiate per schema, con cloni e pazienti
   results/tables/error_decomposition_blood.csv        scomposizione dell'errore nel Tumor (blood)
   results/tables/error_rate_identity_rules.csv        errore (blood) con regole CD8+ alternative
+  results/tables/error_rate_clone_ab.csv              errore per schema x compartimento con il clone
+                                                      definito da TRB (`clone_b`, principale) e da
+                                                      TRA+TRB (`clone_ab`, solo cellule con le due catene)
   results/tables/ambient_cd4_threshold.csv            soglia CD4 per compartimento e numero di cellule
-  results/tables/doublet_mixture.csv                  d1, d2 con IC: mediane/medie, pooled/per compartimento
+  results/tables/doublet_mixture.csv                  d1, d2 con IC: mediane/medie, pooled/per compartimento;
+                                                      `ic_calibrato` sempre falso (copertura non
+                                                      verificata), ricampionature distinte con <= 5
+                                                      pazienti (`n_distinct_resamples`)
   results/tables/doublet_mixture_boot.csv             repliche bootstrap di d1, d2 (mediane, pooled;
                                                       cancellata se la stima pooled non e' possibile)
   results/figures/error_rate_loco.png  (schema loco; barre con <= 5 pazienti grigie
@@ -203,8 +213,11 @@ def load_tcr(tcrdir: Path) -> pd.DataFrame:
         .join(umi.rename(columns={"TRA": "umi_TRA", "TRB": "umi_TRB"}))
         .reset_index()
     )
+    # clone TRA+TRB (sensibilita'): definito solo con entrambe le catene, come in 07
+    paired = w.TRA.notna() & w.clone_b.notna()
+    w["clone_ab"] = np.where(paired, w.TRA + "|" + w.clone_b, np.nan)
     w["umi_tcr"] = w[["umi_TRA", "umi_TRB"]].sum(axis=1, min_count=1)
-    return w[["patient", "tissue", "barcode16", "clone_b", "umi_tcr"]]
+    return w[["patient", "tissue", "barcode16", "clone_b", "clone_ab", "umi_tcr"]]
 
 
 def cluster_boot(by_pat: dict[str, np.ndarray], n: int = N_BOOT) -> tuple:
@@ -363,6 +376,26 @@ def arbitrate(per: pd.DataFrame, scheme: str) -> pd.DataFrame:
             "n_ref_comp",
         ],
     )
+
+
+def clone_def_sensitivity(lym: pd.DataFrame) -> pd.DataFrame:
+    """Errore per schema e compartimento con il clone definito dalla sola TRB
+    (`clone_b`, principale) o dalla coppia TRA+TRB (`clone_ab`, sensibilita').
+
+    Stesse regole del calcolo principale (frazioni, margine, pareggi esclusi); con
+    `clone_ab` entrano solo le cellule con entrambe le catene.
+    """
+    out = []
+    for clone_def in ("clone_b", "clone_ab"):
+        x = lym[lym[clone_def].notna()].assign(clone_b=lambda d: d[clone_def])
+        per = per_comp_stats(x, None)
+        for scheme in ("naive", "loco", "blood"):
+            r = report(arbitrate(per, scheme), f"{scheme.upper()}, clone = {clone_def}")
+            out.append(r.assign(clone_def=clone_def, scheme=scheme))
+    out = pd.concat(out, ignore_index=True)
+    out["ic_calibrato"] = out.n_pat > SMALL_K
+    lead = ["clone_def", "scheme"]
+    return out[lead + [c for c in out.columns if c not in lead]]
 
 
 def untied(j: pd.DataFrame) -> pd.DataFrame:
@@ -705,19 +738,24 @@ def mix_est(sub: pd.DataFrame, stat: str = "median") -> tuple[float, float]:
     return float(np.clip(d1, 0, 1)), float(np.clip(d2, 0, 1))
 
 
-def mix_boot(sub: pd.DataFrame, stat: str) -> tuple[list, list, int]:
-    """Repliche di d1 e d2 ricampionando i pazienti (N_BOOT_MIX, seme SEED)."""
+def mix_boot(sub: pd.DataFrame, stat: str) -> tuple[list, list, int, int]:
+    """Repliche di d1 e d2 ricampionando i pazienti (N_BOOT_MIX, seme SEED).
+
+    Restituisce le repliche valide di d1 e d2, il numero di pazienti e il numero di
+    ricampionature distinte (multiinsiemi di pazienti, su tutte le estrazioni).
+    """
     pats = sub.patients.unique()
     parts = {p: sub[sub.patients == p] for p in pats}
     rng = np.random.default_rng(SEED)
-    b1, b2 = [], []
+    b1, b2, distinct = [], [], set()
     for _ in range(N_BOOT_MIX):
         draw = rng.choice(pats, len(pats), replace=True)
+        distinct.add(tuple(sorted(draw)))
         a, b = mix_est(pd.concat([parts[p] for p in draw]), stat)
         if not np.isnan(a):
             b1.append(a)
             b2.append(b)
-    return b1, b2, len(pats)
+    return b1, b2, len(pats), len(distinct)
 
 
 def mixture_error_nk(gex: pd.DataFrame, jblood: pd.DataFrame) -> pd.DataFrame:
@@ -741,7 +779,7 @@ def mixture_error_nk(gex: pd.DataFrame, jblood: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for stat in ("median", "mean"):
         d1, d2 = mix_est(sub, stat)
-        b1, b2, k = mix_boot(sub, stat)
+        b1, b2, k, _ = mix_boot(sub, stat)
         lo1, hi1 = percentile_ci(np.array(b1), k) if b1 else (np.nan, np.nan)
         lo2, hi2 = percentile_ci(np.array(b2), k) if b2 else (np.nan, np.nan)
         rows.append(
@@ -753,6 +791,7 @@ def mixture_error_nk(gex: pd.DataFrame, jblood: pd.DataFrame) -> pd.DataFrame:
                 "n_patients": k,
                 "n_patients_with_error_nk": err.patient.nunique(),
                 "ic_calibrato": False,
+                "n_boot_valid": len(b1),
                 "d1": d1,
                 "d1_lo": lo1,
                 "d1_hi": hi1,
@@ -786,7 +825,7 @@ def mixture(gex: pd.DataFrame) -> None:
             if np.isnan(d1):
                 print(f"  {stat:6s} {name:16s} cellule insufficienti (<10 per gruppo)")
                 continue
-            b1, b2, k = mix_boot(sub, stat)
+            b1, b2, k, n_dist = mix_boot(sub, stat)
             lo1, hi1 = percentile_ci(np.array(b1), k)
             lo2, hi2 = percentile_ci(np.array(b2), k)
             rows.append(
@@ -795,6 +834,10 @@ def mixture(gex: pd.DataFrame) -> None:
                     "stratum": name,
                     "n_patients": k,
                     "n_boot_valid": len(b1),
+                    # copertura degli IC di d1/d2 non verificata in simulazione; con
+                    # <= SMALL_K pazienti non e' calibrata nemmeno per una media
+                    "ic_calibrato": False,
+                    "n_distinct_resamples": n_dist if k <= SMALL_K else np.nan,
                     "d1": d1,
                     "d1_lo": lo1,
                     "d1_hi": hi1,
@@ -1021,6 +1064,8 @@ def main() -> None:
     inv.to_csv(TAB / "clone_invariant_tcr_check.csv", index=False)
     print("\ncloni a TCR semi-invariante nel Tumor (schema blood):")
     print(inv.round(4).to_string(index=False))
+
+    clone_def_sensitivity(lym).to_csv(TAB / "error_rate_clone_ab.csv", index=False)
 
     rule_rows = []
     for rule, desc in CD8_RULES.items():

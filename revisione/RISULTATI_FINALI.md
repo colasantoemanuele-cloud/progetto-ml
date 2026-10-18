@@ -44,7 +44,7 @@ Generato da `revisione/genera_risultati.py`: ogni numero viene dalla tabella di 
 | AUC loci PDAC entro paziente (media dei 4 pazienti valutabili) | **0,53** | **0,566** | cambiato | `cnv_loci_auc_by_patient` |
 | sim (b): errore PBMC stimato da LOCO con artefatto (moderato / forte) | **0,24** | **0,119 / 0,383** | cambiato | `sim_b_reference_schemes` |
 
-Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato; il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni).
+Note: lo 0,53 e' l'AUC entro paziente dei loci PDAC ("≈ 0,53" nel README pubblicato; il codice di allora stampava solo le AUC per paziente, quindi la statistica riassuntiva non e' ricostruibile; ora si riporta la media). I p grezzi di H1-H4 sono nella sezione delle ipotesi. Gli IC con 5 pazienti o meno (Adjacent_normal, differenza appaiata) non sono calibrati (vedi Simulazioni). Sensibilita' alla definizione di clone: l'errore Tumor dello schema solo sangue e' 0,170 con il clone definito dalla sola TRB e 0,154 [0,084; 0,227] con la coppia TRA+TRB (227 cloni, 10 pazienti; `error_rate_clone_ab`).
 
 ## Dataset
 
@@ -197,6 +197,50 @@ Jaccard medio fra i top-50 dei 5 fold LOPO 0,300 (0,220-0,408 fra coppie, `xai_j
 | naive | Adjacent_normal | 0,072 | [0,046; 0,160]* | 639 | 5 |
 | naive | Tumor | 0,084 | [0,058; 0,115] | 1.502 | 13 |
 
+**Definizione di clone: sola TRB (`clone_b`, principale) contro TRA+TRB (`clone_ab`)** (`error_rate_clone_ab` di 10, `error_rate_by_compartment_clone_ab` di 09; con `clone_ab` entrano solo le cellule con le due catene; pareggi esclusi; \* IC non calibrato, <= 5 pazienti)
+
+| Script | Schema | Compartimento | Clone | Errore | IC 95% | Cloni | Pareggi | Pazienti |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 10 | naive | PBMC | clone_b | 0,041 | [0,025; 0,064] | 857 | 5 | 11 |
+| 10 | naive | Adjacent_normal | clone_b | 0,072 | [0,046; 0,160]* | 639 | 7 | 5 |
+| 10 | naive | Tumor | clone_b | 0,084 | [0,058; 0,115] | 1.502 | 17 | 13 |
+| 10 | loco | PBMC | clone_b | 0,036 | [0,013; 0,063] | 309 | 0 | 10 |
+| 10 | loco | Adjacent_normal | clone_b | 0,062 | [0,031; 0,094]* | 292 | 3 | 5 |
+| 10 | loco | Tumor | clone_b | 0,128 | [0,076; 0,214] | 453 | 11 | 11 |
+| 10 | blood | Adjacent_normal | clone_b | 0,060 | [0,000; 0,095]* | 117 | 1 | 4 |
+| 10 | blood | Tumor | clone_b | 0,170 | [0,095; 0,252] | 277 | 10 | 10 |
+| 10 | naive | PBMC | clone_ab | 0,030 | [0,015; 0,046] | 806 | 3 | 11 |
+| 10 | naive | Adjacent_normal | clone_ab | 0,063 | [0,041; 0,118]* | 525 | 1 | 5 |
+| 10 | naive | Tumor | clone_ab | 0,083 | [0,058; 0,112] | 1.220 | 18 | 13 |
+| 10 | loco | PBMC | clone_ab | 0,029 | [0,010; 0,064] | 277 | 0 | 10 |
+| 10 | loco | Adjacent_normal | clone_ab | 0,062 | [0,024; 0,090]* | 224 | 1 | 5 |
+| 10 | loco | Tumor | clone_ab | 0,131 | [0,082; 0,205] | 358 | 11 | 11 |
+| 10 | blood | Adjacent_normal | clone_ab | 0,050 | [0,000; 0,079]* | 100 | 0 | 4 |
+| 10 | blood | Tumor | clone_ab | 0,154 | [0,084; 0,227] | 227 | 11 | 10 |
+| 09 | arbitrato (n_comp >= 2) | PBMC | clone_b | 0,035 | [0,013; 0,063] | 312 | 0 | 10 |
+| 09 | arbitrato (n_comp >= 2) | Adjacent_normal | clone_b | 0,052 | [0,031; 0,106]* | 286 | 3 | 5 |
+| 09 | arbitrato (n_comp >= 2) | Tumor | clone_b | 0,126 | [0,071; 0,209] | 446 | 11 | 11 |
+| 09 | arbitrato (n_comp >= 2) | PBMC | clone_ab | 0,029 | [0,010; 0,062] | 275 | 0 | 10 |
+| 09 | arbitrato (n_comp >= 2) | Adjacent_normal | clone_ab | 0,045 | [0,041; 0,056]* | 221 | 1 | 5 |
+| 09 | arbitrato (n_comp >= 2) | Tumor | clone_ab | 0,130 | [0,076; 0,213] | 353 | 11 | 11 |
+
+**Pareggi dell'etichetta di maggioranza, schema solo sangue** (`error_rate_tie_sensitivity`; esclusi = principale, contati come errore, contati come corretti)
+
+| Versione | Quantita' | Valore | IC 95% | Unita' | Pazienti |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| ties_excluded | error_Adjacent_normal | 0,060 | [0,000; 0,095]* | 117 | 4 |
+| ties_excluded | error_Tumor | 0,170 | [0,095; 0,252] | 277 | 10 |
+| ties_excluded | diff_Tumor_minus_Adjacent_normal | +0,059 | [+0,000; +0,160]* | 85 | 4 |
+| ties_as_error | error_Adjacent_normal | 0,068 | [0,000; 0,116]* | 118 | 4 |
+| ties_as_error | error_Tumor | 0,199 | [0,117; 0,291] | 287 | 10 |
+| ties_as_error | diff_Tumor_minus_Adjacent_normal | +0,068 | [+0,000; +0,192]* | 88 | 4 |
+| ties_as_correct | error_Adjacent_normal | 0,059 | [0,000; 0,093]* | 118 | 4 |
+| ties_as_correct | error_Tumor | 0,164 | [0,093; 0,240] | 287 | 10 |
+| ties_as_correct | diff_Tumor_minus_Adjacent_normal | +0,057 | [+0,000; +0,154]* | 88 | 4 |
+
+Split-half di 06 (`clone_switching_tie_sensitivity_clone_b`): eccesso ties_excluded +0,063 IC [+0,023; +0,134]; ties_as_error +0,052 IC [+0,013; +0,125]; ties_as_correct +0,058 IC [+0,022; +0,121].
+
+
 **Differenze appaiate** (`error_rate_paired_diff`; B2: ricampionature distinte e frazione > 0 con <= 5 pazienti)
 
 | Schema | Variante | Contrasto | Diff. | IC 95% | Cloni | Pazienti | Ricamp. distinte | Frac > 0 |
@@ -250,18 +294,25 @@ Marcatori nelle cellule etichettate CD8T del Tumor (`marker_test_disc_vs_conc`):
 
 Tassi di cellule con catena TRB produttiva per classe: `tcr_rate_by_celltype` (14 classi).
 
-| Statistica | Strato | Pazienti | d1 | IC d1 | d2 | IC d2 |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| median | all | 14 | 0,723 | [0,556; 0,848] | 0,676 | [0,559; 0,781] |
-| median | PBMC | 11 | 0,842 | [0,656; 1,000] | 0,851 | [0,623; 0,983] |
-| median | Adjacent_normal | 5 | 0,690 | [0,233; 1,000] | 0,782 | [0,051; 1,000] |
-| median | Tumor | 13 | 0,510 | [0,186; 0,658] | 0,419 | [0,289; 0,567] |
-| mean | all | 14 | 0,682 | [0,582; 0,775] | 0,693 | [0,563; 0,790] |
-| mean | PBMC | 11 | 0,800 | [0,690; 1,000] | 0,855 | [0,659; 0,997] |
-| mean | Adjacent_normal | 5 | 0,559 | [0,299; 0,862] | 0,553 | [0,126; 1,000] |
-| mean | Tumor | 13 | 0,381 | [0,170; 0,473] | 0,515 | [0,325; 0,675] |
+| Statistica | Strato | Pazienti | d1 | IC d1 | d2 | IC d2 | Repliche valide | Ricamp. distinte |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| median | all | 14 | 0,723 | [0,556; 0,848] | 0,676 | [0,559; 0,781] | 500 |  |
+| median | PBMC | 11 | 0,842 | [0,656; 1,000] | 0,851 | [0,623; 0,983] | 500 |  |
+| median | Adjacent_normal | 5 | 0,690 | [0,233; 1,000] | 0,782 | [0,051; 1,000] | 500 | 111 |
+| median | Tumor | 13 | 0,510 | [0,186; 0,658] | 0,419 | [0,289; 0,567] | 500 |  |
+| mean | all | 14 | 0,682 | [0,582; 0,775] | 0,693 | [0,563; 0,790] | 500 |  |
+| mean | PBMC | 11 | 0,800 | [0,690; 1,000] | 0,855 | [0,659; 0,997] | 500 |  |
+| mean | Adjacent_normal | 5 | 0,559 | [0,299; 0,862] | 0,553 | [0,126; 1,000] | 500 | 111 |
+| mean | Tumor | 13 | 0,381 | [0,170; 0,473] | 0,515 | [0,325; 0,675] | 500 |  |
 
-Fonte: `doublet_mixture` (B5: medie e strati per compartimento). d1 e d2 non sono indipendenti; la copertura dei loro IC non e' verificata.
+**NK-TCR+ dei cloni del Tumor contati come errore** (`doublet_mixture_error_nk`, schema solo sangue; IC non calibrati)
+
+| Statistica | Cellule NK-TCR+ | Cloni | Pazienti con NK in errore | d1 | IC d1 | d2 | IC d2 | Repliche valide |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| median | 149 | 15 | 6 | 0,617 | [0,058; 0,849] | 0,458 | [0,008; 0,653] | 500 |
+| mean | 149 | 15 | 6 | 0,403 | [0,000; 0,579] | 0,529 | [0,055; 0,719] | 500 |
+
+Fonte: `doublet_mixture` (B5: medie e strati per compartimento). d1 e d2 non sono indipendenti; la copertura dei loro IC non e' verificata (`ic_calibrato` falso in tutte le righe); ricampionature distinte per gli strati con <= 5 pazienti.
 
 ### Espansione clonale ed errore (17, 18)
 
@@ -456,6 +507,6 @@ Problemi segnalati dai revisori dell'ultimo giro (giro 8) e non corretti, con il
 
 | Dove | Problema | Motivo |
 | :--- | :--- | :--- |
-| `src/06_clonotype_consistency.py` (riepilogo split-half), `src/16_pseudobulk_patient.py`, `src/17_clonal_expansion.py`, `src/18_loyo_check.py`, `src/19_ni_score.py` | i pareggi dell'etichetta di maggioranza sono esclusi, ma la sensibilita' "pareggi = errore / pareggi = corretti" e' tabulata solo in 09 e 10 (`arbitration_tie_sensitivity`, `error_rate_tie_sensitivity`) | il revisore l'ha ricalcolata e le conclusioni non cambiano (17, errore: ρ 0,186 e 0,217 contro 0,220; H1-H4 con segno e p simili; 06: +0,052 e +0,058 contro +0,063): `revisione/log/giro8_revisore_b.md`, punto 6. Questi valori non sono in `results/tables` e non sono citati come risultati |
+| `src/16_pseudobulk_patient.py`, `src/17_clonal_expansion.py`, `src/18_loyo_check.py`, `src/19_ni_score.py` | i pareggi dell'etichetta di maggioranza sono esclusi, ma la sensibilita' "pareggi = errore / pareggi = corretti" e' tabulata solo in 06, 09 e 10 (`clone_switching_tie_sensitivity_clone_b`, aggiunta nella rifinitura finale; `arbitration_tie_sensitivity`, `error_rate_tie_sensitivity`) | il revisore l'ha ricalcolata e le conclusioni non cambiano (17, errore: ρ 0,186 e 0,217 contro 0,220; H1-H4 con segno e p simili): `revisione/log/giro8_revisore_b.md`, punto 6. Questi valori non sono in `results/tables` e non sono citati come risultati |
 | `README.md:94` | la radice indicata e' `progetto-ml/`, la cartella locale si chiama `pdac-ml` | `progetto-ml` e' il nome del repository remoto, richiesto dalla correzione D3 |
 

@@ -17,18 +17,27 @@ formulate dopo i moduli 08-10 ma prima di calcolare le covariate.
   - H1 (esaurimento CD8T): media, sulle cellule tumorali etichettate CD8T, del punteggio
     di esaurimento di ciascuna cellula (media di log1p(CP10k) di PDCD1, LAG3, HAVCR2,
     TOX, CTLA4, TIGIT). Ipotesi: piu' esaurimento -> piu' errore, per una deriva delle
-    CD8T esauste verso profili CD4T/NK. Due limiti noti:
+    CD8T esauste verso profili CD4T/NK. Limiti noti:
+      * una deriva da CD8 a CD4T non e' biologicamente plausibile; lo e' solo quella da
+        CD8 a cellule simili alle NK;
       * la deriva ipotizzata va nel senso opposto alla maggior parte degli errori
         osservati: nel Tumor gli errori sono soprattutto cloni CD4 nel sangue etichettati
         CD8T e CD8 -> CD4 non compare; solo gli errori CD8 -> NK vanno nel senso
         ipotizzato (conteggi per transizione in `error_decomposition_blood.csv`);
       * il punteggio usa le cellule etichettate CD8T, cioe' le stesse etichette il cui
         errore e' l'outcome (circolarita'): le CD4 etichettate CD8T entrano nel punteggio.
+        Inoltre CTLA4, TIGIT, PDCD1 e TOX sono alti anche nelle Treg e nelle CD4
+        Tfh-like CXCL13+: le CD4 mal etichettate CD8T alzano il punteggio, e questo si
+        aggiunge alla circolarita'.
     Non e' un punteggio pseudobulk: e' la media dei punteggi delle singole cellule.
   - H2 (frazione mieloide nel tumore): piu' mieloidi -> piu' errore (RNA ambientale,
-    doppietti mieloide-T).
+    doppietti mieloide-T). Limite: le cellule mieloidi esprimono CD4, quindi RNA
+    ambientale o doppietti mieloidi produrrebbero soprattutto errori CD8 -> CD4T, che
+    nel Tumor sono 0: e' la stessa incongruenza di direzione di H1.
   - H3 (frazione CAF nel tumore): piu' fibrosi -> dissociazione piu' aggressiva -> piu'
-    errore. Indicata come speculativa fin dall'inizio.
+    errore. Indicata come speculativa fin dall'inizio. Limite: la frazione di CAF da
+    scRNA-seq e' un indicatore debole della fibrosi, perche' lo stroma desmoplastico si
+    recupera male con la dissociazione.
 
 Test: Spearman con permutazione Monte Carlo (20.000 permutazioni casuali, non
 esatto), IC 95% bootstrap sui pazienti ("expanded percentile"), Holm-Bonferroni sui 3
