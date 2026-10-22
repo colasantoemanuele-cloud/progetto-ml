@@ -300,3 +300,5 @@ Problemi segnalati dai revisori dell'ultimo giro (giro 8) e non corretti, con il
 ## Autore
 
 Emanuele Colasanto, matricola 859776 — Corso di Machine Learning, A.A. 2025/2026.
+
+I controlli di questo caso studio sono stati generalizzati nello strumento [genomic-audit](https://github.com/colasantoemanuele-cloud/genomic-audit-mvp): il confronto dei 13 modelli di `src/11_model_zoo.py` ha guidato la scelta dei modelli del suo Modulo A (regressione logistica, random forest, gradient boosting).

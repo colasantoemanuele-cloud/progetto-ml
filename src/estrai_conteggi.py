@@ -51,6 +51,8 @@ def paired_counts(obs: pd.DataFrame) -> pd.Series:
 
 
 def main() -> None:
+    """Legge i metadati, controlla le colonne e stampa le cellule per paziente
+    della coorte appaiata con il totale."""
     ap = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Cellule per paziente della coorte appaiata Tumor + Adjacent_normal.",

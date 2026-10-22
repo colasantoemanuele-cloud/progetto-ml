@@ -214,6 +214,7 @@ class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
     """Mostra il default in --help solo quando esiste (non per argomenti obbligatori o None)."""
 
     def _get_help_string(self, action):
+        """Omette il default dall'help per argomenti obbligatori o con default None."""
         if action.default is None or action.required:
             return action.help
         return super()._get_help_string(action)

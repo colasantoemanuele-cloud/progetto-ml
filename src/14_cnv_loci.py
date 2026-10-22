@@ -372,6 +372,8 @@ def main() -> None:
     print("0.5 = distribuzioni sovrapposte; l'AUC pooled mescola pazienti diversi\n")
 
     def auc_tn(score):
+        """AUC di `score` fra duttali tumorali e normali adiacenti (NaN esclusi);
+        NaN se restano <= 10 valori validi o una sola classe."""
         y = np.r_[np.ones(tumor.sum()), np.zeros(normal.sum())]
         idx = np.r_[np.where(tumor)[0], np.where(normal)[0]]
         s = score[idx]

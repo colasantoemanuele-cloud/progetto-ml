@@ -81,12 +81,16 @@ class LogCPM(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, target_sum: float = 1e4):
+        """Memorizza la scala di normalizzazione `target_sum`."""
         self.target_sum = target_sum
 
     def fit(self, X, y=None):  # noqa: ARG002
+        """Non stima parametri (trasformazione riga per riga): restituisce `self`."""
         return self
 
     def transform(self, X):
+        """Applica log1p(conteggi / totale_cellula * target_sum) a ogni cellula;
+        restituisce una matrice CSR."""
         # Profondita' di sequenziamento di ciascuna cellula (somma della riga)
         counts = np.asarray(X.sum(axis=1)).ravel()
         counts[counts == 0] = 1.0
@@ -104,10 +108,13 @@ class HVGSelector(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, n_top: int = 2000, min_mean: float = 1e-3):
+        """Memorizza il numero di geni `n_top` e la soglia di media `min_mean`."""
         self.n_top = n_top
         self.min_mean = min_mean
 
     def fit(self, X, y=None):  # noqa: ARG002
+        """Stima sul training media e varianza per gene e salva in `idx_` (ordinati) i
+        `n_top` geni con var / media piu' alto fra quelli con media > `min_mean`."""
         # Media e momento secondo per colonna senza densificare la matrice
         mean = np.asarray(X.mean(axis=0)).ravel()
         sq = np.asarray(X.multiply(X).mean(axis=0)).ravel()
@@ -119,6 +126,7 @@ class HVGSelector(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        """Restituisce le sole colonne dei geni selezionati in `fit()` (`idx_`)."""
         return X[:, self.idx_]
 
 

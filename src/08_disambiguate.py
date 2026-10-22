@@ -232,6 +232,8 @@ def part1(lym: pd.DataFrame) -> None:
         )
 
     def summarize(name: str, by: dict) -> dict:
+        """Riepilogo del contrasto `name`: media pooled e IC 95% con `cluster_boot`;
+        con pochi pazienti aggiunge le diagnostiche di `small_k_diagnostics`."""
         m, lo, hi = cluster_boot(by)
         row = {"contrast": name, "mean": m, "lo": lo, "hi": hi}
         if small:

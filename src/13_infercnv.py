@@ -428,6 +428,7 @@ def check_autosomal_windows(chr_pos: dict) -> None:
 
 
 def _digest(*parts: bytes) -> str:
+    """Hash BLAKE2b a 16 byte, in esadecimale, dei blocchi `parts` in sequenza."""
     h = hashlib.blake2b(digest_size=16)
     for b in parts:
         h.update(b)

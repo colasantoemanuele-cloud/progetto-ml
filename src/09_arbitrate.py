@@ -524,6 +524,8 @@ def partB(gex: pd.DataFrame) -> None:
     print(out.round(2).to_string(index=False))
 
     def med(cls, tcr):
+        """`median_n_counts` della riga di `out` con classe `cls` e stato `tcr`;
+        NaN se la combinazione manca."""
         s = out[(out["class"] == cls) & (out.tcr == tcr)]
         return float(s.median_n_counts.iloc[0]) if len(s) else np.nan
 
